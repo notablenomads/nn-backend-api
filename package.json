@@ -1,17 +1,14 @@
 {
-  "name": "nestifined-ms-framework",
-  "version": "0.0.5",
-  "description": "This is a NestJS project that offers a streamlined, sophisticated, and well-structured codebase for beginning a fresh microservice initiative.",
+  "name": "nn-backend-api",
+  "version": "0.0.1",
+  "description": "The backend API for the Notable Nomads backend",
   "author": "Mahdi Rashidi <m8rashidi@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MRdevX/nestifined-ms-framework.git"
+    "url": "https://github.com/Notable-Nomads/nn-backend-api.git"
   },
-  "bugs": {
-    "url": "https://github.com/MRdevX/nestifined-ms-framework/issues"
-  },
-  "homepage": "https://github.com/MRdevX/nestifined-ms-framework#readme",
+  "homepage": "https://github.com/Notable-Nomads/nn-backend-api",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
