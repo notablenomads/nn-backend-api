@@ -14,7 +14,6 @@ async function bootstrap() {
   const apiPrefix = config.get('app.apiPrefix');
 
   app.enableShutdownHooks();
-  app.connectMicroservice(config.get('s2s.options'));
   app.use(helmet());
   app.enableCors({ origin: true, credentials: true });
   app.setGlobalPrefix(apiPrefix, {
@@ -48,7 +47,6 @@ async function bootstrap() {
     SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
   }
 
-  await app.startAllMicroservices();
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
   const docsUrl = `${appUrl}/${apiPrefix}/docs`;
