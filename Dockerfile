@@ -5,7 +5,7 @@ FROM node:lts AS build
 WORKDIR /app
 
 # Enable Corepack and use the specified Yarn version
-RUN corepack enable && corepack prepare yarn@4.6.0 --activate
+RUN corepack enable && corepack prepare yarn@stable --activate
 
 # Copy package manager configuration files
 COPY package.json yarn.lock .yarnrc.yml ./
@@ -40,7 +40,7 @@ COPY --from=build /app/dist ./dist
 RUN yarn workspaces focus 
 
 # Expose the application port
-EXPOSE 3030
+EXPOSE 3000
 
 # Start the application in production mode
 CMD ["yarn", "start:prod"]
