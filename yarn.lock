@@ -761,6 +761,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@google/generative-ai@npm:^0.21.0":
+  version: 0.21.0
+  resolution: "@google/generative-ai@npm:0.21.0"
+  checksum: 10/68c4163b7ac0c449cdbdf83b85dd77b8d96ee2b883b0190bcb1c7e76d98b56968d3e554ff62c555c3a3814855bac3bfc1cf2035f2b7ddf71f313b5c846b60f31
+  languageName: node
+  linkType: hard
+
 "@humanfs/core@npm:^0.19.1":
   version: 0.19.1
   resolution: "@humanfs/core@npm:0.19.1"
@@ -7195,6 +7202,7 @@ __metadata:
   resolution: "nestifined-ms-framework@workspace:."
   dependencies:
     "@faker-js/faker": "npm:^9.3.0"
+    "@google/generative-ai": "npm:^0.21.0"
     "@nestjs/cli": "npm:^10.4.9"
     "@nestjs/common": "npm:^10.4.15"
     "@nestjs/config": "npm:^3.3.0"
