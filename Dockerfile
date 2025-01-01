@@ -1,28 +1,46 @@
-# Stage 1: Build the application
-FROM node:lts-alpine AS builder
+# Stage 1: Build
+FROM node:lts AS build
 
-ENV HOME=/usr/src/backend
-WORKDIR $HOME
+# Set the working directory inside the container
+WORKDIR /app
 
-COPY package.json yarn.lock .yarnrc.yml-example ./
+# Enable Corepack and use the specified Yarn version
+RUN corepack enable && corepack prepare yarn@4.6.0 --activate
 
-RUN mv .yarnrc.yml-example .yarnrc.yml && corepack enable && yarn install
+# Copy package manager configuration files
+COPY package.json yarn.lock .yarnrc.yml ./
 
+# Copy Yarn berry files (if applicable)
+COPY .yarn ./.yarn
+
+# Install dependencies
+RUN yarn install --immutable
+
+# Copy the entire application code
 COPY . .
 
+# Build the application
 RUN yarn build
 
-# Stage 2: Create the final image
-FROM node:lts-alpine
+# Stage 2: Run
+FROM node:lts AS production
 
-ENV HOME=/usr/src/backend
-WORKDIR $HOME
+# Set the working directory inside the container
+WORKDIR /app
 
-COPY --from=builder $HOME/dist ./dist
-COPY --from=builder $HOME/package.json $HOME/yarn.lock $HOME/.yarnrc.yml ./
+# Enable Corepack and use the specified Yarn version
+RUN corepack enable && corepack prepare yarn@stable --activate
 
-RUN corepack enable && yarn install 
+# Copy necessary files from the build stage
+COPY --from=build /app/package.json /app/yarn.lock /app/.yarnrc.yml ./
+COPY --from=build /app/.yarn ./.yarn
+COPY --from=build /app/dist ./dist
 
-EXPOSE 3000
+# Install only necessary production dependencies
+RUN yarn workspaces focus 
 
-CMD ["node", "dist/main"]
+# Expose the application port
+EXPOSE 3030
+
+# Start the application in production mode
+CMD ["yarn", "start:prod"]
