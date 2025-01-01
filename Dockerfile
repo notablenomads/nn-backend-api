@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:lts AS build
+FROM node:lts-alpine AS build
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -23,7 +23,7 @@ COPY . .
 RUN yarn build
 
 # Stage 2: Run
-FROM node:lts AS production
+FROM node:lts-alpine AS production
 
 # Set the working directory inside the container
 WORKDIR /app
