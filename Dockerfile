@@ -14,7 +14,7 @@ COPY package.json yarn.lock .yarnrc.yml-example ./
 RUN mv .yarnrc.yml-example .yarnrc.yml
 
 # Enable Corepack and install the correct version of Yarn
-RUN corepack enable && corepack prepare yarn@4.5.1 --activate
+RUN corepack enable && corepack prepare yarn@4.6.0 --activate
 
 # Install dependencies
 RUN yarn install --immutable
