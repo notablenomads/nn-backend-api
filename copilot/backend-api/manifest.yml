@@ -12,7 +12,15 @@ http:
   # To match all requests you can use the "/" path.
   path: '/'
   # You can specify a custom health check path. The default is "/".
-  healthcheck: '/api/health'
+  healthcheck:
+    path: '/v1/health'
+    success_codes: '200,301'
+    healthy_threshold: 3
+    interval: 15s
+    timeout: 10s
+    grace_period: 30s
+  alias: 'api.notablenomads.com'
+  hosted_zone: Z09251511N0OESPVIRFES 
 
 # Configuration for your containers and service.
 image:
@@ -35,7 +43,7 @@ variables:                    # Pass environment variables as key value pairs.
   HOST: 0.0.0.0
   PORT: 3000
   CORS: 'true'
-  API_PREFIX: api
+  API_PREFIX: v1
   RELEASE: 0.0.1
 
 #secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
