@@ -12,7 +12,8 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const environment = config.get('app.env');
   const apiPrefix = config.get('app.apiPrefix');
-  const logger = new Logger('NN Backend API');
+  const appName = config.get('app.name');
+  const logger = new Logger(appName);
 
   app.enableShutdownHooks();
   app.use(helmet());
