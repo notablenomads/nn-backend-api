@@ -18,9 +18,7 @@ http:
     healthy_threshold: 3
     interval: 15s
     timeout: 10s
-    grace_period: 30s
-  alias: 'api.notablenomads.com'
-  hosted_zone: Z09251511N0OESPVIRFES 
+    grace_period: 30s 
 
 # Configuration for your containers and service.
 image:
