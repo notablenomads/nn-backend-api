@@ -13,8 +13,6 @@ type: Environment
 
 # Configure the load balancers in your environment, once created.
 http:
-  alias: 'api.notablenomads.com'
-  hosted_zone: Z09251511N0OESPVIRFES
 #   public:
 #   private:
 
