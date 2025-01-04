@@ -19,8 +19,6 @@ http:
     interval: 15s
     timeout: 10s
     grace_period: 30s
-  alias: 'api.notablenomads.com'
-  hosted_zone: Z01652651C1NB01YPHRGU
 
 # Configuration for your containers and service.
 image:
