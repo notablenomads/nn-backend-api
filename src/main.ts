@@ -32,16 +32,14 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter(config));
 
-  if (environment !== 'production') {
-    const options = new DocumentBuilder()
-      .setTitle(process.env.npm_package_name)
-      .setVersion(process.env.npm_package_version)
-      .setDescription(process.env.npm_package_description)
-      .addBearerAuth()
-      .build();
-    const document = SwaggerModule.createDocument(app, options);
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
-  }
+  const options = new DocumentBuilder()
+    .setTitle(process.env.npm_package_name)
+    .setVersion(process.env.npm_package_version)
+    .setDescription(process.env.npm_package_description)
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, options);
+  SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
 
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
