@@ -1,5 +1,6 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
+\*<p align="center">
+<a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
+
 </p>
 <p align="center">A refined and optimized codebase for setting up NestJS microservices.</p>
 <p align="center">
@@ -49,6 +50,20 @@ $ yarn run start
 $ yarn run start:dev
 # production mode
 $ yarn run start:prod
+```
+
+## Running the Application with Docker 🐳
+
+```bash
+# build the Docker image
+docker build -t nn-backend-api .
+
+# run the Docker container
+docker run -d \
+  --env-file .env \
+  -p 3000:3000 \
+  --name nn-backend-api-instance \
+  nn-backend-api
 ```
 
 ## Test 🧪
@@ -151,3 +166,5 @@ This project is an MIT-licensed open source initiative. It thrives thanks to the
 ## License 📄
 
 This project is [MIT licensed](./LICENSE).
+
+-
