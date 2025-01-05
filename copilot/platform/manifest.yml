@@ -37,13 +37,16 @@ network:
 
 variables: # Pass environment variables as key value pairs.
   APP_NAME: Notable Nomads Backend API
-  NODE_ENV: production
   HOST: 0.0.0.0
   PORT: 3000
   CORS: 'true'
   API_PREFIX: v1
   RELEASE: 0.0.1
   GEMINI_API_KEY: AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo
+  # Development defaults (overridden by environment variables)
+  NODE_ENV: development
+  CORS_ENABLED_DOMAINS: "localhost:3000,localhost:4200"
+  CORS_RESTRICT: "false"
 #secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
 #  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
 
@@ -53,3 +56,22 @@ variables: # Pass environment variables as key value pairs.
 #    count: 2               # Number of tasks to run for the "test" environment.
 #    deployment:            # The deployment strategy for the "test" environment.
 #       rolling: 'recreate' # Stops existing tasks before new ones are started for faster deployments.
+
+secrets:
+  GEMINI_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/GEMINI_API_KEY
+
+environments:
+  production:
+    cpu: 512
+    memory: 1024
+    count: 2
+    variables:
+      NODE_ENV: production
+      CORS_ENABLED_DOMAINS: "*.notablenomads.com,notablenomads.com,api.notablenomads.com"
+      CORS_RESTRICT: "true"
+  staging:
+    count: 1
+    variables:
+      NODE_ENV: staging
+      CORS_ENABLED_DOMAINS: "*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com"
+      CORS_RESTRICT: "true"
