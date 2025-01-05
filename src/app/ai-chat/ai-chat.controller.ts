@@ -1,6 +1,4 @@
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Controller, Post, Body, HttpException, HttpStatus, Logger, Sse } from '@nestjs/common';
+import { Controller, Post, Body, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AiChatService } from './ai-chat.service';
 import { ChatMessageDto } from './interfaces/chat.interface';
@@ -22,28 +20,6 @@ export class AiChatController {
     } catch (error) {
       this.logger.error(`Failed to generate response: ${error.message}`, error.stack);
       throw new HttpException('Failed to generate response', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Sse('stream')
-  @ApiOperation({ summary: 'Start a streaming chat session with AI' })
-  @ApiResponse({ status: 200, description: 'Stream started successfully' })
-  streamResponse(@Body() chatMessageDto: ChatMessageDto): Observable<MessageEvent> {
-    try {
-      return this.aiChatService.streamResponse(chatMessageDto.message, chatMessageDto.chatHistory).pipe(
-        map(
-          (chunk) =>
-            ({
-              data: {
-                response: chunk,
-                success: true,
-              },
-            }) as MessageEvent,
-        ),
-      );
-    } catch (error) {
-      this.logger.error(`Failed to start stream: ${error.message}`, error.stack);
-      throw new HttpException('Failed to start stream', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
