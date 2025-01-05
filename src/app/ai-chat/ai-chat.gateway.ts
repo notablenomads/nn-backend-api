@@ -9,6 +9,12 @@ import {
 import { Logger } from '@nestjs/common';
 import { AiChatService } from './ai-chat.service';
 import { IChatPayload } from './interfaces/chat.interface';
+import {
+  IStreamChunkResponse,
+  IStreamErrorResponse,
+  IStreamCompleteResponse,
+  StreamEventType,
+} from './interfaces/stream.interface';
 
 @WebSocketGateway({
   cors: {
@@ -48,19 +54,33 @@ export class AiChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('startStream')
-  async handleStreamStart(client: Socket, payload: IChatPayload) {
-    try {
-      const response = await this.aiChatService.streamResponse(payload.message, payload.chatHistory);
-      this.server.to(client.id).emit('streamResponse', {
-        response: response.text(),
-        success: true,
-      });
-    } catch (error) {
-      this.logger.error(`Error handling stream: ${error.message}`, error.stack);
-      this.server.to(client.id).emit('streamResponse', {
-        error: 'Failed to generate stream response',
-        success: false,
-      });
-    }
+  handleStreamStart(client: Socket, payload: IChatPayload) {
+    const stream = this.aiChatService.streamResponse(payload.message, payload.chatHistory);
+
+    stream.subscribe({
+      next: (chunk) => {
+        // Emit chunk to client
+        const response: IStreamChunkResponse = {
+          chunk,
+          success: true,
+        };
+        this.server.to(client.id).emit(StreamEventType.CHUNK, response);
+      },
+      error: (error) => {
+        this.logger.error(`Error handling stream: ${error.message}`, error.stack);
+        const response: IStreamErrorResponse = {
+          error: 'Failed to generate stream response',
+          success: false,
+        };
+        this.server.to(client.id).emit(StreamEventType.ERROR, response);
+      },
+      complete: () => {
+        // Save the complete response to chat history if needed
+        const response: IStreamCompleteResponse = {
+          success: true,
+        };
+        this.server.to(client.id).emit(StreamEventType.COMPLETE, response);
+      },
+    });
   }
 }
