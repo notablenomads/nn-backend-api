@@ -19,6 +19,8 @@ http:
     interval: 15s
     timeout: 10s
     grace_period: 30s
+  # Additional paths that should not have the version prefix
+  alias: '/public/*'
 
 # Configuration for your containers and service.
 image:
