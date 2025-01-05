@@ -10,10 +10,11 @@ export class AiChatService {
   private readonly logger = new Logger(AiChatService.name);
   private model: GenerativeModel;
   private readonly generationConfig: GenerationConfig = {
-    temperature: 0.7,
-    topK: 40,
+    temperature: 1,
+    topK: 64,
     topP: 0.95,
-    maxOutputTokens: 1024,
+    maxOutputTokens: 8192,
+    responseMimeType: 'text/plain',
   };
 
   constructor(private readonly configService: ConfigService) {
@@ -23,7 +24,9 @@ export class AiChatService {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = genAI.getGenerativeModel({
+      model: 'tunedModels/notable-nomads-gpt-72jpk04b4u12',
+    });
   }
 
   private convertToGeminiHistory(chatHistory: IChatMessage[] = []): Content[] {
@@ -40,11 +43,7 @@ export class AiChatService {
         generationConfig: this.generationConfig,
       });
 
-      const result = await chat.sendMessage([
-        {
-          text: prompt,
-        },
-      ]);
+      const result = await chat.sendMessage([{ text: prompt }]);
       const response = await result.response;
       return response.text();
     } catch (error) {
@@ -65,11 +64,7 @@ export class AiChatService {
             generationConfig: this.generationConfig,
           });
 
-          const result = await chat.sendMessageStream([
-            {
-              text: prompt,
-            },
-          ]);
+          const result = await chat.sendMessageStream([{ text: prompt }]);
 
           for await (const chunk of result.stream) {
             const chunkText = chunk.text();
@@ -108,15 +103,15 @@ export class AiChatService {
 
       // Return cleanup function
       return () => {
-        // Add any cleanup needed when the stream is cancelled
         this.logger.log('Stream cancelled by client');
       };
     });
   }
 
   private isCompleteSentence(text: string): boolean {
+    // Adjust the sentence length threshold to match the new maxOutputTokens
     const sentenceEndings = ['.', '!', '?', '\n'];
     const lastChar = text.trim().slice(-1);
-    return sentenceEndings.includes(lastChar) || text.length > 100;
+    return sentenceEndings.includes(lastChar) || text.length > 200; // Increased threshold for longer outputs
   }
 }
