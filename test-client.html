@@ -11,67 +11,112 @@
         max-width: 800px;
         margin: 0 auto;
         padding: 20px;
+        background-color: #f5f5f5;
       }
       .chat-container {
-        border: 1px solid #ccc;
+        border: 1px solid #ddd;
         padding: 20px;
         margin-bottom: 20px;
-        border-radius: 5px;
+        border-radius: 10px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      .response-container {
+      .chat-messages {
         margin-top: 10px;
         padding: 10px;
-        background-color: #f5f5f5;
+        background-color: #f8f9fa;
         border-radius: 5px;
-        min-height: 100px;
+        min-height: 300px;
+        max-height: 500px;
+        overflow-y: auto;
         white-space: pre-wrap;
       }
+      .message {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: 20%;
+        border-radius: 15px 15px 0 15px;
+      }
+      .ai-message {
+        background-color: #e9ecef;
+        color: #212529;
+        margin-right: 20%;
+        border-radius: 15px 15px 15px 0;
+      }
       .input-container {
-        margin-top: 10px;
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
       }
       input[type='text'] {
-        width: 70%;
-        padding: 8px;
+        flex-grow: 1;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 25px;
+        font-size: 16px;
+        outline: none;
+      }
+      input[type='text']:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
       }
       button {
-        padding: 8px 15px;
-        margin-left: 10px;
+        padding: 12px 24px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 25px;
         cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s;
       }
-      .method-selector {
-        margin-bottom: 20px;
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
       }
       .status {
         color: #666;
         font-style: italic;
         margin-top: 5px;
+        text-align: center;
+      }
+      .typing-indicator {
+        color: #666;
+        font-style: italic;
+        margin-top: 5px;
+        display: none;
+      }
+      .typing-indicator.active {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <h1>AI Chat Test Client</h1>
-
-    <div class="method-selector">
-      <label> <input type="radio" name="method" value="websocket" checked /> WebSocket </label>
-      <label> <input type="radio" name="method" value="sse" /> Server-Sent Events (SSE) </label>
-    </div>
+    <h1>AI Chat</h1>
 
     <div class="chat-container">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="typing-indicator" id="typingIndicator">AI is typing...</div>
       <div class="input-container">
         <input type="text" id="messageInput" placeholder="Type your message here..." />
-        <button onclick="sendMessage()">Send</button>
+        <button onclick="sendMessage()" id="sendButton">Send</button>
       </div>
       <div class="status" id="status">Not connected</div>
-      <div class="response-container" id="response"></div>
     </div>
 
     <script>
       let socket;
-      let eventSource;
-      const API_URL = 'http://localhost:3000/v1';
       const WS_URL = 'http://localhost:3000';
+      let isProcessing = false;
 
-      // Initialize WebSocket connection
       function initializeWebSocket() {
         if (socket) {
           socket.disconnect();
@@ -79,118 +124,110 @@
         socket = io(`${WS_URL}/chat`);
 
         socket.on('connect', () => {
-          updateStatus('Connected (WebSocket)');
+          updateStatus('Connected');
+          enableInput();
         });
 
         socket.on('disconnect', () => {
-          updateStatus('Disconnected (WebSocket)');
+          updateStatus('Disconnected');
+          disableInput();
         });
 
         socket.on('streamChunk', (data) => {
           if (data.success) {
-            appendResponse(data.chunk);
+            appendAIMessage(data.chunk);
+            showTypingIndicator();
           }
         });
 
         socket.on('streamError', (data) => {
           updateStatus(`Error: ${data.error}`);
+          enableInput();
+          hideTypingIndicator();
         });
 
         socket.on('streamComplete', () => {
-          updateStatus('Stream completed');
+          updateStatus('Connected');
+          enableInput();
+          hideTypingIndicator();
         });
       }
 
-      // Initialize SSE connection
-      function initializeSSE(message) {
-        if (eventSource) {
-          eventSource.close();
-        }
-
-        const url = new URL(`${API_URL}/ai-chat/stream`);
-        eventSource = new EventSource(url);
-        updateStatus('Connected (SSE)');
-
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.success) {
-            appendResponse(data.response);
-          }
-        };
-
-        eventSource.onerror = (error) => {
-          updateStatus('Error (SSE): ' + error.message);
-          eventSource.close();
-        };
-      }
-
-      // Send message using selected method
       function sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
-        if (!message) return;
+        if (!message || isProcessing) return;
 
-        clearResponse();
-        const method = document.querySelector('input[name="method"]:checked').value;
+        appendUserMessage(message);
+        disableInput();
+        showTypingIndicator();
 
-        if (method === 'websocket') {
-          socket.emit('startStream', {
-            message: message,
-            chatHistory: [],
-          });
-        } else {
-          // SSE with POST request
-          fetch(`${API_URL}/ai-chat/stream`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: message,
-              chatHistory: [],
-            }),
-          });
-        }
+        socket.emit('startStream', {
+          message: message,
+          chatHistory: [],
+        });
 
         messageInput.value = '';
       }
 
-      // UI helper functions
-      function appendResponse(text) {
-        const responseDiv = document.getElementById('response');
-        responseDiv.textContent += text;
-        responseDiv.scrollTop = responseDiv.scrollHeight;
+      function appendUserMessage(text) {
+        const messagesDiv = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message user-message';
+        messageDiv.textContent = text;
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
       }
 
-      function clearResponse() {
-        document.getElementById('response').textContent = '';
+      function appendAIMessage(text) {
+        const messagesDiv = document.getElementById('chatMessages');
+        let messageDiv = messagesDiv.lastElementChild;
+
+        // If last message is not from AI or doesn't exist, create new message div
+        if (!messageDiv || messageDiv.classList.contains('user-message')) {
+          messageDiv = document.createElement('div');
+          messageDiv.className = 'message ai-message';
+          messagesDiv.appendChild(messageDiv);
+        }
+
+        messageDiv.textContent += text;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      function showTypingIndicator() {
+        document.getElementById('typingIndicator').classList.add('active');
+      }
+
+      function hideTypingIndicator() {
+        document.getElementById('typingIndicator').classList.remove('active');
+      }
+
+      function enableInput() {
+        isProcessing = false;
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendButton').disabled = false;
+      }
+
+      function disableInput() {
+        isProcessing = true;
+        document.getElementById('messageInput').disabled = true;
+        document.getElementById('sendButton').disabled = true;
       }
 
       function updateStatus(text) {
         document.getElementById('status').textContent = text;
       }
 
-      // Initialize based on selected method
-      function initializeConnection() {
-        const method = document.querySelector('input[name="method"]:checked').value;
-        if (method === 'websocket') {
-          initializeWebSocket();
-        }
-      }
-
-      // Event listeners
-      document.querySelectorAll('input[name="method"]').forEach((radio) => {
-        radio.addEventListener('change', initializeConnection);
-      });
-
+      // Event listener for Enter key
       document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
           sendMessage();
         }
       });
 
-      // Initial setup
-      initializeConnection();
+      // Initialize WebSocket connection
+      initializeWebSocket();
     </script>
   </body>
 </html>
