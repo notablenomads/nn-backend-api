@@ -1,0 +1,17 @@
+name: staging
+type: Environment
+
+# The version of the environment template.
+version: 1.0
+
+# Override the default network configuration for workloads.
+network:
+  vpc:
+    placement: private
+
+# Environment variables that are shared across all workloads in this environment.
+environment:
+  variables:
+    NODE_ENV: staging
+    CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
+    CORS_RESTRICT: 'true'
