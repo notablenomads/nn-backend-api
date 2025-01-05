@@ -19,7 +19,7 @@ environment:
   variables:
     NODE_ENV: production
     CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
-    CORS_RESTRICT: 'true'
+    CORS_RESTRICT: 'false'
 
 # Import your own VPC and subnets or configure how they should be created.
 # network:

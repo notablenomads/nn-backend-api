@@ -1,15 +1,17 @@
+import { join } from 'path';
 import helmet from 'helmet';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app/app.module';
 import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
 import { CorsService } from './app/core/services/cors.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
   const corsService = app.get(CorsService);
 
@@ -35,6 +37,12 @@ async function bootstrap() {
   } else {
     logger.log('CORS restrictions disabled - allowing all origins');
   }
+
+  // Serve static files from public directory
+  app.useStaticAssets(join(__dirname, '..', 'src', 'public'), {
+    index: false,
+    prefix: '/public',
+  });
 
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
@@ -65,6 +73,7 @@ async function bootstrap() {
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
   logger.log(`API Documentation available at: ${docsUrl}`);
+  logger.log(`AI Chat client available at: ${appUrl}/public/ai-chat.html`);
 }
 
 process.nextTick(bootstrap);
