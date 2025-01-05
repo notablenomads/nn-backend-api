@@ -11,8 +11,8 @@ export class AiChatService {
   private model: GenerativeModel;
   private readonly generationConfig: GenerationConfig = {
     temperature: 1,
-    topK: 64,
     topP: 0.95,
+    topK: 40,
     maxOutputTokens: 8192,
     responseMimeType: 'text/plain',
   };
@@ -25,7 +25,7 @@ export class AiChatService {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
-      model: 'tunedModels/notable-nomads-gpt-72jpk04b4u12',
+      model: 'tunedModels/notablenomadsgpt-8km5w20htizv',
     });
   }
 

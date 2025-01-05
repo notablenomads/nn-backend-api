@@ -97,15 +97,31 @@
       .typing-indicator.active {
         display: block;
       }
+      .environment-selector {
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .environment-selector select {
+        padding: 8px 12px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        font-size: 16px;
+        margin-right: 10px;
+      }
+      .environment-selector button {
+        padding: 8px 16px;
+      }
       .environment-badge {
-        position: fixed;
-        top: 10px;
-        right: 10px;
+        display: inline-block;
         padding: 5px 10px;
         border-radius: 15px;
         font-size: 12px;
         font-weight: bold;
         color: white;
+        margin-left: 10px;
       }
       .environment-badge.development {
         background-color: #28a745;
@@ -120,15 +136,24 @@
     </style>
   </head>
   <body>
-    <div id="environmentBadge" class="environment-badge"></div>
     <h1>Notable Nomads AI Chat</h1>
+
+    <div class="environment-selector">
+      <select id="environmentSelect">
+        <option value="development">Development</option>
+        <option value="staging">Staging</option>
+        <option value="production">Production</option>
+      </select>
+      <button onclick="changeEnvironment()">Connect</button>
+      <span id="environmentBadge" class="environment-badge"></span>
+    </div>
 
     <div class="chat-container">
       <div class="chat-messages" id="chatMessages"></div>
       <div class="typing-indicator" id="typingIndicator">AI is typing...</div>
       <div class="input-container">
-        <input type="text" id="messageInput" placeholder="Type your message here..." />
-        <button onclick="sendMessage()" id="sendButton">Send</button>
+        <input type="text" id="messageInput" placeholder="Type your message here..." disabled />
+        <button onclick="sendMessage()" id="sendButton" disabled>Send</button>
       </div>
       <div class="status" id="status">Not connected</div>
     </div>
@@ -137,49 +162,44 @@
       let socket;
       let isProcessing = false;
 
-      // Detect the server URL based on the current environment
-      function getServerUrl() {
-        const hostname = window.location.hostname;
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const port = window.location.port;
+      const ENVIRONMENTS = {
+        development: {
+          url: 'http://localhost:3000',
+          color: '#28a745',
+        },
+        staging: {
+          url: 'https://platform.staging.api.notablenomads.com',
+          color: '#ffc107',
+        },
+        production: {
+          url: 'https://platform.production.api.notablenomads.com',
+          color: '#dc3545',
+        },
+      };
 
-        // Set environment badge
+      function updateEnvironmentBadge(environment) {
         const badge = document.getElementById('environmentBadge');
-        let environment = 'development';
-
-        // Determine environment and update badge
-        if (hostname.includes('staging')) {
-          environment = 'staging';
-        } else if (hostname === 'notablenomads.com' || hostname.endsWith('.notablenomads.com')) {
-          environment = 'production';
-        }
-
-        // Update environment badge
         badge.textContent = environment.toUpperCase();
-        badge.classList.add(environment);
-
-        // Return appropriate URL based on environment
-        if (environment === 'staging') {
-          return 'https://platform.staging.api.notablenomads.com';
-        } else if (environment === 'production') {
-          return 'https://platform.production.api.notablenomads.com';
-        }
-
-        // For local development
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          return `http://localhost:${port}`;
-        }
-
-        // Default to production API
-        return 'https://platform.production.api.notablenomads.com';
+        badge.className = 'environment-badge ' + environment;
       }
 
-      function initializeWebSocket() {
+      function changeEnvironment() {
+        const select = document.getElementById('environmentSelect');
+        const environment = select.value;
+        const serverUrl = ENVIRONMENTS[environment].url;
+
+        updateEnvironmentBadge(environment);
+        initializeWebSocket(serverUrl);
+      }
+
+      function initializeWebSocket(serverUrl) {
         if (socket) {
           socket.disconnect();
         }
 
-        const serverUrl = getServerUrl();
+        updateStatus('Connecting...');
+        disableInput();
+
         socket = io(`${serverUrl}/chat`);
 
         socket.on('connect', () => {
@@ -189,6 +209,11 @@
 
         socket.on('disconnect', () => {
           updateStatus('Disconnected');
+          disableInput();
+        });
+
+        socket.on('connect_error', (error) => {
+          updateStatus(`Connection error: ${error.message}`);
           disableInput();
         });
 
@@ -284,8 +309,8 @@
         }
       });
 
-      // Initialize WebSocket connection
-      initializeWebSocket();
+      // Initialize with development environment by default
+      updateEnvironmentBadge('development');
     </script>
   </body>
 </html>
