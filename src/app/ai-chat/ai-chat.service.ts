@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, GenerativeModel, GenerationConfig, Content, Part } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel, GenerationConfig, Content } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IChatMessage } from './interfaces/chat.interface';
@@ -38,7 +38,11 @@ export class AiChatService {
         generationConfig: this.generationConfig,
       });
 
-      const result = await chat.sendMessage([{ text: prompt } as Part]);
+      const result = await chat.sendMessage([
+        {
+          text: prompt,
+        },
+      ]);
       const response = await result.response;
       return response.text();
     } catch (error) {
@@ -54,7 +58,11 @@ export class AiChatService {
         generationConfig: this.generationConfig,
       });
 
-      const result = await chat.sendMessage([{ text: prompt } as Part]);
+      const result = await chat.sendMessage([
+        {
+          text: prompt,
+        },
+      ]);
       return result.response;
     } catch (error) {
       this.logger.error(`Error streaming AI response: ${error.message}`, error.stack);
