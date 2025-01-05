@@ -6,5 +6,8 @@ export const validationSchema = Joi.object({
   HOST: Joi.string().default('localhost'),
   GEMINI_API_KEY: Joi.string().required(),
   API_PREFIX: Joi.string().default('v1'),
-  CORS_ORIGIN: Joi.string().default('*'),
+  CORS_ENABLED_DOMAINS: Joi.string()
+    .default('*.notablenomads.com')
+    .description('Comma-separated list of allowed domains'),
+  CORS_RESTRICT: Joi.boolean().default(false).description('Whether to enforce CORS restrictions'),
 });

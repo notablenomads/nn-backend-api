@@ -3,7 +3,8 @@ export interface IAppConfig {
   port: number;
   host: string;
   apiPrefix: string;
-  corsOrigin: string;
+  corsEnabledDomains: string[];
+  corsRestrict: boolean;
 }
 
 export interface IAiConfig {
