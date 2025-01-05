@@ -24,10 +24,10 @@ export class AiChatService {
     this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
   }
 
-  private convertToGeminiHistory(chatHistory: IChatMessage[]): Content[] {
+  private convertToGeminiHistory(chatHistory: IChatMessage[] = []): Content[] {
     return chatHistory.map((msg) => ({
       role: msg.role,
-      parts: [{ text: msg.content }] as Part[],
+      parts: [{ text: msg.content }],
     }));
   }
 
@@ -38,7 +38,7 @@ export class AiChatService {
         generationConfig: this.generationConfig,
       });
 
-      const result = await chat.sendMessage(prompt);
+      const result = await chat.sendMessage([{ text: prompt } as Part]);
       const response = await result.response;
       return response.text();
     } catch (error) {
@@ -54,7 +54,7 @@ export class AiChatService {
         generationConfig: this.generationConfig,
       });
 
-      const result = await chat.sendMessage(prompt);
+      const result = await chat.sendMessage([{ text: prompt } as Part]);
       return result.response;
     } catch (error) {
       this.logger.error(`Error streaming AI response: ${error.message}`, error.stack);
