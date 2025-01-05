@@ -43,6 +43,7 @@ variables: # Pass environment variables as key value pairs.
   CORS: 'true'
   API_PREFIX: v1
   RELEASE: 0.0.1
+  GEMINI_API_KEY: AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo
 #secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
 #  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
 
