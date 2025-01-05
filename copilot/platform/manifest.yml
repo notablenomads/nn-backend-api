@@ -54,16 +54,16 @@ variables: # Pass environment variables as key value pairs.
 
 environments:
   production:
-    cpu: 512
-    memory: 1024
-    count: 2
+    cpu: 256
+    memory: 512
+    count: 1
     variables:
       NODE_ENV: production
       CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
-      CORS_RESTRICT: 'true'
+      CORS_RESTRICT: 'false'
   staging:
     count: 1
     variables:
       NODE_ENV: staging
       CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
-      CORS_RESTRICT: 'true'
+      CORS_RESTRICT: 'false'

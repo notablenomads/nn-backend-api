@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notable Nomads AI Chat</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .chat-container {
+        border: 1px solid #ddd;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .chat-messages {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        min-height: 300px;
+        max-height: 500px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .message {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: 20%;
+        border-radius: 15px 15px 0 15px;
+      }
+      .ai-message {
+        background-color: #e9ecef;
+        color: #212529;
+        margin-right: 20%;
+        border-radius: 15px 15px 15px 0;
+      }
+      .input-container {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+      }
+      input[type='text'] {
+        flex-grow: 1;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 25px;
+        font-size: 16px;
+        outline: none;
+      }
+      input[type='text']:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      }
+      button {
+        padding: 12px 24px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      .status {
+        color: #666;
+        font-style: italic;
+        margin-top: 5px;
+        text-align: center;
+      }
+      .typing-indicator {
+        color: #666;
+        font-style: italic;
+        margin-top: 5px;
+        display: none;
+      }
+      .typing-indicator.active {
+        display: block;
+      }
+      .environment-badge {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+      }
+      .environment-badge.development {
+        background-color: #28a745;
+      }
+      .environment-badge.staging {
+        background-color: #ffc107;
+        color: #000;
+      }
+      .environment-badge.production {
+        background-color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="environmentBadge" class="environment-badge"></div>
+    <h1>Notable Nomads AI Chat</h1>
+
+    <div class="chat-container">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="typing-indicator" id="typingIndicator">AI is typing...</div>
+      <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message here..." />
+        <button onclick="sendMessage()" id="sendButton">Send</button>
+      </div>
+      <div class="status" id="status">Not connected</div>
+    </div>
+
+    <script>
+      let socket;
+      let isProcessing = false;
+
+      // Detect the server URL based on the current environment
+      function getServerUrl() {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const port = window.location.port;
+
+        // Set environment badge
+        const badge = document.getElementById('environmentBadge');
+        let environment = 'development';
+
+        if (hostname.includes('staging')) {
+          environment = 'staging';
+        } else if (hostname === 'notablenomads.com' || hostname.endsWith('.notablenomads.com')) {
+          environment = 'production';
+        }
+
+        badge.textContent = environment.toUpperCase();
+        badge.classList.add(environment);
+
+        // For local development
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return `http://localhost:${port}`;
+        }
+
+        // For staging and production
+        return `${window.location.protocol}//${hostname}`;
+      }
+
+      function initializeWebSocket() {
+        if (socket) {
+          socket.disconnect();
+        }
+
+        const serverUrl = getServerUrl();
+        socket = io(`${serverUrl}/chat`);
+
+        socket.on('connect', () => {
+          updateStatus('Connected');
+          enableInput();
+        });
+
+        socket.on('disconnect', () => {
+          updateStatus('Disconnected');
+          disableInput();
+        });
+
+        socket.on('streamChunk', (data) => {
+          if (data.success) {
+            appendAIMessage(data.chunk);
+            showTypingIndicator();
+          }
+        });
+
+        socket.on('streamError', (data) => {
+          updateStatus(`Error: ${data.error}`);
+          enableInput();
+          hideTypingIndicator();
+        });
+
+        socket.on('streamComplete', () => {
+          updateStatus('Connected');
+          enableInput();
+          hideTypingIndicator();
+        });
+      }
+
+      function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        if (!message || isProcessing) return;
+
+        appendUserMessage(message);
+        disableInput();
+        showTypingIndicator();
+
+        socket.emit('startStream', {
+          message: message,
+          chatHistory: [],
+        });
+
+        messageInput.value = '';
+      }
+
+      function appendUserMessage(text) {
+        const messagesDiv = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message user-message';
+        messageDiv.textContent = text;
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      function appendAIMessage(text) {
+        const messagesDiv = document.getElementById('chatMessages');
+        let messageDiv = messagesDiv.lastElementChild;
+
+        if (!messageDiv || messageDiv.classList.contains('user-message')) {
+          messageDiv = document.createElement('div');
+          messageDiv.className = 'message ai-message';
+          messagesDiv.appendChild(messageDiv);
+        }
+
+        messageDiv.textContent += text;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      function showTypingIndicator() {
+        document.getElementById('typingIndicator').classList.add('active');
+      }
+
+      function hideTypingIndicator() {
+        document.getElementById('typingIndicator').classList.remove('active');
+      }
+
+      function enableInput() {
+        isProcessing = false;
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendButton').disabled = false;
+      }
+
+      function disableInput() {
+        isProcessing = true;
+        document.getElementById('messageInput').disabled = true;
+        document.getElementById('sendButton').disabled = true;
+      }
+
+      function updateStatus(text) {
+        document.getElementById('status').textContent = text;
+      }
+
+      // Event listener for Enter key
+      document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      // Initialize WebSocket connection
+      initializeWebSocket();
+    </script>
+  </body>
+</html>

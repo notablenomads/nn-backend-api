@@ -14,4 +14,4 @@ environment:
   variables:
     NODE_ENV: staging
     CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
-    CORS_RESTRICT: 'true'
+    CORS_RESTRICT: 'false'
