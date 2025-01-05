@@ -147,22 +147,31 @@
         const badge = document.getElementById('environmentBadge');
         let environment = 'development';
 
+        // Determine environment and update badge
         if (hostname.includes('staging')) {
           environment = 'staging';
         } else if (hostname === 'notablenomads.com' || hostname.endsWith('.notablenomads.com')) {
           environment = 'production';
         }
 
+        // Update environment badge
         badge.textContent = environment.toUpperCase();
         badge.classList.add(environment);
+
+        // Return appropriate URL based on environment
+        if (environment === 'staging') {
+          return 'https://platform.staging.api.notablenomads.com';
+        } else if (environment === 'production') {
+          return 'https://platform.production.api.notablenomads.com';
+        }
 
         // For local development
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
           return `http://localhost:${port}`;
         }
 
-        // For staging and production
-        return `${window.location.protocol}//${hostname}`;
+        // Default to production API
+        return 'https://platform.production.api.notablenomads.com';
       }
 
       function initializeWebSocket() {
