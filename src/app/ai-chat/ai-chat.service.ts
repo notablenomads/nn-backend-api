@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IChatMessage } from './interfaces/chat.interface';
+import { IConfig } from '../config/config.interface';
 
 @Injectable()
 export class AiChatService {
@@ -16,13 +17,13 @@ export class AiChatService {
   };
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-pro' });
   }
 
   private convertToGeminiHistory(chatHistory: IChatMessage[] = []): Content[] {
@@ -52,27 +53,6 @@ export class AiChatService {
     }
   }
 
-  /**
-   * Creates a streaming response from the AI model
-   * @param prompt The user's input message
-   * @param chatHistory Optional array of previous messages for context
-   * @returns Observable that emits chunks of the response as they're generated
-   *
-   * The stream will emit:
-   * - Next: String chunks of the response as they're generated
-   * - Error: If there's an error during generation
-   * - Complete: When the entire response is finished
-   *
-   * Example usage:
-   * ```typescript
-   * const stream = aiChatService.streamResponse("Tell me a story");
-   * stream.subscribe({
-   *   next: (chunk) => console.log(chunk),
-   *   error: (err) => console.error(err),
-   *   complete: () => console.log("Done")
-   * });
-   * ```
-   */
   streamResponse(prompt: string, chatHistory: IChatMessage[] = []): Observable<string> {
     return new Observable((subscriber) => {
       let isFirstChunk = true;
@@ -134,16 +114,9 @@ export class AiChatService {
     });
   }
 
-  /**
-   * Checks if the text forms a complete sentence or thought
-   * This helps prevent choppy streaming by waiting for natural break points
-   */
   private isCompleteSentence(text: string): boolean {
-    // Check for common sentence endings
     const sentenceEndings = ['.', '!', '?', '\n'];
     const lastChar = text.trim().slice(-1);
-
-    // If the text ends with a sentence ending or is longer than 100 characters
     return sentenceEndings.includes(lastChar) || text.length > 100;
   }
 }
