@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chat Test Client</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .chat-container {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+      .response-container {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-radius: 5px;
+        min-height: 100px;
+        white-space: pre-wrap;
+      }
+      .input-container {
+        margin-top: 10px;
+      }
+      input[type='text'] {
+        width: 70%;
+        padding: 8px;
+      }
+      button {
+        padding: 8px 15px;
+        margin-left: 10px;
+        cursor: pointer;
+      }
+      .method-selector {
+        margin-bottom: 20px;
+      }
+      .status {
+        color: #666;
+        font-style: italic;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Chat Test Client</h1>
+
+    <div class="method-selector">
+      <label> <input type="radio" name="method" value="websocket" checked /> WebSocket </label>
+      <label> <input type="radio" name="method" value="sse" /> Server-Sent Events (SSE) </label>
+    </div>
+
+    <div class="chat-container">
+      <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message here..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+      <div class="status" id="status">Not connected</div>
+      <div class="response-container" id="response"></div>
+    </div>
+
+    <script>
+      let socket;
+      let eventSource;
+      const API_URL = 'http://localhost:3000/v1';
+      const WS_URL = 'http://localhost:3000';
+
+      // Initialize WebSocket connection
+      function initializeWebSocket() {
+        if (socket) {
+          socket.disconnect();
+        }
+        socket = io(`${WS_URL}/chat`);
+
+        socket.on('connect', () => {
+          updateStatus('Connected (WebSocket)');
+        });
+
+        socket.on('disconnect', () => {
+          updateStatus('Disconnected (WebSocket)');
+        });
+
+        socket.on('streamChunk', (data) => {
+          if (data.success) {
+            appendResponse(data.chunk);
+          }
+        });
+
+        socket.on('streamError', (data) => {
+          updateStatus(`Error: ${data.error}`);
+        });
+
+        socket.on('streamComplete', () => {
+          updateStatus('Stream completed');
+        });
+      }
+
+      // Initialize SSE connection
+      function initializeSSE(message) {
+        if (eventSource) {
+          eventSource.close();
+        }
+
+        const url = new URL(`${API_URL}/ai-chat/stream`);
+        eventSource = new EventSource(url);
+        updateStatus('Connected (SSE)');
+
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.success) {
+            appendResponse(data.response);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          updateStatus('Error (SSE): ' + error.message);
+          eventSource.close();
+        };
+      }
+
+      // Send message using selected method
+      function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        clearResponse();
+        const method = document.querySelector('input[name="method"]:checked').value;
+
+        if (method === 'websocket') {
+          socket.emit('startStream', {
+            message: message,
+            chatHistory: [],
+          });
+        } else {
+          // SSE with POST request
+          fetch(`${API_URL}/ai-chat/stream`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: message,
+              chatHistory: [],
+            }),
+          });
+        }
+
+        messageInput.value = '';
+      }
+
+      // UI helper functions
+      function appendResponse(text) {
+        const responseDiv = document.getElementById('response');
+        responseDiv.textContent += text;
+        responseDiv.scrollTop = responseDiv.scrollHeight;
+      }
+
+      function clearResponse() {
+        document.getElementById('response').textContent = '';
+      }
+
+      function updateStatus(text) {
+        document.getElementById('status').textContent = text;
+      }
+
+      // Initialize based on selected method
+      function initializeConnection() {
+        const method = document.querySelector('input[name="method"]:checked').value;
+        if (method === 'websocket') {
+          initializeWebSocket();
+        }
+      }
+
+      // Event listeners
+      document.querySelectorAll('input[name="method"]').forEach((radio) => {
+        radio.addEventListener('change', initializeConnection);
+      });
+
+      document.getElementById('messageInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+
+      // Initial setup
+      initializeConnection();
+    </script>
+  </body>
+</html>
