@@ -1,4 +1,6 @@
-import { Controller, Post, Body, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { Controller, Post, Body, HttpException, HttpStatus, Logger, Sse } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AiChatService } from './ai-chat.service';
 import { ChatMessageDto } from './interfaces/chat.interface';
@@ -23,14 +25,22 @@ export class AiChatController {
     }
   }
 
-  @Post('stream')
+  @Sse('stream')
   @ApiOperation({ summary: 'Start a streaming chat session with AI' })
   @ApiResponse({ status: 200, description: 'Stream started successfully' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  async startStream(@Body() chatMessageDto: ChatMessageDto) {
+  streamResponse(@Body() chatMessageDto: ChatMessageDto): Observable<MessageEvent> {
     try {
-      const response = await this.aiChatService.streamResponse(chatMessageDto.message, chatMessageDto.chatHistory);
-      return { response: response.text(), success: true };
+      return this.aiChatService.streamResponse(chatMessageDto.message, chatMessageDto.chatHistory).pipe(
+        map(
+          (chunk) =>
+            ({
+              data: {
+                response: chunk,
+                success: true,
+              },
+            }) as MessageEvent,
+        ),
+      );
     } catch (error) {
       this.logger.error(`Failed to start stream: ${error.message}`, error.stack);
       throw new HttpException('Failed to start stream', HttpStatus.INTERNAL_SERVER_ERROR);
