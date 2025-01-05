@@ -21,7 +21,22 @@ async function bootstrap() {
   const logger = new Logger(appName);
 
   app.enableShutdownHooks();
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io'],
+          connectSrc: [
+            "'self'",
+            'wss://platform.production.api.notablenomads.com',
+            'wss://platform.staging.api.notablenomads.com',
+          ],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+        },
+      },
+    }),
+  );
 
   // Configure CORS
   app.enableCors({
@@ -44,7 +59,7 @@ async function bootstrap() {
     prefix: '/public',
   });
 
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
+  app.setGlobalPrefix(apiPrefix, { exclude: ['/public', '/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
@@ -70,10 +85,11 @@ async function bootstrap() {
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
   const docsUrl = `${appUrl}/${apiPrefix}/docs`;
+  const chatUrl = `${appUrl}/public/ai-chat.html`;
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
   logger.log(`API Documentation available at: ${docsUrl}`);
-  logger.log(`AI Chat client available at: ${appUrl}/public/ai-chat.html`);
+  logger.log(`AI Chat client available at: ${chatUrl}`);
 }
 
 process.nextTick(bootstrap);
