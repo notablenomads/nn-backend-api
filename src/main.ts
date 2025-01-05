@@ -6,63 +6,34 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app/app.module';
 import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
-import { IConfig } from './app/config/config.interface';
+import { CorsService } from './app/core/services/cors.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+  const corsService = app.get(CorsService);
+
   const environment = config.get('app.nodeEnv');
   const apiPrefix = config.get('app.apiPrefix');
   const appName = config.get('app.name');
   const logger = new Logger(appName);
 
-  // Get CORS configuration
-  const corsEnabledDomains = config.get<IConfig['app']['corsEnabledDomains']>('app.corsEnabledDomains');
-  const corsRestrict = config.get<IConfig['app']['corsRestrict']>('app.corsRestrict');
-
   app.enableShutdownHooks();
   app.use(helmet());
 
-  // Configure CORS based on restriction flag
-  if (corsRestrict) {
-    // Restricted mode - only allow specified domains
-    app.enableCors({
-      origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) {
-          callback(null, true);
-          return;
-        }
+  // Configure CORS
+  app.enableCors({
+    origin: corsService.createOriginValidator(),
+    credentials: true,
+  });
 
-        try {
-          const originDomain = new URL(origin).hostname;
-          const isAllowed = corsEnabledDomains.some((domain) => {
-            if (domain.startsWith('*.')) {
-              const baseDomain = domain.slice(2); // Remove *. from the start
-              return originDomain === baseDomain || originDomain.endsWith('.' + baseDomain);
-            }
-            return originDomain === domain;
-          });
-
-          if (isAllowed) {
-            callback(null, true);
-          } else {
-            callback(new Error('Not allowed by CORS'));
-          }
-        } catch (err) {
-          callback(new Error(`Invalid origin: ${err.message}`));
-        }
-      },
-      credentials: true,
-    });
-    logger.log('CORS restrictions enabled');
+  // Log CORS configuration
+  const corsStatus = corsService.getStatus();
+  if (corsStatus.isRestricted) {
+    logger.log('CORS restrictions enabled with allowed domains:');
+    corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
   } else {
-    // Unrestricted mode - allow all origins
-    app.enableCors({
-      origin: true,
-      credentials: true,
-    });
-    logger.log('CORS restrictions disabled');
+    logger.log('CORS restrictions disabled - allowing all origins');
   }
 
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });

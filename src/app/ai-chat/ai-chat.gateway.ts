@@ -16,47 +16,13 @@ import {
   IStreamCompleteResponse,
   StreamEventType,
 } from './interfaces/stream.interface';
-import { IConfig } from '../config/config.interface';
+import { CorsService } from '../core/services/cors.service';
 
 @WebSocketGateway({
   cors: {
     origin: (origin, callback) => {
-      const config = new ConfigService();
-      const corsRestrict = config.get<boolean>('app.corsRestrict');
-
-      // If CORS restrictions are disabled, allow all origins
-      if (!corsRestrict) {
-        callback(null, true);
-        return;
-      }
-
-      // CORS restrictions are enabled - check against allowed domains
-      const allowedDomains = config.get<IConfig['app']['corsEnabledDomains']>('app.corsEnabledDomains');
-
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      try {
-        const originDomain = new URL(origin).hostname;
-        const isAllowed = allowedDomains.some((domain) => {
-          if (domain.startsWith('*.')) {
-            const baseDomain = domain.slice(2); // Remove *. from the start
-            return originDomain === baseDomain || originDomain.endsWith('.' + baseDomain);
-          }
-          return originDomain === domain;
-        });
-
-        if (isAllowed) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      } catch {
-        callback(new Error('Invalid origin'));
-      }
+      const corsService = new CorsService(new ConfigService());
+      return corsService.createOriginValidator()(origin, callback);
     },
     credentials: true,
   },
@@ -68,46 +34,22 @@ export class AiChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly aiChatService: AiChatService,
-    private readonly configService: ConfigService,
+    private readonly corsService: CorsService,
   ) {}
 
   async handleConnection(client: Socket) {
     const origin = client.handshake.headers.origin;
-    const corsRestrict = this.configService.get<boolean>('app.corsRestrict');
+    const validation = this.corsService.validateOrigin(origin);
 
-    // If CORS restrictions are disabled, allow all connections
-    if (!corsRestrict) {
-      this.logger.log(`Client connected: ${client.id} from ${origin || 'unknown origin'} (CORS restrictions disabled)`);
+    if (!validation.isAllowed) {
+      this.logger.warn(`Rejected connection: ${validation.error}`);
+      client.disconnect();
       return;
     }
 
-    // CORS restrictions are enabled - check against allowed domains
-    const allowedDomains = this.configService.get<IConfig['app']['corsEnabledDomains']>('app.corsEnabledDomains');
-
-    if (origin) {
-      try {
-        const originDomain = new URL(origin).hostname;
-        const isAllowed = allowedDomains.some((domain) => {
-          if (domain.startsWith('*.')) {
-            const baseDomain = domain.slice(2);
-            return originDomain === baseDomain || originDomain.endsWith('.' + baseDomain);
-          }
-          return originDomain === domain;
-        });
-
-        if (!isAllowed) {
-          this.logger.warn(`Rejected connection from unauthorized domain: ${origin}`);
-          client.disconnect();
-          return;
-        }
-      } catch (error) {
-        this.logger.error(`Invalid origin: ${origin}`, error);
-        client.disconnect();
-        return;
-      }
-    }
-
-    this.logger.log(`Client connected: ${client.id} from ${origin || 'unknown origin'}`);
+    const corsStatus = this.corsService.getStatus();
+    const statusMessage = corsStatus.isRestricted ? '(CORS restricted)' : '(CORS unrestricted)';
+    this.logger.log(`Client connected: ${client.id} from ${origin || 'unknown origin'} ${statusMessage}`);
   }
 
   handleDisconnect(client: Socket) {
