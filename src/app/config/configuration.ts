@@ -14,4 +14,13 @@ export default (): IConfig => ({
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
   },
+  aws: {
+    region: process.env.AWS_REGION || 'eu-central-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+  email: {
+    fromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@notablenomads.com',
+    toAddress: process.env.EMAIL_TO_ADDRESS || 'contact@notablenomads.com',
+  },
 });
