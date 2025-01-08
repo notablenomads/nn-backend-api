@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.2...v0.0.3) (2025-01-08)
+
+
+### Features
+
+* add blog module with XML parsing and Medium integration ([5644920](https://github.com/Notable-Nomads/nn-backend-api/commit/5644920a809da352c64a949726bd706d525b6ad2))
+
 ### 0.0.2 (2025-01-08)
 
 
