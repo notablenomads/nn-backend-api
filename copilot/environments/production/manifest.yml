@@ -1,0 +1,36 @@
+# The manifest for the "production" environment.
+# Read the full specification for the "Environment" type at:
+#  https://aws.github.io/copilot-cli/docs/manifest/environment/
+
+# Your environment name will be used in naming your resources like VPC, cluster, etc.
+name: production
+type: Environment
+
+# The version of the environment template.
+version: 1.0
+
+# Override the default network configuration for workloads.
+network:
+  vpc:
+    placement: private
+
+# Environment variables that are shared across all workloads in this environment.
+environment:
+  variables:
+    NODE_ENV: production
+    CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
+    CORS_RESTRICT: 'false'
+
+# Import your own VPC and subnets or configure how they should be created.
+# network:
+#   vpc:
+#     id:
+
+# Configure the load balancers in your environment, once created.
+http:
+#   public:
+#   private:
+
+# Configure observability for your environment resources.
+observability:
+  container_insights: false

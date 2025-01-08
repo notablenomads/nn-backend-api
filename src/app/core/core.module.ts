@@ -1,16 +1,22 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import sentryConfig from '@root/app/config/sentry.config';
-import appConfig from '@root/app/config/app.config';
-
+import { CorsService } from './services/cors.service';
+import { validationSchema } from '../config/env.validation';
+import configuration from '../config/configuration';
 @Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, sentryConfig],
-      envFilePath: ['.env'],
+      load: [configuration],
+      validationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: true,
+      },
     }),
   ],
+  providers: [CorsService],
+  exports: [CorsService],
 })
 export class CoreModule {}
