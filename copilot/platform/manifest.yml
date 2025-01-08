@@ -46,11 +46,12 @@ variables: # Pass environment variables as key value pairs.
   NODE_ENV: development
   CORS_ENABLED_DOMAINS: 'localhost:3000,localhost:4200'
   CORS_RESTRICT: 'false'
-  GEMINI_API_KEY: AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo
 
 # Store sensitive values in AWS Systems Manager Parameter Store
-# secrets:
-#   GEMINI_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/GEMINI_API_KEY
+secrets:
+  GEMINI_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/GEMINI_API_KEY
+  AWS_ACCESS_KEY_ID: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/AWS_SECRET_ACCESS_KEY
 
 environments:
   production:
