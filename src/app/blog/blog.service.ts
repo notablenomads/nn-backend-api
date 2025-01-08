@@ -17,14 +17,17 @@ export class BlogService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    // Initialize team members' Medium profiles
     this.authors = [
       {
         username: 'mrdevx',
         name: 'Mahdi Rashidi',
         mediumUrl: 'https://mrdevx.medium.com',
       },
-      // Add more team members here
+      {
+        username: 'milad.ghamati',
+        name: 'Milad Ghamati',
+        mediumUrl: 'https://medium.com/@milad.ghamati',
+      },
     ];
   }
 
