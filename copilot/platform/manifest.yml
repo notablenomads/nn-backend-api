@@ -55,8 +55,8 @@ secrets:
 
 environments:
   production:
-    cpu: 256
-    memory: 512
+    cpu: 128
+    memory: 256
     count: 1
     variables:
       NODE_ENV: production
