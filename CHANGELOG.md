@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.4](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.3...v0.0.4) (2025-01-10)
+
+
+### Features
+
+* **blog:** add new author to Medium profiles in BlogService ([ba55bf9](https://github.com/Notable-Nomads/nn-backend-api/commit/ba55bf9e468fc5ad47315b3b1dc5132f6e71debe))
+* **email:** enhance admin email notifications with HTML and text formats ([2e311b6](https://github.com/Notable-Nomads/nn-backend-api/commit/2e311b6921ee15fba643b02e72e2f48c60e4b80c))
+* **email:** enhance email service with user confirmation and admin notification ([c787194](https://github.com/Notable-Nomads/nn-backend-api/commit/c787194c282d88b034cc63bca66f9c0917d2ec86))
+* **email:** refactor email service to utilize a centralized template helper ([61e5153](https://github.com/Notable-Nomads/nn-backend-api/commit/61e515313b3a1a560a3f39c5cd484980b1268cdd))
+
 ### [0.0.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.2...v0.0.3) (2025-01-08)
 
 
