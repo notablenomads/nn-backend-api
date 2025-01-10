@@ -2,6 +2,7 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IContactFormData } from './interfaces/contact-form.interface';
+import { EmailTemplateHelper } from './helpers/email-template.helper';
 
 @Injectable()
 export class EmailService {
@@ -9,6 +10,12 @@ export class EmailService {
   private readonly sesClient: SESClient;
   private readonly fromEmail: string;
   private readonly toEmail: string;
+  private readonly templateConfig = {
+    companyLogo: 'https://notablenomads.com/nn-logo-white.svg',
+    companyName: 'Notable Nomads',
+    companyAddress: 'Berlin, Germany',
+    companyWebsite: 'https://notablenomads.com',
+  };
 
   constructor(private readonly configService: ConfigService) {
     this.sesClient = new SESClient({
@@ -19,11 +26,22 @@ export class EmailService {
       },
     });
 
-    this.fromEmail = this.configService.get<string>('email.fromAddress');
+    this.fromEmail = this.configService.get<string>('email.fromAddress') || 'no-reply@mail.notablenomads.com';
     this.toEmail = this.configService.get<string>('email.toAddress');
   }
 
   async sendContactFormEmail(data: IContactFormData): Promise<boolean> {
+    try {
+      const adminEmailSuccess = await this.sendAdminNotification(data);
+      const userEmailSuccess = await this.sendUserConfirmation(data);
+      return adminEmailSuccess && userEmailSuccess;
+    } catch (error) {
+      this.logger.error(`Failed to send email: ${error.message}`, error.stack);
+      return false;
+    }
+  }
+
+  private async sendAdminNotification(data: IContactFormData): Promise<boolean> {
     try {
       const command = new SendEmailCommand({
         Source: this.fromEmail,
@@ -36,8 +54,12 @@ export class EmailService {
             Charset: 'UTF-8',
           },
           Body: {
+            Html: {
+              Data: this.createAdminEmailBody(data),
+              Charset: 'UTF-8',
+            },
             Text: {
-              Data: this.createEmailBody(data),
+              Data: this.createAdminEmailText(data),
               Charset: 'UTF-8',
             },
           },
@@ -46,15 +68,111 @@ export class EmailService {
       });
 
       const response = await this.sesClient.send(command);
-      this.logger.log(`Email sent successfully: ${response.MessageId}`);
+      this.logger.log(`Admin notification sent successfully: ${response.MessageId}`);
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send email: ${error.message}`, error.stack);
+      this.logger.error(`Failed to send admin notification: ${error.message}`, error.stack);
       return false;
     }
   }
 
-  private createEmailBody(data: IContactFormData): string {
+  private async sendUserConfirmation(data: IContactFormData): Promise<boolean> {
+    try {
+      const command = new SendEmailCommand({
+        Source: this.fromEmail,
+        Destination: {
+          ToAddresses: [data.email],
+        },
+        Message: {
+          Subject: {
+            Data: `Thank you for contacting ${this.templateConfig.companyName}`,
+            Charset: 'UTF-8',
+          },
+          Body: {
+            Html: {
+              Data: this.createUserConfirmationHtml(data),
+              Charset: 'UTF-8',
+            },
+            Text: {
+              Data: this.createUserConfirmationText(data),
+              Charset: 'UTF-8',
+            },
+          },
+        },
+      });
+
+      const response = await this.sesClient.send(command);
+      this.logger.log(`User confirmation sent successfully: ${response.MessageId}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send user confirmation: ${error.message}`, error.stack);
+      return false;
+    }
+  }
+
+  private createAdminEmailBody(data: IContactFormData): string {
+    const content = `
+      <h1>New Contact Form Submission</h1>
+      <div class="info-block">
+        <p><span class="info-label">Name:</span> ${data.name}</p>
+        <p><span class="info-label">Email:</span> ${data.email}</p>
+      </div>
+      <div class="message-block">
+        <p class="info-label">Message:</p>
+        <p>${data.message}</p>
+      </div>
+      <div class="timestamp">
+        Submitted at: ${new Date().toISOString()}
+      </div>
+    `;
+
+    return EmailTemplateHelper.generateTemplate(this.templateConfig, {
+      subject: 'New Contact Form Submission',
+      content,
+      showSocialLinks: false,
+    });
+  }
+
+  private createUserConfirmationHtml(data: IContactFormData): string {
+    const content = `
+      <h1>Thank you for reaching out, ${data.name}!</h1>
+      <p>We have received your message and appreciate you taking the time to contact us.</p>
+      <p>Our team will review your message and get back to you as soon as possible.</p>
+      <p>For your reference, here's what you sent us:</p>
+      <blockquote>
+        ${data.message}
+      </blockquote>
+      <a href="${this.templateConfig.companyWebsite}" class="button">Visit Our Website</a>
+    `;
+
+    return EmailTemplateHelper.generateTemplate(this.templateConfig, {
+      subject: 'Thank You for Contacting Us',
+      content,
+      showSocialLinks: true,
+    });
+  }
+
+  private createUserConfirmationText(data: IContactFormData): string {
+    return `
+Thank you for reaching out, ${data.name}!
+
+We have received your message and appreciate you taking the time to contact us.
+Our team will review your message and get back to you as soon as possible.
+
+For your reference, here's what you sent us:
+
+${data.message}
+
+Visit our website: ${this.templateConfig.companyWebsite}
+
+${this.templateConfig.companyName}
+${this.templateConfig.companyAddress}
+
+This is an automated message, please do not reply to this email.
+    `.trim();
+  }
+
+  private createAdminEmailText(data: IContactFormData): string {
     return `
 New Contact Form Submission
 
