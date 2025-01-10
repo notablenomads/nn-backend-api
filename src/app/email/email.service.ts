@@ -55,8 +55,12 @@ export class EmailService {
             Charset: 'UTF-8',
           },
           Body: {
-            Text: {
+            Html: {
               Data: this.createAdminEmailBody(data),
+              Charset: 'UTF-8',
+            },
+            Text: {
+              Data: this.createAdminEmailText(data),
               Charset: 'UTF-8',
             },
           },
@@ -109,16 +113,52 @@ export class EmailService {
 
   private createAdminEmailBody(data: IContactFormData): string {
     return `
-New Contact Form Submission
-
-Name: ${data.name}
-Email: ${data.email}
-
-Message:
-${data.message}
-
-Sent at: ${new Date().toISOString()}
-    `.trim();
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Contact Form Submission</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #e1e1e1; margin: 0; padding: 0; background-color: #1a1a1a; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 20px 0; background-color: #2d2d2d; border-radius: 8px 8px 0 0; }
+    .logo { width: 150px; height: auto; }
+    .content { background-color: #2d2d2d; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
+    .info-block { margin: 15px 0; padding: 15px; background-color: #363636; border-radius: 4px; }
+    .info-label { font-weight: bold; color: #4dabf7; }
+    .message-block { margin: 20px 0; padding: 20px; background-color: #363636; border-radius: 4px; border-left: 4px solid #4dabf7; }
+    .timestamp { color: #888; font-size: 12px; text-align: right; margin-top: 20px; }
+    h1 { color: #4dabf7; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="${this.companyLogo}" alt="${this.companyName}" class="logo">
+    </div>
+    <div class="content">
+      <h1>New Contact Form Submission</h1>
+      <div class="info-block">
+        <p><span class="info-label">Name:</span> ${data.name}</p>
+        <p><span class="info-label">Email:</span> ${data.email}</p>
+      </div>
+      <div class="message-block">
+        <p class="info-label">Message:</p>
+        <p>${data.message}</p>
+      </div>
+      <div class="timestamp">
+        Submitted at: ${new Date().toISOString()}
+      </div>
+    </div>
+    <div class="footer">
+      <p>${this.companyName} - Admin Notification</p>
+      <p>${this.companyAddress}</p>
+    </div>
+  </div>
+</body>
+</html>`.trim();
   }
 
   private createUserConfirmationHtml(data: IContactFormData): string {
@@ -130,15 +170,18 @@ Sent at: ${new Date().toISOString()}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Thank you for contacting us</title>
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #e1e1e1; margin: 0; padding: 0; background-color: #1a1a1a; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { text-align: center; padding: 20px 0; }
-    .logo { max-width: 200px; height: auto; }
-    .content { background-color: #f9f9f9; padding: 30px; border-radius: 8px; }
-    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    .header { text-align: center; padding: 20px 0; background-color: #2d2d2d; border-radius: 8px 8px 0 0; }
+    .logo { width: 150px; height: auto; }
+    .content { background-color: #2d2d2d; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     .social-links { padding: 20px 0; }
-    .social-links a { margin: 0 10px; color: #007bff; text-decoration: none; }
-    .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px; }
+    .social-links a { margin: 0 10px; color: #4dabf7; text-decoration: none; }
+    .button { display: inline-block; padding: 12px 24px; background-color: #4dabf7; color: #1a1a1a; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold; }
+    .button:hover { background-color: #3793dd; }
+    h1 { color: #4dabf7; }
+    blockquote { background-color: #363636; border-left: 3px solid #4dabf7; padding: 15px; margin: 20px 0; color: #e1e1e1; border-radius: 0 4px 4px 0; }
   </style>
 </head>
 <body>
@@ -151,7 +194,7 @@ Sent at: ${new Date().toISOString()}
       <p>We have received your message and appreciate you taking the time to contact us.</p>
       <p>Our team will review your message and get back to you as soon as possible.</p>
       <p>For your reference, here's what you sent us:</p>
-      <blockquote style="border-left: 3px solid #007bff; padding-left: 15px; margin: 20px 0; color: #666;">
+      <blockquote>
         ${data.message}
       </blockquote>
       <a href="${this.companyWebsite}" class="button">Visit Our Website</a>
@@ -188,6 +231,20 @@ ${this.companyName}
 ${this.companyAddress}
 
 This is an automated message, please do not reply to this email.
+    `.trim();
+  }
+
+  private createAdminEmailText(data: IContactFormData): string {
+    return `
+New Contact Form Submission
+
+Name: ${data.name}
+Email: ${data.email}
+
+Message:
+${data.message}
+
+Sent at: ${new Date().toISOString()}
     `.trim();
   }
 }
