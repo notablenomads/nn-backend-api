@@ -46,6 +46,7 @@ variables: # Pass environment variables as key value pairs.
   NODE_ENV: development
   CORS_ENABLED_DOMAINS: 'localhost:3000,localhost:4200'
   CORS_RESTRICT: 'false'
+  EMAIL_FROM_ADDRESS: 'no-reply@mail.notablenomads.com'
 
 # Store sensitive values in AWS Systems Manager Parameter Store
 secrets:
