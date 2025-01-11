@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.5](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.4...v0.0.5) (2025-01-11)
+
+
+### Features
+
+* **manifest:** configure capacity providers for production and staging environments ([3fcce87](https://github.com/Notable-Nomads/nn-backend-api/commit/3fcce8777eaa5a159e38e861c7a9a6b3eaa1c7a1))
+* **manifest:** enhance resource configuration and auto-scaling for production and staging environments ([e71174d](https://github.com/Notable-Nomads/nn-backend-api/commit/e71174d207c1ccedeb90b544747a74e02b4f13c1))
+* **manifest:** optimize cost management and load balancer settings for production and staging ([889559e](https://github.com/Notable-Nomads/nn-backend-api/commit/889559e8879affdfe3cf00254da764539f96dbd8))
+
 ### [0.0.4](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.3...v0.0.4) (2025-01-10)
 
 
