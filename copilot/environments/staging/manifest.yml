@@ -8,6 +8,10 @@ version: 1.0
 network:
   vpc:
     placement: private
+    # Enable flow logs only for REJECT to reduce costs
+    flow_logs:
+      retention: 3
+      filter: REJECT
 
 # Configure capacity providers at environment level
 capacity_providers:
@@ -21,3 +25,14 @@ environment:
     NODE_ENV: staging
     CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
     CORS_RESTRICT: 'false'
+
+# Configure the load balancers in your environment
+http:
+  public:
+    access_logs: false # Disable ALB access logs
+    stickiness: true # Enable stickiness
+    deregistration_delay: 5 # Even faster deregistration for staging
+
+# Configure minimal observability
+observability:
+  container_insights: false
