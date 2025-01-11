@@ -75,7 +75,12 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: GitHubActionsSession
           aws-region: ${{ env.***REMOVED*** }}
+          mask-aws-account-id: true
+          disable-retry: false
+          role-duration-seconds: 1200
+          role-skip-session-tagging: false
 
       - name: Install Copilot CLI
         run: |
