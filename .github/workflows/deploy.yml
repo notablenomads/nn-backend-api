@@ -1,21 +1,55 @@
-name: Deploy to AWS
+name: Release and Deploy
 
 on:
   push:
-    tags:
-      - 'v*' # Trigger on version tags
     branches:
-      - main # Also allow manual deployments from main
+      - main
 
 env:
   ***REMOVED***: eu-central-1
   APP_NAME: notablenomads
   SERVICE_NAME: platform
+  NODE_VERSION: 18
 
 jobs:
-  deploy-production:
-    if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
+  release:
+    name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Verify the integrity of provenance attestations and registry signatures
+        run: yarn audit
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
+
+  deploy-production:
+    needs: release
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
     permissions:
       id-token: write
       contents: read
@@ -23,6 +57,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -37,30 +73,24 @@ jobs:
           sudo mv copilot /usr/local/bin/copilot
           copilot --version
 
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0)
+          echo "VERSION=${VERSION#v}" >> $GITHUB_OUTPUT
+
       - name: Deploy to Production
         env:
           COPILOT_ENVIRONMENT: production
         run: |
-          # Extract version from tag (e.g., v1.2.3 -> 1.2.3)
-          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Deploying version ${{ steps.get_version.outputs.VERSION }} to production..."
 
-          echo "Deploying version ${VERSION} to production..."
-
-          # Deploy using Copilot
           copilot svc deploy \
             --name ${{ env.SERVICE_NAME }} \
             --env $COPILOT_ENVIRONMENT \
-            --tag $VERSION
+            --tag ${{ steps.get_version.outputs.VERSION }}
 
       - name: Verify Deployment
         run: |
           echo "Checking service status..."
           copilot svc status --name ${{ env.SERVICE_NAME }} --env production
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
