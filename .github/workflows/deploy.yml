@@ -98,29 +98,29 @@ jobs:
 
       - name: Initialize Copilot
         run: |
-          if ! copilot app show &> /dev/null; then
-            echo "Creating new application in eu-central-1..."
-            copilot app init ${{ env.APP_NAME }} --domain notablenomads.com
+          # First, try to delete the existing application if it exists
+          if copilot app show &> /dev/null; then
+            echo "Deleting existing application..."
+            copilot app delete --yes
           fi
 
-          if ! copilot env show --name production &> /dev/null; then
-            echo "Initializing production environment..."
-            copilot env init --name production \
-              --profile default \
-              --app ${{ env.APP_NAME }} \
-              --prod
-            
-            echo "Deploying production environment..."
-            copilot env deploy --name production
-          fi
+          echo "Creating new application in eu-central-1..."
+          copilot app init ${{ env.APP_NAME }} --domain notablenomads.com
 
-          if ! copilot svc show --name ${{ env.SERVICE_NAME }} &> /dev/null; then
-            echo "Initializing service using existing manifest..."
-            copilot svc init \
-              --name ${{ env.SERVICE_NAME }} \
-              --app ${{ env.APP_NAME }} \
-              --manifest copilot/platform/manifest.yml
-          fi
+          echo "Initializing production environment..."
+          copilot env init --name production \
+            --profile default \
+            --app ${{ env.APP_NAME }} \
+            --prod
+
+          echo "Deploying production environment..."
+          copilot env deploy --name production
+
+          echo "Initializing service using existing manifest..."
+          copilot svc init \
+            --name ${{ env.SERVICE_NAME }} \
+            --app ${{ env.APP_NAME }} \
+            --manifest copilot/platform/manifest.yml
 
       - name: Deploy to Production
         env:
