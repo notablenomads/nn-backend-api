@@ -9,7 +9,7 @@ env:
   AWS_REGION: eu-central-1
   APP_NAME: notablenomads
   SERVICE_NAME: platform
-  NODE_VERSION: 18
+  NODE_VERSION: 22
   YARN_VERSION: 4.6.0
 
 jobs:
