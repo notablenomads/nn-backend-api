@@ -19,6 +19,8 @@ http:
     interval: 30s
     timeout: 10s
     grace_period: 60s
+  target_container: 'platform'
+  stickiness: true
 
 # Configuration for your containers and service.
 image:
@@ -26,6 +28,12 @@ image:
   build: Dockerfile
   # Port exposed through your container to route traffic to it.
   port: 3000
+  healthcheck:
+    command: ['CMD-SHELL', 'curl -f http://localhost:3000/v1/health || exit 1']
+    interval: 30s
+    retries: 3
+    timeout: 5s
+    start_period: 60s
 
 # Resource configuration
 cpu: 256 # 0.25 vCPU
@@ -38,6 +46,15 @@ count: 1 # Fixed single instance
 exec: true # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
+
+# CloudWatch configurations
+logging:
+  retention: 7 # Retain logs for 7 days only
+  metric_filters: # Only collect essential metrics
+    - pattern: 'ERROR'
+      name: ErrorCount
+    - pattern: '[timestamp=*] ERROR *'
+      name: TimestampedErrors
 
 variables: # Pass environment variables as key value pairs.
   APP_NAME: Notable Nomads Backend API
@@ -62,6 +79,8 @@ environments:
   production:
     # Minimal production settings with high availability
     count: 1 # Single instance
+    logging:
+      retention: 7
     variables:
       NODE_ENV: production
       CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
@@ -69,6 +88,8 @@ environments:
   staging:
     # Minimal staging settings
     count: 1 # Single instance
+    logging:
+      retention: 3
     variables:
       NODE_ENV: staging
       CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'

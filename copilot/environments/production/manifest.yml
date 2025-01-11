@@ -13,6 +13,10 @@ version: 1.0
 network:
   vpc:
     placement: private
+    # Enable flow logs only for REJECT to reduce costs
+    flow_logs:
+      retention: 7
+      filter: REJECT
 
 # Configure capacity providers at environment level
 capacity_providers:
@@ -37,9 +41,11 @@ environment:
 
 # Configure the load balancers in your environment, once created.
 http:
-#   public:
-#   private:
+  public:
+    access_logs: false # Disable ALB access logs to reduce S3 costs
+    stickiness: true # Enable stickiness to reduce unnecessary container switches
+    deregistration_delay: 10 # Reduce deregistration delay for faster scale-down
 
 # Configure observability for your environment resources.
 observability:
-  container_insights: false
+  container_insights: false # Disable container insights to reduce CloudWatch costs
