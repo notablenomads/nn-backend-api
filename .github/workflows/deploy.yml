@@ -98,23 +98,8 @@ jobs:
 
       - name: Initialize Copilot
         run: |
-          # Try to find the application in any region
-          REGIONS=$(aws ec2 describe-regions --query 'Regions[].RegionName' --output text)
-          APP_REGION=""
-
-          for region in $REGIONS; do
-            if AWS_DEFAULT_REGION=$region copilot app show 2>/dev/null; then
-              APP_REGION=$region
-              echo "Found existing application in region: $APP_REGION"
-              break
-            fi
-          done
-
-          if [ -n "$APP_REGION" ]; then
-            echo "Using existing application in region: $APP_REGION"
-            export AWS_DEFAULT_REGION=$APP_REGION
-          else
-            echo "Creating new application in region: ${{ env.***REMOVED*** }}"
+          if ! copilot app show &> /dev/null; then
+            echo "Creating new application in eu-central-1..."
             copilot app init ${{ env.APP_NAME }} --domain notablenomads.com
           fi
 
