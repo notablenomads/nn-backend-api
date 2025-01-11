@@ -1,0 +1,66 @@
+name: Deploy to AWS
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags
+    branches:
+      - main # Also allow manual deployments from main
+
+env:
+  AWS_REGION: eu-central-1
+  APP_NAME: notablenomads
+  SERVICE_NAME: platform
+
+jobs:
+  deploy-production:
+    if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Copilot CLI
+        run: |
+          curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+          chmod +x copilot
+          sudo mv copilot /usr/local/bin/copilot
+          copilot --version
+
+      - name: Deploy to Production
+        env:
+          COPILOT_ENVIRONMENT: production
+        run: |
+          # Extract version from tag (e.g., v1.2.3 -> 1.2.3)
+          VERSION=${GITHUB_REF#refs/tags/v}
+
+          echo "Deploying version ${VERSION} to production..."
+
+          # Deploy using Copilot
+          copilot svc deploy \
+            --name ${{ env.SERVICE_NAME }} \
+            --env $COPILOT_ENVIRONMENT \
+            --tag $VERSION
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking service status..."
+          copilot svc status --name ${{ env.SERVICE_NAME }} --env production
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
