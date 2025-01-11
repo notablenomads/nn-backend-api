@@ -28,12 +28,6 @@ image:
   build: Dockerfile
   # Port exposed through your container to route traffic to it.
   port: 3000
-  healthcheck:
-    command: ['CMD-SHELL', 'curl -f http://localhost:3000/v1/health || exit 1']
-    interval: 30s
-    retries: 3
-    timeout: 5s
-    start_period: 60s
 
 # Resource configuration
 cpu: 256 # 0.25 vCPU
