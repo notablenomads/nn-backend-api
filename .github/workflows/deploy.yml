@@ -98,17 +98,43 @@ jobs:
 
       - name: Initialize Copilot
         run: |
-          if ! copilot app show &> /dev/null; then
-            copilot app init ${{ env.APP_NAME }} --domain notablenomads.com --resource-tags domain=notablenomads.com
+          # Try to find the application in any region
+          REGIONS=$(aws ec2 describe-regions --query 'Regions[].RegionName' --output text)
+          APP_REGION=""
+
+          for region in $REGIONS; do
+            if AWS_DEFAULT_REGION=$region copilot app show 2>/dev/null; then
+              APP_REGION=$region
+              echo "Found existing application in region: $APP_REGION"
+              break
+            fi
+          done
+
+          if [ -n "$APP_REGION" ]; then
+            echo "Using existing application in region: $APP_REGION"
+            export AWS_DEFAULT_REGION=$APP_REGION
+          else
+            echo "Creating new application in region: ${{ env.***REMOVED*** }}"
+            copilot app init ${{ env.APP_NAME }} --domain notablenomads.com
           fi
 
           if ! copilot env show --name production &> /dev/null; then
+            echo "Initializing production environment..."
             copilot env init --name production \
               --profile default \
               --app ${{ env.APP_NAME }} \
-              --default-config \
-              --container-port 3000 \
               --prod
+            
+            echo "Deploying production environment..."
+            copilot env deploy --name production
+          fi
+
+          if ! copilot svc show --name ${{ env.SERVICE_NAME }} &> /dev/null; then
+            echo "Initializing service using existing manifest..."
+            copilot svc init \
+              --name ${{ env.SERVICE_NAME }} \
+              --app ${{ env.APP_NAME }} \
+              --manifest copilot/platform/manifest.yml
           fi
 
       - name: Deploy to Production
@@ -120,8 +146,7 @@ jobs:
           copilot svc deploy \
             --name ${{ env.SERVICE_NAME }} \
             --env $COPILOT_ENVIRONMENT \
-            --tag ${{ steps.get_version.outputs.VERSION }} \
-            --resource-tags version=${{ steps.get_version.outputs.VERSION }}
+            --tag ${{ steps.get_version.outputs.VERSION }}
 
       - name: Verify Deployment
         run: |
