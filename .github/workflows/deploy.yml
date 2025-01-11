@@ -83,7 +83,12 @@ jobs:
           role-skip-session-tagging: false
 
       - name: Install Copilot CLI
-        run: curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && chmod +x copilot && sudo mv copilot /usr/local/bin/copilot && copilot --version
+        run: |
+          sudo rm -rf /usr/local/bin/copilot copilot
+          wget https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux -O ./copilot
+          chmod +x ./copilot
+          sudo mv ./copilot /usr/local/bin/copilot
+          copilot --version
 
       - name: Get version
         id: get_version
