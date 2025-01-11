@@ -9,6 +9,12 @@ network:
   vpc:
     placement: private
 
+# Configure capacity providers at environment level
+capacity_providers:
+  fargate_spot:
+    weight: 100
+    base: 1
+
 # Environment variables that are shared across all workloads in this environment.
 environment:
   variables:
