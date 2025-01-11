@@ -15,10 +15,10 @@ http:
   healthcheck:
     path: '/v1/health'
     success_codes: '200,301'
-    healthy_threshold: 3
-    interval: 15s
+    healthy_threshold: 2
+    interval: 30s
     timeout: 10s
-    grace_period: 30s
+    grace_period: 60s
 
 # Configuration for your containers and service.
 image:
@@ -27,10 +27,19 @@ image:
   # Port exposed through your container to route traffic to it.
   port: 3000
 
-cpu: 256 # Number of CPU units for the task.
-memory: 512 # Amount of memory in MiB used by the task.
-platform: linux/arm64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
-count: 1 # Number of tasks that should be running in your service.
+# Resource configuration
+cpu: 256 # 0.25 vCPU
+memory: 512 # 0.5 GB
+platform: linux/arm64 # ARM for better price/performance
+
+# Balanced use of Spot instances
+capacity_providers:
+  - FARGATE_SPOT: 90 # Maximize Spot usage
+  - FARGATE: 10 # Minimal regular Fargate for stability
+
+# Single instance configuration
+count: 1 # Fixed single instance
+
 exec: true # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
@@ -56,15 +65,20 @@ secrets:
 
 environments:
   production:
-    cpu: 256
-    memory: 512
-    count: 1
+    # Minimal production settings with high availability
+    capacity_providers:
+      - FARGATE_SPOT: 90
+      - FARGATE: 10
+    count: 1 # Single instance
     variables:
       NODE_ENV: production
       CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
       CORS_RESTRICT: 'false'
   staging:
-    count: 1
+    # Minimal staging settings
+    capacity_providers:
+      - FARGATE_SPOT: 100 # Full Spot usage for staging
+    count: 1 # Single instance
     variables:
       NODE_ENV: staging
       CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
