@@ -32,11 +32,6 @@ cpu: 256 # 0.25 vCPU
 memory: 512 # 0.5 GB
 platform: linux/arm64 # ARM for better price/performance
 
-# Balanced use of Spot instances
-capacity_providers:
-  - FARGATE_SPOT: 90 # Maximize Spot usage
-  - FARGATE: 10 # Minimal regular Fargate for stability
-
 # Single instance configuration
 count: 1 # Fixed single instance
 
@@ -66,9 +61,6 @@ secrets:
 environments:
   production:
     # Minimal production settings with high availability
-    capacity_providers:
-      - FARGATE_SPOT: 90
-      - FARGATE: 10
     count: 1 # Single instance
     variables:
       NODE_ENV: production
@@ -76,8 +68,6 @@ environments:
       CORS_RESTRICT: 'false'
   staging:
     # Minimal staging settings
-    capacity_providers:
-      - FARGATE_SPOT: 100 # Full Spot usage for staging
     count: 1 # Single instance
     variables:
       NODE_ENV: staging
