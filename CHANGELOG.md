@@ -1,3 +1,14 @@
+# [0.1.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.4...v0.1.0) (2025-01-11)
+
+
+### Features
+
+* **ci:** add GitHub Actions workflow for AWS deployment ([ab0ca97](https://github.com/Notable-Nomads/nn-backend-api/commit/ab0ca97dcf483d99696f6b1198e7cb2e4312a78d))
+* **manifest:** configure capacity providers for production and staging environments ([3fcce87](https://github.com/Notable-Nomads/nn-backend-api/commit/3fcce8777eaa5a159e38e861c7a9a6b3eaa1c7a1))
+* **manifest:** enhance resource configuration and auto-scaling for production and staging environments ([e71174d](https://github.com/Notable-Nomads/nn-backend-api/commit/e71174d207c1ccedeb90b544747a74e02b4f13c1))
+* **manifest:** optimize cost management and load balancer settings for production and staging ([889559e](https://github.com/Notable-Nomads/nn-backend-api/commit/889559e8879affdfe3cf00254da764539f96dbd8))
+* **release:** integrate semantic-release and update GitHub Actions workflow ([37e5818](https://github.com/Notable-Nomads/nn-backend-api/commit/37e58187bb5e72fa97dfa93ce846a1c36822a118))
+
 # Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
