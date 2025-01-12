@@ -1,7 +1,7 @@
 interface IEmailTemplateConfig {
   companyLogo: string;
   companyName: string;
-  companyAddress: string;
+  companyAddress?: string;
   companyWebsite: string;
 }
 
@@ -60,7 +60,7 @@ export class EmailTemplateHelper {
     <div class="footer">
       ${data.showSocialLinks ? this.socialLinks : ''}
       <p>${config.companyName}</p>
-      <p>${config.companyAddress}</p>
+      ${config.companyAddress ? `<p>${config.companyAddress}</p>` : ''}
       <p>This is an automated message, please do not reply to this email.</p>
     </div>
   </div>
