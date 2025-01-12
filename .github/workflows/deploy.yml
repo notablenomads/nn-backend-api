@@ -48,5 +48,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          yarn add -D semantic-release @semantic-release/changelog @semantic-release/commit-analyzer @semantic-release/git @semantic-release/github @semantic-release/release-notes-generator conventional-changelog-angular
-          yarn semantic-release
+          yarn dlx -p semantic-release -p @semantic-release/changelog -p @semantic-release/commit-analyzer -p @semantic-release/git -p @semantic-release/github -p @semantic-release/release-notes-generator -p conventional-changelog-angular semantic-release
