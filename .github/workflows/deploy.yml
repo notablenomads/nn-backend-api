@@ -1,4 +1,4 @@
-name: Release and Deploy
+name: Release
 
 on:
   push:
@@ -17,7 +17,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      id-token: write
 
     steps:
       - name: Checkout
