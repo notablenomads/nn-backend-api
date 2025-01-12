@@ -4,14 +4,21 @@ import { ConfigService } from '@nestjs/config';
 import { IContactFormData } from './interfaces/contact-form.interface';
 import { EmailTemplateHelper } from './helpers/email-template.helper';
 
+interface ITemplateConfig {
+  companyLogo: string;
+  companyName: string;
+  companyAddress?: string;
+  companyWebsite: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly sesClient: SESClient;
   private readonly fromEmail: string;
   private readonly toEmail: string;
-  private readonly templateConfig = {
-    companyLogo: 'https://notablenomads.com/nn-logo-white.svg',
+  private readonly templateConfig: ITemplateConfig = {
+    companyLogo: 'https://notablenomads.com/nn-logo-dark.svg',
     companyName: 'Notable Nomads',
     companyAddress: 'Berlin, Germany',
     companyWebsite: 'https://notablenomads.com',
@@ -166,8 +173,7 @@ ${data.message}
 Visit our website: ${this.templateConfig.companyWebsite}
 
 ${this.templateConfig.companyName}
-${this.templateConfig.companyAddress}
-
+${this.templateConfig.companyAddress ? this.templateConfig.companyAddress + '\n' : ''}
 This is an automated message, please do not reply to this email.
     `.trim();
   }
