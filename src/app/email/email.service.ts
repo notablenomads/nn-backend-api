@@ -1,3 +1,5 @@
+import { join } from 'path';
+import { readFileSync } from 'fs';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,12 +19,8 @@ export class EmailService {
   private readonly sesClient: SESClient;
   private readonly fromEmail: string;
   private readonly toEmail: string;
-  private readonly templateConfig: ITemplateConfig = {
-    companyLogo: 'https://notablenomads.com/nn-logo-dark.svg',
-    companyName: 'Notable Nomads',
-    companyAddress: 'Berlin, Germany',
-    companyWebsite: 'https://notablenomads.com',
-  };
+  private readonly logoPath: string;
+  private readonly templateConfig: ITemplateConfig;
 
   constructor(private readonly configService: ConfigService) {
     this.sesClient = new SESClient({
@@ -35,6 +33,17 @@ export class EmailService {
 
     this.fromEmail = this.configService.get<string>('email.fromAddress') || 'no-reply@mail.notablenomads.com';
     this.toEmail = this.configService.get<string>('email.toAddress');
+
+    // Read logo file and convert to base64
+    this.logoPath = join(process.cwd(), 'src', 'resources', 'logo', 'logo-dark.svg');
+    const logoBase64 = readFileSync(this.logoPath, 'base64');
+
+    this.templateConfig = {
+      companyLogo: `data:image/svg+xml;base64,${logoBase64}`,
+      companyName: 'Notable Nomads',
+      // companyAddress: 'Berlin, Germany',
+      companyWebsite: 'https://notablenomads.com',
+    };
   }
 
   async sendContactFormEmail(data: IContactFormData): Promise<boolean> {

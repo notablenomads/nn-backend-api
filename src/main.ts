@@ -59,7 +59,13 @@ async function bootstrap() {
     prefix: '/public',
   });
 
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/public', '/'] });
+  // Serve static files from resources directory
+  app.useStaticAssets(join(__dirname, '..', 'src', 'resources'), {
+    index: false,
+    prefix: '/resources',
+  });
+
+  app.setGlobalPrefix(apiPrefix, { exclude: ['/public', '/resources', '/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
