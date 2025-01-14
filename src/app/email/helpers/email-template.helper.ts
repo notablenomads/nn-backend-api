@@ -20,14 +20,14 @@ export class EmailTemplateHelper {
     .content { background-color: #2d2d2d; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
     .footer { text-align: center; padding: 20px; font-size: 12px; color: #888; }
     .social-links { padding: 20px 0; }
-    .social-links a { margin: 0 10px; color: #ff6b35; text-decoration: none; }
-    .button { display: inline-block; padding: 12px 24px; background-color: #ff6b35; color: #1a1a1a; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold; }
-    .button:hover { background-color: #e85a2c; }
-    h1 { color: #ff6b35; }
+    .social-links a { margin: 0 10px; color: #F5910D; text-decoration: none; }
+    .button { display: inline-block; padding: 12px 24px; background-color: #F5910D; color: #1a1a1a; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold; }
+    .button:hover { background-color: #d67d0b; }
+    h1 { color: #F5910D; }
     .info-block { margin: 15px 0; padding: 15px; background-color: #363636; border-radius: 4px; }
-    .info-label { font-weight: bold; color: #ff6b35; }
-    .message-block { margin: 20px 0; padding: 20px; background-color: #363636; border-radius: 4px; border-left: 4px solid #ff6b35; }
-    blockquote { background-color: #363636; border-left: 3px solid #ff6b35; padding: 15px; margin: 20px 0; color: #e1e1e1; border-radius: 0 4px 4px 0; }
+    .info-label { font-weight: bold; color: #F5910D; }
+    .message-block { margin: 20px 0; padding: 20px; background-color: #363636; border-radius: 4px; border-left: 4px solid #F5910D; }
+    blockquote { background-color: #363636; border-left: 3px solid #F5910D; padding: 15px; margin: 20px 0; color: #e1e1e1; border-radius: 0 4px 4px 0; }
     .timestamp { color: #888; font-size: 12px; text-align: right; margin-top: 20px; }
   `;
 
