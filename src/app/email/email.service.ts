@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +19,6 @@ export class EmailService {
   private readonly sesClient: SESClient;
   private readonly fromEmail: string;
   private readonly toEmail: string;
-  private readonly logoPath: string;
   private readonly templateConfig: ITemplateConfig;
 
   constructor(private readonly configService: ConfigService) {
@@ -34,16 +33,27 @@ export class EmailService {
     this.fromEmail = this.configService.get<string>('email.fromAddress') || 'no-reply@mail.notablenomads.com';
     this.toEmail = this.configService.get<string>('email.toAddress');
 
-    // Read logo file and convert to base64
-    this.logoPath = join(process.cwd(), 'src', 'resources', 'logo', 'logo-dark.svg');
-    const logoBase64 = readFileSync(this.logoPath, 'base64');
-
+    // Initialize template config with fallback logo
     this.templateConfig = {
-      companyLogo: `data:image/svg+xml;base64,${logoBase64}`,
+      companyLogo: 'https://notablenomads.com/logo/logo-dark.svg', // Default fallback
       companyName: 'Notable Nomads',
-      // companyAddress: 'Berlin, Germany',
       companyWebsite: 'https://notablenomads.com',
     };
+
+    // Try to load the logo from resources
+    try {
+      const logoPath = join(process.cwd(), 'dist', 'resources', 'logo', 'logo-dark.svg');
+
+      if (existsSync(logoPath)) {
+        const logoBase64 = readFileSync(logoPath, 'base64');
+        this.templateConfig.companyLogo = `data:image/svg+xml;base64,${logoBase64}`;
+        this.logger.log('Successfully loaded logo from resources');
+      } else {
+        this.logger.warn(`Logo file not found at ${logoPath}, using fallback URL`);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to read logo file: ${error.message}. Using fallback URL.`);
+    }
   }
 
   async sendContactFormEmail(data: IContactFormData): Promise<boolean> {
