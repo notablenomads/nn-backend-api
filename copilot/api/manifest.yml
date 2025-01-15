@@ -34,14 +34,23 @@ network:
 
 # Optional fields for more advanced use-cases.
 #
-#variables:                    # Pass environment variables as key value pairs.
+variables: # Pass environment variables as key value pairs.
+  APP_NAME: Notable Nomads Backend API
+  HOST: 0.0.0.0
+  PORT: 3000
+  CORS: 'false'
+  API_PREFIX: v1
+  RELEASE: 0.0.1
+  NODE_ENV: development
+  CORS_ENABLED_DOMAINS: 'localhost:3000,localhost:4200'
+  CORS_RESTRICT: 'false'
+  EMAIL_FROM_ADDRESS: 'no-reply@mail.notablenomads.com'
 #  LOG_LEVEL: info
 
 secrets:
   ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
   ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
   ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
-  
 #  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
 
 # You can override any of the values defined above by environment.
@@ -50,3 +59,23 @@ secrets:
 #    count: 2               # Number of tasks to run for the "test" environment.
 #    deployment:            # The deployment strategy for the "test" environment.
 #       rolling: 'recreate' # Stops existing tasks before new ones are started for faster deployments.
+
+environments:
+  production:
+    # Minimal production settings with high availability
+    count: 1 # Single instance
+    logging:
+      retention: 7
+    variables:
+      NODE_ENV: production
+      CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
+      CORS_RESTRICT: 'false'
+  staging:
+    # Minimal staging settings
+    count: 1 # Single instance
+    logging:
+      retention: 3
+    variables:
+      NODE_ENV: staging
+      CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
+      CORS_RESTRICT: 'false'
