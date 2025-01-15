@@ -1,3 +1,14 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.0.6](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.0...v0.0.6) (2025-01-15)
+
+
+### Features
+
+* enhance email service and static asset handling ([30849a0](https://github.com/Notable-Nomads/nn-backend-api/commit/30849a0871ebca0b5e2aaf0e580dad2d193b3a17))
+
 # [0.1.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.4...v0.1.0) (2025-01-11)
 
 
