@@ -12,8 +12,15 @@ type: Environment
 #     id:
 
 # Configure the load balancers in your environment, once created.
-# http:
-#   public:
+http:
+  public:
+    healthcheck:
+      path: '/v1/health'
+      healthy_threshold: 3
+      unhealthy_threshold: 2
+      interval: 15s
+      timeout: 10s
+      grace_period: 45s
 #   private:
 
 # Configure observability for your environment resources.
