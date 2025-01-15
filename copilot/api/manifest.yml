@@ -6,43 +6,44 @@
 name: api
 type: Load Balanced Web Service
 
-# Distribute traffic to your service.
-http:
-  # Requests to this path will be forwarded to your service.
-  # To match all requests you can use the "/" path.
-  path: '/'
-  # You can specify a custom health check path. The default is "/".
-  healthcheck: '/'
-
 # Configuration for your containers and service.
 image:
-  # Docker build arguments. For additional overrides: https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#image-build
+  # Docker build arguments.
   build: Dockerfile
   # Port exposed through your container to route traffic to it.
   port: 3000
 
-cpu: 256       # Number of CPU units for the task.
-memory: 512    # Amount of memory in MiB used by the task.
-platform: linux/arm64  # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
-count: 1       # Number of tasks that should be running in your service.
-exec: true     # Enable running commands in your container.
-network:
-  connect: true # Enable Service Connect for intra-environment traffic between services.
+http:
+  # Requests to this path will be forwarded to your service.
+  path: '/'
+  # Health check configuration.
+  healthcheck:
+    path: '/v1/health'
+    healthy_threshold: 3
+    unhealthy_threshold: 2
+    interval: 15s
+    timeout: 10s
+    grace_period: 45s
 
-# storage:
-  # readonly_fs: true       # Limit to read-only access to mounted root filesystems.
+# Number of CPU units for the task.
+cpu: 256
+# Amount of memory in MiB used by the task.
+memory: 512
 
 # Optional fields for more advanced use-cases.
 #
-#variables:                    # Pass environment variables as key value pairs.
-#  LOG_LEVEL: info
+# Pass environment variables as key value pairs.
+variables:
+  NODE_ENV: production
+# Enable service connect for secure service-to-service communication.
+# service_connect: true
 
-#secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
-#  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
+# Enable tracing with X-Ray.
+# observability:
+#   tracing: awsxray
 
-# You can override any of the values defined above by environment.
-#environments:
-#  test:
-#    count: 2               # Number of tasks to run for the "test" environment.
-#    deployment:            # The deployment strategy for the "test" environment.
-#       rolling: 'recreate' # Stops existing tasks before new ones are started for faster deployments.
+# Configure a custom domain for your service.
+# domains:
+#   - domain: example.com
+#     alias: api.example.com
+#     path: '/'
