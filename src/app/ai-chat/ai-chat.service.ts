@@ -10,11 +10,10 @@ export class AiChatService {
   private readonly logger = new Logger(AiChatService.name);
   private model: GenerativeModel;
   private readonly generationConfig: GenerationConfig = {
-    temperature: 1,
-    topP: 0.95,
+    temperature: 0.7,
     topK: 40,
-    maxOutputTokens: 8192,
-    responseMimeType: 'text/plain',
+    topP: 0.95,
+    maxOutputTokens: 1024,
   };
 
   constructor(private readonly configService: ConfigService) {
@@ -25,7 +24,7 @@ export class AiChatService {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
-      model: 'tunedModels/notablenomadsgpt-8km5w20htizv',
+      model: 'gemini-pro',
     });
   }
 
