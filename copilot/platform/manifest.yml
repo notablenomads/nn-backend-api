@@ -65,9 +65,9 @@ variables: # Pass environment variables as key value pairs.
 
 # Store sensitive values in AWS Systems Manager Parameter Store
 secrets:
-  ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
-  ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
-  ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
+  # ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
+  # ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
+  # ***REMOVED***: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/***REMOVED***
 
 environments:
   production:
