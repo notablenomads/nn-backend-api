@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.6...v0.0.7) (2025-01-15)
+
+
+### Features
+
+* add manifest.yml for API service and update WebSocket URLs ([9f8b740](https://github.com/Notable-Nomads/nn-backend-api/commit/9f8b74062b48688881dfc516cb435d9b64cab3fe))
+* add new manifests for API service and production environment ([40eb1b2](https://github.com/Notable-Nomads/nn-backend-api/commit/40eb1b2a94268b119155c9d49f7e36f0010c8efa))
+* add secrets configuration to API service manifest.yml ([765e3db](https://github.com/Notable-Nomads/nn-backend-api/commit/765e3db87a7cdd2c29e0f347b1af5de1c1f04b81))
+* enhance API service manifest with environment variables and staging/production settings ([b74c34a](https://github.com/Notable-Nomads/nn-backend-api/commit/b74c34a3950e67c63b580f5248228bbeb753c314))
+
 ### [0.0.6](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.0...v0.0.6) (2025-01-15)
 
 
