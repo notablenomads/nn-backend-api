@@ -60,22 +60,22 @@ secrets:
 #    deployment:            # The deployment strategy for the "test" environment.
 #       rolling: 'recreate' # Stops existing tasks before new ones are started for faster deployments.
 
-environments:
-  production:
-    # Minimal production settings with high availability
-    count: 1 # Single instance
-    logging:
-      retention: 7
-    variables:
-      NODE_ENV: production
-      CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
-      CORS_RESTRICT: 'false'
-  staging:
-    # Minimal staging settings
-    count: 1 # Single instance
-    logging:
-      retention: 3
-    variables:
-      NODE_ENV: staging
-      CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
-      CORS_RESTRICT: 'false'
+# environments:
+#   production:
+#     # Minimal production settings with high availability
+#     count: 1 # Single instance
+#     logging:
+#       retention: 7
+#     variables:
+#       NODE_ENV: production
+#       CORS_ENABLED_DOMAINS: '*.notablenomads.com,notablenomads.com,api.notablenomads.com'
+#       CORS_RESTRICT: 'false'
+#   staging:
+#     # Minimal staging settings
+#     count: 1 # Single instance
+#     logging:
+#       retention: 3
+#     variables:
+#       NODE_ENV: staging
+#       CORS_ENABLED_DOMAINS: '*.staging.notablenomads.com,staging.notablenomads.com,api.staging.notablenomads.com'
+#       CORS_RESTRICT: 'false'
