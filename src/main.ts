@@ -29,8 +29,8 @@ async function bootstrap() {
           scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io'],
           connectSrc: [
             "'self'",
-            'wss://platform.production.api.notablenomads.com',
-            'wss://platform.staging.api.notablenomads.com',
+            'wss://api.production.platform.notablenomads.com',
+            'wss://api.staging.platform.notablenomads.com',
           ],
           styleSrc: ["'self'", "'unsafe-inline'"],
         },
