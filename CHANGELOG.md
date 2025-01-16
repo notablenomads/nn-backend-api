@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.8](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.7...v0.0.8) (2025-01-16)
+
+
+### Features
+
+* add buildspec and manifest files for nn-backend-api-main pipeline ([ff6d885](https://github.com/Notable-Nomads/nn-backend-api/commit/ff6d8852efebca5ee134c983931f196fda94b93c))
+* add manifest.yml for API service configuration ([cf66dc9](https://github.com/Notable-Nomads/nn-backend-api/commit/cf66dc908f63785cd36fdaf9b05ff7c2f3f7c106))
+* add manifest.yml for production environment ([cae18c7](https://github.com/Notable-Nomads/nn-backend-api/commit/cae18c710e0386348dfc38e95766250365643024))
+* add manifest.yml for production environment ([1c4c867](https://github.com/Notable-Nomads/nn-backend-api/commit/1c4c867e04c20da5d2bd5e018fc90557cf319b71))
+* add workspace and API service manifest for platform configuration ([21a8dbf](https://github.com/Notable-Nomads/nn-backend-api/commit/21a8dbf255b717d9fca51c420f546769192dce8d))
+* enhance API and production environment manifests with health check configurations ([7dc4bf8](https://github.com/Notable-Nomads/nn-backend-api/commit/7dc4bf86c4de05488b64f860894f70c862de3e85))
+* update API service manifest to include secrets configuration ([7596137](https://github.com/Notable-Nomads/nn-backend-api/commit/759613702235573c02f167dd0f22eb465ff05175))
+* update API service manifest with build arguments and secrets configuration ([7017343](https://github.com/Notable-Nomads/nn-backend-api/commit/701734362fb1b1f55546a3623c2c3c786ca5f420))
+* update email service to load logo dynamically and enhance nest-cli configuration ([d756eda](https://github.com/Notable-Nomads/nn-backend-api/commit/d756edae8914c8b70673ec359ec95226409897f2))
+
+
+### Bug Fixes
+
+* correct repository URL in nn-backend-api main pipeline manifest ([5043f12](https://github.com/Notable-Nomads/nn-backend-api/commit/5043f12308c11b3b7e5ef35cb681597ccc22f69e))
+
 ### [0.0.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.6...v0.0.7) (2025-01-15)
 
 
