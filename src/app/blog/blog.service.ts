@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { IBlogPost, IBlogAuthor, IMediumRssFeed } from './interfaces/blog.interface';
+import { ERRORS } from '../core/errors/errors';
 
 @Injectable()
 export class BlogService {
@@ -32,16 +33,21 @@ export class BlogService {
   }
 
   async getBlogPosts(page: number = 1, limit: number = 10): Promise<{ posts: IBlogPost[]; total: number }> {
-    await this.updateCacheIfNeeded();
+    try {
+      await this.updateCacheIfNeeded();
 
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedPosts = this.cachedPosts.slice(startIndex, endIndex);
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedPosts = this.cachedPosts.slice(startIndex, endIndex);
 
-    return {
-      posts: paginatedPosts,
-      total: this.cachedPosts.length,
-    };
+      return {
+        posts: paginatedPosts,
+        total: this.cachedPosts.length,
+      };
+    } catch (error) {
+      this.logger.error(ERRORS.BLOG.FETCH_ERROR({ reason: error.message }).message, error.stack);
+      throw error;
+    }
   }
 
   private async updateCacheIfNeeded(): Promise<void> {
@@ -58,11 +64,13 @@ export class BlogService {
         allPosts.push(...posts);
       }
 
-      // Sort by publish date, newest first
       this.cachedPosts = allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
       this.lastFetchTime = now;
     } catch (error) {
-      this.logger.error(`Failed to update blog posts cache: ${error.message}`, error.stack);
+      this.logger.error(
+        ERRORS.BLOG.FETCH_ERROR({ reason: 'Failed to update blog posts cache: ' + error.message }).message,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -86,7 +94,10 @@ export class BlogService {
         },
       }));
     } catch (error) {
-      this.logger.error(`Failed to fetch posts for ${author.username}: ${error.message}`, error.stack);
+      this.logger.error(
+        ERRORS.BLOG.FETCH_ERROR({ reason: `Failed to fetch posts for ${author.username}: ${error.message}` }).message,
+        error.stack,
+      );
       return [];
     }
   }
@@ -95,6 +106,7 @@ export class BlogService {
     return new Promise((resolve, reject) => {
       xml2js.parseString(xmlData, { explicitArray: false }, (error, result) => {
         if (error) {
+          this.logger.error(ERRORS.BLOG.PARSE_ERROR({ reason: error.message }).message, error.stack);
           reject(error);
         } else {
           resolve(result);
@@ -104,7 +116,6 @@ export class BlogService {
   }
 
   private cleanHtmlContent(html: string): string {
-    // Remove HTML tags but keep line breaks
     return html
       .replace(/<[^>]*>/g, '')
       .replace(/&nbsp;/g, ' ')

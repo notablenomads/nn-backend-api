@@ -5,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IContactFormData } from './interfaces/contact-form.interface';
 import { EmailTemplateHelper } from './helpers/email-template.helper';
+import { ERRORS } from '../core/errors/errors';
 
 interface ITemplateConfig {
   companyLogo: string;
@@ -22,25 +23,37 @@ export class EmailService {
   private readonly templateConfig: ITemplateConfig;
 
   constructor(private readonly configService: ConfigService) {
+    const region = this.configService.get<string>('aws.region');
+    const accessKeyId = this.configService.get<string>('aws.accessKeyId');
+    const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
+
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error(ERRORS.GENERIC.MISSING_CONFIG({ configName: 'AWS credentials' }).message);
+    }
+
     this.sesClient = new SESClient({
-      region: this.configService.get<string>('aws.region'),
+      region,
       credentials: {
-        accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-        secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
+        accessKeyId,
+        secretAccessKey,
       },
     });
 
     this.fromEmail = this.configService.get<string>('email.fromAddress') || 'no-reply@mail.notablenomads.com';
     this.toEmail = this.configService.get<string>('email.toAddress');
 
-    // Initialize template config with fallback logo
+    if (!this.toEmail) {
+      throw new Error(ERRORS.GENERIC.MISSING_CONFIG({ configName: 'EMAIL_TO_ADDRESS' }).message);
+    }
+
+    // Initialize template config
     this.templateConfig = {
-      companyLogo: 'https://notablenomads.com/logo/new-nn-logo-dark.svg', // Default fallback
+      companyLogo: '', // Will be replaced with base64 encoded PNG
       companyName: 'Notable Nomads',
       companyWebsite: 'https://notablenomads.com',
     };
 
-    // Try to load the logo from resources
+    // Load the logo from resources
     try {
       const logoPath = join(process.cwd(), 'dist', 'resources', 'logo', 'logo-dark.png');
 
@@ -49,10 +62,11 @@ export class EmailService {
         this.templateConfig.companyLogo = `data:image/png;base64,${logoBase64}`;
         this.logger.log('Successfully loaded logo from resources');
       } else {
-        this.logger.warn(`Logo file not found at ${logoPath}, using fallback URL`);
+        throw new Error(ERRORS.ENTITY.NOT_FOUND('Logo file', 'path', logoPath).message);
       }
     } catch (error) {
-      this.logger.warn(`Failed to read logo file: ${error.message}. Using fallback URL.`);
+      this.logger.error(ERRORS.EMAIL.TEMPLATE_ERROR({ reason: error.message }).message, error.stack);
+      throw error;
     }
   }
 
@@ -62,7 +76,7 @@ export class EmailService {
       const userEmailSuccess = await this.sendUserConfirmation(data);
       return adminEmailSuccess && userEmailSuccess;
     } catch (error) {
-      this.logger.error(`Failed to send email: ${error.message}`, error.stack);
+      this.logger.error(ERRORS.EMAIL.SEND_FAILED({ reason: error.message }).message, error.stack);
       return false;
     }
   }
@@ -97,7 +111,10 @@ export class EmailService {
       this.logger.log(`Admin notification sent successfully: ${response.MessageId}`);
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send admin notification: ${error.message}`, error.stack);
+      this.logger.error(
+        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to send admin notification: ' + error.message }).message,
+        error.stack,
+      );
       return false;
     }
   }
@@ -131,7 +148,10 @@ export class EmailService {
       this.logger.log(`User confirmation sent successfully: ${response.MessageId}`);
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send user confirmation: ${error.message}`, error.stack);
+      this.logger.error(
+        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to send user confirmation: ' + error.message }).message,
+        error.stack,
+      );
       return false;
     }
   }

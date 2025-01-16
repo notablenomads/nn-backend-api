@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IChatMessage } from './interfaces/chat.interface';
 import { IConfig } from '../config/config.interface';
+import { ERRORS } from '../core/errors/errors';
 
 @Injectable()
 export class AiChatService {
@@ -19,7 +20,7 @@ export class AiChatService {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
     if (!apiKey) {
-      throw new Error('***REMOVED*** is not configured');
+      throw new Error(ERRORS.GENERIC.MISSING_CONFIG({ configName: '***REMOVED***' }).message);
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -46,7 +47,7 @@ export class AiChatService {
       const response = await result.response;
       return response.text();
     } catch (error) {
-      this.logger.error(`Error generating AI response: ${error.message}`, error.stack);
+      this.logger.error(ERRORS.CHAT.MESSAGE_FAILED({ reason: error.message }).message, error.stack);
       throw error;
     }
   }
@@ -69,10 +70,8 @@ export class AiChatService {
             const chunkText = chunk.text();
 
             if (chunkText) {
-              // Accumulate text to handle partial words/sentences
               accumulatedText += chunkText;
 
-              // For the first chunk, emit immediately to show quick response
               if (isFirstChunk) {
                 subscriber.next(accumulatedText);
                 isFirstChunk = false;
@@ -80,7 +79,6 @@ export class AiChatService {
                 continue;
               }
 
-              // For subsequent chunks, wait for complete sentences or punctuation
               if (this.isCompleteSentence(accumulatedText)) {
                 subscriber.next(accumulatedText);
                 accumulatedText = '';
@@ -88,19 +86,18 @@ export class AiChatService {
             }
           }
 
-          // Emit any remaining text
           if (accumulatedText) {
             subscriber.next(accumulatedText);
           }
 
           subscriber.complete();
         } catch (error) {
-          this.logger.error(`Error streaming AI response: ${error.message}`, error.stack);
-          subscriber.error(error);
+          const errorMessage = ERRORS.CHAT.STREAM_ERROR({ reason: error.message });
+          this.logger.error(errorMessage.message, error.stack);
+          subscriber.error(errorMessage);
         }
       })();
 
-      // Return cleanup function
       return () => {
         this.logger.log('Stream cancelled by client');
       };
@@ -108,9 +105,8 @@ export class AiChatService {
   }
 
   private isCompleteSentence(text: string): boolean {
-    // Adjust the sentence length threshold to match the new maxOutputTokens
     const sentenceEndings = ['.', '!', '?', '\n'];
     const lastChar = text.trim().slice(-1);
-    return sentenceEndings.includes(lastChar) || text.length > 200; // Increased threshold for longer outputs
+    return sentenceEndings.includes(lastChar) || text.length > 200;
   }
 }
