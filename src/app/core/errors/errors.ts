@@ -15,19 +15,6 @@ function createError(code: string, message: string) {
 }
 
 const ERRORS = {
-  USER: {
-    NOT_FOUND: createError('USER_NOT_FOUND', 'User not found'),
-    ALREADY_EXISTS: createError('USER_ALREADY_EXISTS', 'User already exists'),
-    INVALID_CREDENTIALS: createError('INVALID_CREDENTIALS', 'Invalid credentials provided'),
-  },
-  BOOK: {
-    NOT_FOUND: createError('BOOK_NOT_FOUND', 'Book not found'),
-    ALREADY_EXISTS: createError('BOOK_ALREADY_EXISTS', 'Book already exists'),
-  },
-  AUTHOR: {
-    NOT_FOUND: createError('AUTHOR_NOT_FOUND', 'Author not found'),
-    ALREADY_EXISTS: createError('AUTHOR_ALREADY_EXISTS', 'Author already exists'),
-  },
   GENERIC: {
     INTERNAL_SERVER_ERROR: createError('INTERNAL_SERVER_ERROR', 'Internal server error'),
   },
