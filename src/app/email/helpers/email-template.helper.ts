@@ -182,7 +182,12 @@ export class EmailTemplateHelper {
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" align="center" class="container">
         <tr>
           <td class="header" align="center">
-            <img src="https://notablenomads.com/logo/new-nn-logo-dark.svg" alt="${config.companyName}" class="logo" style="width: 150px; max-width: 150px; margin: 0 auto; display: block;">
+            <img src="${config.companyLogo}" 
+                 alt="${config.companyName}" 
+                 class="logo" 
+                 width="150" 
+                 height="150"
+                 style="width: 150px; height: auto; max-width: 150px; margin: 0 auto; display: block; -ms-interpolation-mode: bicubic;">
           </td>
         </tr>
         <tr>
