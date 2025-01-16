@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.10](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.9...v0.0.10) (2025-01-16)
+
+
+### Features
+
+* enhance email template styles and structure for improved compatibility ([43cbdff](https://github.com/Notable-Nomads/nn-backend-api/commit/43cbdffb7a494866cd7efc05c2b0eb481ee80965))
+* enhance error handling and logging across services ([441e3a0](https://github.com/Notable-Nomads/nn-backend-api/commit/441e3a00e7c72c70728328c68ed7a2718833a1cd))
+* update API and production environment manifests for improved health checks and cost optimization ([786e5a9](https://github.com/Notable-Nomads/nn-backend-api/commit/786e5a958a023ef83ef4fc70a9983eeedf97d4b7))
+
+
+### Bug Fixes
+
+* update email service logo handling and template integration ([1058a94](https://github.com/Notable-Nomads/nn-backend-api/commit/1058a9486b68a3e9442796b1a4e6730e93f4ddb9))
+
 ### [0.0.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.8...v0.0.9) (2025-01-16)
 
 ### [0.0.8](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.7...v0.0.8) (2025-01-16)
