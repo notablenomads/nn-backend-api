@@ -2,6 +2,7 @@ import { Controller, Post, Body, HttpStatus, HttpException } from '@nestjs/commo
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailService } from './email.service';
 import { ContactFormDto } from './interfaces/contact-form.interface';
+import { ERRORS } from '../core/errors/errors';
 
 @ApiTags('Email')
 @Controller('email')
@@ -16,17 +17,20 @@ export class EmailController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid form data',
+    description: ERRORS.GENERIC.VALIDATION_ERROR({ reason: 'Invalid form data' }).message,
   })
   @ApiResponse({
     status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Failed to send email',
+    description: ERRORS.EMAIL.SEND_FAILED({ reason: 'Internal server error' }).message,
   })
   async submitContactForm(@Body() formData: ContactFormDto) {
     const success = await this.emailService.sendContactFormEmail(formData);
 
     if (!success) {
-      throw new HttpException('Failed to send email', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to process email request' }).message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     return {
