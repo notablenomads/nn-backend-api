@@ -1,4 +1,3 @@
-import { join } from 'path';
 import helmet from 'helmet';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
@@ -53,19 +52,7 @@ async function bootstrap() {
     logger.log('CORS restrictions disabled - allowing all origins');
   }
 
-  // Serve static files from public directory
-  app.useStaticAssets(join(__dirname, '..', 'src', 'public'), {
-    index: false,
-    prefix: '/public',
-  });
-
-  // Serve static files from resources directory
-  app.useStaticAssets(join(__dirname, '..', 'src', 'resources'), {
-    index: false,
-    prefix: '/resources',
-  });
-
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/public', '/resources', '/'] });
+  app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
