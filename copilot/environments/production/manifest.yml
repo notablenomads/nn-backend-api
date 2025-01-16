@@ -6,16 +6,31 @@
 name: production
 type: Environment
 
-# Import your own VPC and subnets or configure how they should be created.
-# network:
-#   vpc:
-#     id:
+# Minimal network configuration
+network:
+  vpc:
+    public:
+      - cidr: 10.0.0.0/24
+        az: a
+    private:
+      - cidr: 10.0.2.0/24
+        az: a
 
-# Configure the load balancers in your environment, once created.
-# http:
-#   public:
-#   private:
+# Load balancer configuration
+http:
+  public:
+    ingress:
+      vpc: true
+    access_logs: false
+    idle_timeout: 30
 
-# Configure observability for your environment resources.
+# Cost-optimized observability settings
 observability:
   container_insights: false
+  container_logs:
+    retention: 30
+    encryption: true
+
+# Use regular Fargate (more cost-effective for predictable workloads)
+capacity_providers:
+  fargate: 100
