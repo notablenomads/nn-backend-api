@@ -35,18 +35,18 @@ export class EmailService {
 
     // Initialize template config with fallback logo
     this.templateConfig = {
-      companyLogo: 'https://notablenomads.com/logo/logo-dark.svg', // Default fallback
+      companyLogo: 'https://notablenomads.com/logo/new-nn-logo-dark.svg', // Default fallback
       companyName: 'Notable Nomads',
       companyWebsite: 'https://notablenomads.com',
     };
 
     // Try to load the logo from resources
     try {
-      const logoPath = join(process.cwd(), 'dist', 'resources', 'logo', 'logo-dark.svg');
+      const logoPath = join(process.cwd(), 'dist', 'resources', 'logo', 'logo-dark.png');
 
       if (existsSync(logoPath)) {
         const logoBase64 = readFileSync(logoPath, 'base64');
-        this.templateConfig.companyLogo = `data:image/svg+xml;base64,${logoBase64}`;
+        this.templateConfig.companyLogo = `data:image/png;base64,${logoBase64}`;
         this.logger.log('Successfully loaded logo from resources');
       } else {
         this.logger.warn(`Logo file not found at ${logoPath}, using fallback URL`);
