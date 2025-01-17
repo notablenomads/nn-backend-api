@@ -52,12 +52,12 @@ resource "aws_ecs_task_definition" "api" {
 
 # ECS Service
 resource "aws_ecs_service" "api" {
-  name                               = "${var.app_name}-${var.environment}-api"
+  name                              = "${var.app_name}-${var.environment}-api"
   cluster                           = aws_ecs_cluster.main.id
   task_definition                   = aws_ecs_task_definition.api.arn
-  desired_count                     = var.desired_count
-  platform_version                  = "LATEST"
+  desired_count                     = 1
   health_check_grace_period_seconds = 60
+  platform_version                  = "LATEST"
 
   network_configuration {
     subnets          = var.private_subnet_ids
@@ -65,26 +65,23 @@ resource "aws_ecs_service" "api" {
     assign_public_ip = false
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.api.arn
-    container_name   = "api"
-    container_port   = var.container_port
-  }
-
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight           = 100
-    base            = 0
-  }
-
-  deployment_controller {
-    type = "ECS"
   }
 
   deployment_circuit_breaker {
     enable   = true
     rollback = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.api.arn
+    container_name   = "api"
+    container_port   = 3000
+  }
+
+  depends_on = [aws_lb_listener.http]
 }
 
 # Application Load Balancer
@@ -93,18 +90,14 @@ resource "aws_lb" "api" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets           = var.public_subnet_ids
+  subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
-  enable_http2             = true
 
-  access_logs {
-    enabled = false
-    bucket  = ""
-    prefix  = ""
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-alb"
+    Environment = var.environment
   }
-
-  idle_timeout = 60
 }
 
 # ALB Target Group
@@ -131,7 +124,7 @@ resource "aws_lb_target_group" "api" {
 # HTTP Listener
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.api.arn
-  port              = 80
+  port              = "80"
   protocol          = "HTTP"
 
   default_action {
