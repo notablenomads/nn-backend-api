@@ -38,8 +38,10 @@ module "vpc" {
   enable_dns_support   = true
 
   tags = {
+    Name        = "${var.app_name}-${var.environment}"
     Environment = var.environment
     Project     = var.app_name
+    ManagedBy   = "terraform"
   }
 }
 
@@ -66,19 +68,19 @@ module "api" {
   secrets = [
     {
       name      = "AWS_REGION"
-      valueFrom = "${var.ssm_parameter_prefix}/AWS_REGION"
+      valueFrom = "${var.ssm_prefix}/aws/region"
     },
     {
       name      = "AWS_ACCESS_KEY_ID"
-      valueFrom = "${var.ssm_parameter_prefix}/AWS_ACCESS_KEY_ID"
+      valueFrom = "${var.ssm_prefix}/aws/access_key_id"
     },
     {
       name      = "AWS_SECRET_ACCESS_KEY"
-      valueFrom = "${var.ssm_parameter_prefix}/AWS_SECRET_ACCESS_KEY"
+      valueFrom = "${var.ssm_prefix}/aws/secret_access_key"
     },
     {
       name      = "GEMINI_API_KEY"
-      valueFrom = "${var.ssm_parameter_prefix}/GEMINI_API_KEY"
+      valueFrom = "${var.ssm_prefix}/gemini/api_key"
     }
   ]
 } 

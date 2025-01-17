@@ -21,10 +21,10 @@ variable "ecr_repository_url" {
   type        = string
 }
 
-variable "ssm_parameter_prefix" {
+variable "ssm_prefix" {
   description = "SSM parameter prefix for secrets"
   type        = string
-  default     = "/copilot/platform/production/secrets"
+  default     = "/platform/production"
 }
 
 variable "vpc_cidr" {
