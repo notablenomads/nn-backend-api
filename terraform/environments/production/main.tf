@@ -36,10 +36,10 @@ module "api" {
   private_subnet_ids  = module.vpc.private_subnet_ids
   ecr_repository_url  = var.ecr_repository_url
   container_port      = 3000
-  task_cpu           = 256  # Reduced from 512 to save costs
-  task_memory        = 512  # Reduced from 1024 to save costs
-  log_retention_days = 7    # Reduced retention but keep enough for debugging
-  desired_count      = 1    # Single task since we use Fargate Spot
+  task_cpu           = 256            # Reduced CPU but still sufficient
+  task_memory        = 512            # Reduced memory but still sufficient
+  log_retention_days = 3              # Reduced from 7 to 3 days
+  desired_count      = 1              # Single task with Fargate Spot
   ssm_prefix         = "/platform/production"
   domain_name        = var.domain_name
   zone_id            = "Z02232681YNYU29ZE5JT1"
@@ -74,7 +74,7 @@ module "api" {
     },
     {
       name  = "LOG_LEVEL"
-      value = "info"
+      value = "warn"                # Changed to warn to reduce log volume while keeping important info
     }
   ]
   secrets = [
