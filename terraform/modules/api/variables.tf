@@ -29,18 +29,18 @@ variable "public_subnet_ids" {
 }
 
 variable "ecr_repository_url" {
-  description = "ECR repository URL for the API container image"
+  description = "ECR repository URL"
   type        = string
 }
 
 variable "task_cpu" {
-  description = "CPU units for the task (1024 = 1 vCPU)"
+  description = "Task CPU units"
   type        = number
   default     = 256
 }
 
 variable "task_memory" {
-  description = "Memory for the task in MiB"
+  description = "Task memory (MiB)"
   type        = number
   default     = 512
 }
@@ -60,7 +60,7 @@ variable "desired_count" {
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "environment_variables" {
@@ -71,11 +71,8 @@ variable "environment_variables" {
 
 variable "secrets" {
   description = "Secrets for the container"
-  type = list(object({
-    name      = string
-    valueFrom = string
-  }))
-  default = []
+  type        = list(map(string))
+  default     = []
 }
 
 variable "ssm_prefix" {

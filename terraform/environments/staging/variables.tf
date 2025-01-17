@@ -17,7 +17,7 @@ variable "environment" {
 }
 
 variable "ecr_repository_url" {
-  description = "ECR repository URL for the API container image"
+  description = "ECR repository URL"
   type        = string
 }
 
