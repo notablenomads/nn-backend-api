@@ -88,4 +88,13 @@ variable "domain_name" {
 variable "zone_id" {
   description = "Route53 hosted zone ID for notablenomads.com"
   type        = string
+}
+
+variable "tags" {
+  description = "A map of tags to add to all resources"
+  type        = map(string)
+  default = {
+    ManagedBy = "terraform"
+    Service   = "api"
+  }
 } 

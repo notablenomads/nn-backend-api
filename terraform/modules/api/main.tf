@@ -6,6 +6,13 @@ resource "aws_ecs_cluster" "main" {
     name  = "containerInsights"
     value = "disabled"
   }
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-cluster"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
+  }
 }
 
 # ECS Task Definition
@@ -48,6 +55,13 @@ resource "aws_ecs_task_definition" "api" {
     operating_system_family = "LINUX"
     cpu_architecture       = "ARM64"
   }
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-task"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
+  }
 }
 
 # ECS Service
@@ -82,6 +96,13 @@ resource "aws_ecs_service" "api" {
   }
 
   depends_on = [aws_lb_listener.http]
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-service"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
+  }
 }
 
 # Application Load Balancer
@@ -97,6 +118,8 @@ resource "aws_lb" "api" {
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
     Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
   }
 }
 
@@ -111,13 +134,13 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 120
-    matcher            = "200-499"
-    path               = "/"
+    interval            = 30
+    matcher            = "200"
+    path               = "/v1/health"
     port               = "traffic-port"
     protocol           = "HTTP"
-    timeout            = 30
-    unhealthy_threshold = 10
+    timeout            = 5
+    unhealthy_threshold = 3
   }
 
   # Allow time for connections to drain
@@ -145,6 +168,13 @@ resource "aws_lb_listener" "http" {
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.app_name}-${var.environment}-api"
   retention_in_days = var.log_retention_days
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-logs"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
+  }
 }
 
 # ACM Certificate
@@ -155,6 +185,8 @@ resource "aws_acm_certificate" "api" {
   tags = {
     Name        = "${var.app_name}-${var.environment}-cert"
     Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
   }
 
   lifecycle {
