@@ -38,6 +38,8 @@ module "api" {
   container_port      = 3000
   task_cpu           = 256
   task_memory        = 512
+  log_retention_days = 1
+  desired_count      = 1
   ssm_prefix         = "/platform/staging"
   domain_name        = var.domain_name
   zone_id            = "Z02232681YNYU29ZE5JT1"
