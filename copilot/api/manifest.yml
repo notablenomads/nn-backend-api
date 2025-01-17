@@ -60,5 +60,7 @@ secrets: # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
 deployment:
   rolling: recreate # Faster deployments, less resource usage during deploys
 
-# Use Fargate Spot for maximum cost savings
-compute_type: 'FARGATE_SPOT'
+# Fargate Spot configuration
+compute:
+  fargate:
+    spot: true # Enable Fargate Spot for cost savings
