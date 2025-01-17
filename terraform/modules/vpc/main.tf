@@ -96,7 +96,7 @@ resource "aws_route" "public_internet_gateway" {
   gateway_id             = aws_internet_gateway.this[0].id
 }
 
-# NAT Gateway - Using single NAT Gateway for cost optimization
+# NAT Gateway configuration
 resource "aws_eip" "nat" {
   count  = 1  # Single NAT Gateway
   domain = "vpc"
@@ -117,8 +117,9 @@ resource "aws_nat_gateway" "this" {
   })
 }
 
+# Single route for all private subnets
 resource "aws_route" "private_nat_gateway" {
-  count = length(var.availability_zones)  # Route for each private subnet
+  count = 1  # Only one route needed as all private subnets use the same route table
 
   route_table_id         = aws_route_table.private[0].id
   destination_cidr_block = "0.0.0.0/0"

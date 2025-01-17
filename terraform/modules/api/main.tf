@@ -114,17 +114,7 @@ resource "aws_lb" "api" {
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
-
   idle_timeout = 60
-
-  dynamic "access_logs" {
-    for_each = var.environment == "production" ? [1] : []
-    content {
-      bucket  = "nn-alb-logs"
-      prefix  = "${var.app_name}-${var.environment}"
-      enabled = true
-    }
-  }
 
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
@@ -251,10 +241,11 @@ resource "aws_lb_listener" "https" {
 }
 
 # API DNS Record
-resource "aws_route53_record" "api" {
+resource "aws_route53_record" "api_alias" {
   zone_id = var.zone_id
   name    = var.domain_name
   type    = "A"
+  allow_overwrite = true
 
   alias {
     name                   = aws_lb.api.dns_name
