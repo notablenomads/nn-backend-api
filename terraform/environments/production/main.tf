@@ -95,4 +95,19 @@ module "api" {
       valueFrom = "/platform/production/gemini/api_key"
     }
   ]
+}
+
+# Add NS record for platform subdomain in parent domain
+resource "aws_route53_record" "platform_ns" {
+  zone_id = "Z09251511N0OESPVIRFES"  # Parent domain zone ID (notablenomads.com)
+  name    = "platform.notablenomads.com"
+  type    = "NS"
+  ttl     = "300"
+
+  records = [
+    "ns-329.awsdns-41.com",
+    "ns-1719.awsdns-22.co.uk",
+    "ns-588.awsdns-09.net",
+    "ns-1357.awsdns-41.org"
+  ]
 } 

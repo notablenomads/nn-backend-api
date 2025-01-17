@@ -52,7 +52,7 @@ variable "ssm_prefix" {
 }
 
 variable "zone_id" {
-  description = "Route53 hosted zone ID for notablenomads.com"
+  description = "Route53 hosted zone ID for platform.notablenomads.com"
   type        = string
-  default     = "Z09251511N0OESPVIRFES"
+  default     = "Z0267257380A4T4J8XQ4U"  # platform.notablenomads.com hosted zone
 } 
