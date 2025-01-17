@@ -43,4 +43,10 @@ variable "public_subnet_cidr" {
   description = "CIDR block for public subnet"
   type        = string
   default     = "10.0.0.0/24"  # Production public subnet
+}
+
+variable "ssm_prefix" {
+  description = "SSM parameter prefix for secrets"
+  type        = string
+  default     = "/platform/production"
 } 

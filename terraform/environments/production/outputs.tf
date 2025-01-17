@@ -1,29 +1,29 @@
 output "vpc_id" {
-  description = "VPC ID"
+  description = "The ID of the VPC"
   value       = module.vpc.vpc_id
 }
 
 output "private_subnet_ids" {
-  description = "Private subnet IDs"
-  value       = module.vpc.private_subnets
+  description = "List of private subnet IDs"
+  value       = module.vpc.private_subnet_ids
 }
 
 output "public_subnet_ids" {
-  description = "Public subnet IDs"
-  value       = module.vpc.public_subnets
+  description = "List of public subnet IDs"
+  value       = module.vpc.public_subnet_ids
 }
 
 output "alb_dns_name" {
-  description = "DNS name of the load balancer"
+  description = "The DNS name of the ALB"
   value       = module.api.alb_dns_name
 }
 
-output "ecs_cluster_name" {
-  description = "Name of the ECS cluster"
-  value       = module.api.ecs_cluster_name
+output "cloudwatch_log_group" {
+  description = "The CloudWatch log group name"
+  value       = module.api.cloudwatch_log_group
 }
 
-output "cloudwatch_log_group" {
-  description = "Name of the CloudWatch log group"
-  value       = module.api.cloudwatch_log_group
+output "ecs_cluster_name" {
+  description = "The name of the ECS cluster"
+  value       = module.api.ecs_cluster_name
 } 
