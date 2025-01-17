@@ -115,7 +115,7 @@ resource "aws_lb" "api" {
 
   enable_deletion_protection = false
 
-  idle_timeout = 120
+  idle_timeout = 60
 
   dynamic "access_logs" {
     for_each = var.environment == "production" ? [1] : []
@@ -145,16 +145,16 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 120
+    interval            = 300
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
     protocol           = "HTTP"
-    timeout            = 10
-    unhealthy_threshold = 5
+    timeout            = 5
+    unhealthy_threshold = 3
   }
 
-  deregistration_delay = 10
+  deregistration_delay = 5
 
   stickiness {
     type            = "lb_cookie"

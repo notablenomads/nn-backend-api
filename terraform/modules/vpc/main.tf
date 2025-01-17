@@ -96,9 +96,9 @@ resource "aws_route" "public_internet_gateway" {
   gateway_id             = aws_internet_gateway.this[0].id
 }
 
-# NAT Gateway
+# NAT Gateway - Using single NAT Gateway for cost optimization
 resource "aws_eip" "nat" {
-  count = 1
+  count  = 1  # Single NAT Gateway
   domain = "vpc"
 
   tags = merge(local.tags, {
@@ -107,10 +107,10 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "this" {
-  count = 1
+  count = 1  # Single NAT Gateway
 
   allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id
+  subnet_id     = aws_subnet.public[0].id  # Place in first public subnet
 
   tags = merge(local.tags, {
     Name = "${var.app_name}-${var.environment}"
@@ -118,7 +118,7 @@ resource "aws_nat_gateway" "this" {
 }
 
 resource "aws_route" "private_nat_gateway" {
-  count = 1
+  count = length(var.availability_zones)  # Route for each private subnet
 
   route_table_id         = aws_route_table.private[0].id
   destination_cidr_block = "0.0.0.0/0"
