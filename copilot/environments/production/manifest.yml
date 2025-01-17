@@ -6,7 +6,7 @@
 name: production
 type: Environment
 
-# Minimal network configuration
+# Minimal network configuration with single AZ
 network:
   vpc:
     public:
@@ -22,15 +22,15 @@ http:
     ingress:
       vpc: true
     access_logs: false
-    idle_timeout: 30
+    idle_timeout: 60
 
-# Cost-optimized observability settings
+# Minimal observability settings
 observability:
   container_insights: false
   container_logs:
-    retention: 30
-    encryption: true
+    retention: 7
+    encryption: false
 
-# Use regular Fargate (more cost-effective for predictable workloads)
+# Use Fargate Spot for cost savings
 capacity_providers:
-  fargate: 100
+  fargate_spot: 100
