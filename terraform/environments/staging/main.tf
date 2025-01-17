@@ -74,7 +74,7 @@ module "api" {
     },
     {
       name  = "LOG_LEVEL"
-      value = "debug"
+      value = "error"
     }
   ]
   secrets = [

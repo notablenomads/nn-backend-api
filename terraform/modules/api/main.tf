@@ -115,7 +115,16 @@ resource "aws_lb" "api" {
 
   enable_deletion_protection = false
 
-  idle_timeout = 60
+  idle_timeout = 120
+
+  dynamic "access_logs" {
+    for_each = var.environment == "production" ? [1] : []
+    content {
+      bucket  = "nn-alb-logs"
+      prefix  = "${var.app_name}-${var.environment}"
+      enabled = true
+    }
+  }
 
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
@@ -136,16 +145,22 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 60
+    interval            = 120
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
     protocol           = "HTTP"
-    timeout            = 5
-    unhealthy_threshold = 3
+    timeout            = 10
+    unhealthy_threshold = 5
   }
 
-  deregistration_delay = 30
+  deregistration_delay = 10
+
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400
+    enabled         = true
+  }
 }
 
 # HTTP Listener
