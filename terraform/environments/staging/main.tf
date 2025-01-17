@@ -42,7 +42,7 @@ module "api" {
   desired_count      = 1
   ssm_prefix         = "/platform/staging"
   domain_name        = var.domain_name
-  zone_id            = "Z02232681YNYU29ZE5JT1"
+  zone_id            = "Z09251511N0OESPVIRFES"
   environment_variables = [
     {
       name  = "NODE_ENV"
