@@ -14,6 +14,13 @@ resource "aws_iam_role" "ecs_execution_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-ecs-execution"
+    Environment = var.environment
+    Project     = var.app_name
+    ManagedBy   = "terraform"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
@@ -36,7 +43,7 @@ resource "aws_iam_role_policy" "ecs_execution_ssm" {
           "kms:Decrypt"
         ]
         Resource = [
-          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/copilot/${var.app_name}/${var.environment}/secrets/*",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_prefix}/*",
           "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
         ]
       }
@@ -60,6 +67,13 @@ resource "aws_iam_role" "ecs_task_role" {
       }
     ]
   })
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-ecs-task"
+    Environment = var.environment
+    Project     = var.app_name
+    ManagedBy   = "terraform"
+  }
 }
 
 # Get current AWS account ID
