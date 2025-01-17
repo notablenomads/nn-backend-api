@@ -18,6 +18,15 @@ provider "aws" {
   region = var.aws_region
 }
 
+# DNS Management
+module "dns" {
+  source = "../../modules/dns"
+
+  app_name       = var.app_name
+  environment    = var.environment
+  parent_zone_id = "Z09251511N0OESPVIRFES"  # notablenomads.com zone ID
+}
+
 module "vpc" {
   source = "../../modules/vpc"
 
@@ -36,13 +45,13 @@ module "api" {
   private_subnet_ids  = module.vpc.private_subnet_ids
   ecr_repository_url  = var.ecr_repository_url
   container_port      = 3000
-  task_cpu           = 256            # Reduced CPU but still sufficient
-  task_memory        = 512            # Reduced memory but still sufficient
-  log_retention_days = 3              # Reduced from 7 to 3 days
-  desired_count      = 1              # Single task with Fargate Spot
+  task_cpu           = 256
+  task_memory        = 512
+  log_retention_days = 3
+  desired_count      = 1
   ssm_prefix         = "/platform/production"
-  domain_name        = var.domain_name
-  zone_id            = var.zone_id
+  domain_name        = "api.${module.dns.domain_name}"  # Use the subdomain from DNS module
+  zone_id            = module.dns.zone_id               # Use the zone ID from DNS module
   environment_variables = [
     {
       name  = "NODE_ENV"
@@ -94,20 +103,5 @@ module "api" {
       name      = "***REMOVED***"
       valueFrom = "/platform/production/gemini/api_key"
     }
-  ]
-}
-
-# Add NS record for platform subdomain in parent domain
-resource "aws_route53_record" "platform_ns" {
-  zone_id = "Z09251511N0OESPVIRFES"  # Parent domain zone ID (notablenomads.com)
-  name    = "platform.notablenomads.com"
-  type    = "NS"
-  ttl     = "60"  # Reduced from 300 to 60 seconds for faster propagation
-
-  records = [
-    "ns-329.awsdns-41.com",
-    "ns-1719.awsdns-22.co.uk",
-    "ns-588.awsdns-09.net",
-    "ns-1357.awsdns-41.org"
   ]
 } 
