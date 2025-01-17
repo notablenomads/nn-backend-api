@@ -69,7 +69,7 @@ resource "aws_ecs_service" "api" {
   name                              = "${var.app_name}-${var.environment}-api"
   cluster                           = aws_ecs_cluster.main.id
   task_definition                   = aws_ecs_task_definition.api.arn
-  desired_count                     = 1
+  desired_count                     = var.desired_count
   health_check_grace_period_seconds = 60
   platform_version                  = "LATEST"
 
@@ -115,6 +115,8 @@ resource "aws_lb" "api" {
 
   enable_deletion_protection = false
 
+  idle_timeout = 60
+
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
     Environment = var.environment
@@ -134,7 +136,7 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 30
+    interval            = 60
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
@@ -143,7 +145,6 @@ resource "aws_lb_target_group" "api" {
     unhealthy_threshold = 3
   }
 
-  # Allow time for connections to drain
   deregistration_delay = 30
 }
 
