@@ -111,13 +111,13 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 30
-    matcher            = "200"
-    path               = "/v1/health"
+    interval            = 120
+    matcher            = "200-499"
+    path               = "/"
     port               = "traffic-port"
     protocol           = "HTTP"
-    timeout            = 10
-    unhealthy_threshold = 5
+    timeout            = 30
+    unhealthy_threshold = 10
   }
 
   # Allow time for connections to drain

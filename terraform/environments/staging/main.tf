@@ -49,6 +49,14 @@ module "api" {
     {
       name  = "PORT"
       value = "3000"
+    },
+    {
+      name  = "HOST"
+      value = "0.0.0.0"
+    },
+    {
+      name  = "API_PREFIX"
+      value = "/v1"
     }
   ]
   secrets = [
