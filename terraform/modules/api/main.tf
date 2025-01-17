@@ -78,7 +78,7 @@ resource "aws_ecs_service" "api" {
   load_balancer {
     target_group_arn = aws_lb_target_group.api.arn
     container_name   = "api"
-    container_port   = 3000
+    container_port   = var.container_port
   }
 
   depends_on = [aws_lb_listener.http]
@@ -111,14 +111,17 @@ resource "aws_lb_target_group" "api" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 60
+    interval            = 30
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
     protocol           = "HTTP"
-    timeout            = 5
-    unhealthy_threshold = 2
+    timeout            = 10
+    unhealthy_threshold = 5
   }
+
+  # Allow time for connections to drain
+  deregistration_delay = 30
 }
 
 # HTTP Listener
