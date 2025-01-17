@@ -49,4 +49,10 @@ variable "ssm_prefix" {
   description = "SSM parameter prefix for secrets"
   type        = string
   default     = "/platform/production"
+}
+
+variable "zone_id" {
+  description = "Route53 hosted zone ID for notablenomads.com"
+  type        = string
+  default     = "Z09251511N0OESPVIRFES"
 } 

@@ -42,7 +42,7 @@ module "api" {
   desired_count      = 1              # Single task with Fargate Spot
   ssm_prefix         = "/platform/production"
   domain_name        = var.domain_name
-  zone_id            = "Z09251511N0OESPVIRFES"
+  zone_id            = var.zone_id
   environment_variables = [
     {
       name  = "NODE_ENV"
