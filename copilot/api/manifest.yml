@@ -16,7 +16,7 @@ http:
     path: '/v1/health'
     healthy_threshold: 2
     unhealthy_threshold: 2
-    interval: 30s
+    interval: 60s
     timeout: 5s
 
 # Configuration for your containers and service.
@@ -60,16 +60,5 @@ secrets: # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
 deployment:
   rolling: recreate # Faster deployments, less resource usage during deploys
 
-# Autoscaling configuration - scale down to save costs during low traffic
-scaling:
-  range: 1-2 # Min 1, max 2 tasks
-  cpu_percentage: 70 # Scale up at 70% CPU utilization
-  memory_percentage: 70 # Scale up at 70% memory utilization
-  requests: 1000 # Scale up at 1000 requests per minute
-
-# Use Fargate Spot for cost savings
-compute:
-  type: 'spot'
-  spot:
-    maximum_percent: 100
-    minimum_healthy_percent: 0
+# Use Fargate Spot for maximum cost savings
+compute_type: 'FARGATE_SPOT'

@@ -6,7 +6,7 @@
 name: production
 type: Environment
 
-# Minimal network configuration with single AZ
+# Single AZ configuration for minimal costs
 network:
   vpc:
     public:
@@ -28,9 +28,10 @@ http:
 observability:
   container_insights: false
   container_logs:
-    retention: 7
+    retention: 3
     encryption: false
 
-# Use Fargate Spot for cost savings
+# Use 100% Fargate Spot for maximum cost savings
 capacity_providers:
+  fargate: 0
   fargate_spot: 100
