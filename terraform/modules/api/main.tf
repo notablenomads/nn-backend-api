@@ -114,7 +114,7 @@ resource "aws_lb" "api" {
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
-  idle_timeout = 60
+  idle_timeout = 30
 
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
@@ -144,13 +144,7 @@ resource "aws_lb_target_group" "api" {
     unhealthy_threshold = 3
   }
 
-  deregistration_delay = 5
-
-  stickiness {
-    type            = "lb_cookie"
-    cookie_duration = 86400
-    enabled         = true
-  }
+  deregistration_delay = 0
 }
 
 # HTTP Listener
