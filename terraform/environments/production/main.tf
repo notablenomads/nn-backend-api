@@ -47,11 +47,11 @@ module "api" {
   container_port      = 3000
   task_cpu           = 256
   task_memory        = 512
-  log_retention_days = 3
+  log_retention_days = 1
   desired_count      = 1
   ssm_prefix         = "/platform/production"
-  domain_name        = "api.${module.dns.domain_name}"  # Use the subdomain from DNS module
-  zone_id            = module.dns.zone_id               # Use the zone ID from DNS module
+  domain_name        = "api.${module.dns.domain_name}"
+  zone_id            = module.dns.zone_id
   environment_variables = [
     {
       name  = "NODE_ENV"
@@ -74,16 +74,12 @@ module "api" {
       value = "v1"
     },
     {
-      name  = "CORS_ENABLED_DOMAINS"
-      value = "*.notablenomads.com,notablenomads.com,*.platform.notablenomads.com,platform.notablenomads.com"
-    },
-    {
       name  = "CORS_RESTRICT"
-      value = "true"
+      value = "false"
     },
     {
       name  = "LOG_LEVEL"
-      value = "warn"
+      value = "error"
     }
   ]
   secrets = [
