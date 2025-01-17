@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.11](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.10...v0.0.11) (2025-01-17)
+
+
+### Features
+
+* add DNS management module and update API configuration for platform subdomain ([ac515de](https://github.com/Notable-Nomads/nn-backend-api/commit/ac515decd5672920c0a9d7106c58526c013534f2))
+* add environment variables to API module in staging configuration ([1706ea6](https://github.com/Notable-Nomads/nn-backend-api/commit/1706ea65ad692526a60a60b70d495637f544af87))
+* add new environment variables and update health check settings for API module ([1612e5c](https://github.com/Notable-Nomads/nn-backend-api/commit/1612e5c11830f698b749ab3f5cd41b19322df267))
+* add NS record for platform subdomain and update zone_id variable in production and staging environments ([d7c71f8](https://github.com/Notable-Nomads/nn-backend-api/commit/d7c71f873356766072e0fdb2f1a4fac0a86079b9))
+* add production environment configuration and API module setup ([e0e5b5f](https://github.com/Notable-Nomads/nn-backend-api/commit/e0e5b5f09ea2e34871371d449adf58d22f4f6447))
+* add staging environment configuration for Terraform ([49649ca](https://github.com/Notable-Nomads/nn-backend-api/commit/49649ca8be92fb8e5b6175fcc20e3d076ab01fba))
+* enhance API module and staging environment configuration ([d39e3ab](https://github.com/Notable-Nomads/nn-backend-api/commit/d39e3ab662583edea2da0ef2faa271237793501b))
+* enhance production environment configuration for API module ([ad05f5e](https://github.com/Notable-Nomads/nn-backend-api/commit/ad05f5e0ce5966070e977cc5b7f66f41f584e164))
+* enhance staging environment configuration for Terraform ([7d54ae4](https://github.com/Notable-Nomads/nn-backend-api/commit/7d54ae4cd993f48843fb954b69921976c4633211))
+* optimize API module configurations and logging settings for production and staging environments ([2c32658](https://github.com/Notable-Nomads/nn-backend-api/commit/2c3265806539c86771897d91855011cce81afa34))
+* optimize resource allocation and logging for production and staging environments ([b5e47c9](https://github.com/Notable-Nomads/nn-backend-api/commit/b5e47c9fdd62d630909ad787fd325327f98ebff2))
+* refine API and production environment manifests for cost efficiency and health check improvements ([293d582](https://github.com/Notable-Nomads/nn-backend-api/commit/293d582686fcbdbe9fe5665b912f5bacd1a6ed27))
+* update API and production environment manifests for enhanced health checks and cost efficiency ([4248dc6](https://github.com/Notable-Nomads/nn-backend-api/commit/4248dc6ddc799f04e064c16f92fed3b28f75bf2c))
+* update Terraform configuration for production environment ([7e35ca3](https://github.com/Notable-Nomads/nn-backend-api/commit/7e35ca30e7917f60fa59e72302325cb181b0e982))
+
+
+### Bug Fixes
+
+* update ECR repository URL in production Terraform configuration ([24bbe19](https://github.com/Notable-Nomads/nn-backend-api/commit/24bbe195fae6173b75fe6d6c57943a78ded3728a))
+
 ### [0.0.10](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.9...v0.0.10) (2025-01-16)
 
 
