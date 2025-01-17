@@ -41,7 +41,16 @@ module "api" {
   ssm_prefix         = "/platform/staging"
   domain_name        = var.domain_name
   zone_id            = "Z02232681YNYU29ZE5JT1"
-  environment_variables = []
+  environment_variables = [
+    {
+      name  = "NODE_ENV"
+      value = "staging"
+    },
+    {
+      name  = "PORT"
+      value = "3000"
+    }
+  ]
   secrets = [
     {
       name      = "AWS_ACCESS_KEY_ID"
