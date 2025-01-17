@@ -128,8 +128,13 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.api.arn
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -137,4 +142,72 @@ resource "aws_lb_listener" "http" {
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.app_name}-${var.environment}-api"
   retention_in_days = var.log_retention_days
+}
+
+# ACM Certificate
+resource "aws_acm_certificate" "api" {
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-cert"
+    Environment = var.environment
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# DNS Validation Record
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = var.zone_id
+}
+
+# Certificate Validation
+resource "aws_acm_certificate_validation" "api" {
+  certificate_arn         = aws_acm_certificate.api.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+# HTTPS Listener
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.api.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate.api.arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  depends_on = [aws_acm_certificate_validation.api]
+}
+
+# API DNS Record
+resource "aws_route53_record" "api" {
+  zone_id = var.zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.api.dns_name
+    zone_id                = aws_lb.api.zone_id
+    evaluate_target_health = true
+  }
 } 

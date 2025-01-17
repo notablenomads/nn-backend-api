@@ -39,6 +39,8 @@ module "api" {
   task_cpu           = 256
   task_memory        = 512
   ssm_prefix         = "/platform/staging"
+  domain_name        = var.domain_name
+  zone_id            = "Z02232681YNYU29ZE5JT1"
   environment_variables = []
   secrets = [
     {

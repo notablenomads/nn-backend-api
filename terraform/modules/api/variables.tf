@@ -78,4 +78,14 @@ variable "secrets" {
 variable "ssm_prefix" {
   description = "SSM parameter prefix for secrets"
   type        = string
+}
+
+variable "domain_name" {
+  description = "Domain name for the API (e.g., api.staging.platform.notablenomads.com)"
+  type        = string
+}
+
+variable "zone_id" {
+  description = "Route53 hosted zone ID for notablenomads.com"
+  type        = string
 } 
