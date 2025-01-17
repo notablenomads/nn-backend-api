@@ -8,7 +8,7 @@ terraform {
   required_version = ">= 1.2.0"
 
   backend "s3" {
-    bucket         = "nn-terraform-state"
+    bucket         = "nn-terraform-state-eu"
     key            = "production/terraform.tfstate"
     region         = "eu-central-1"
     dynamodb_table = "nn-terraform-locks"
@@ -64,6 +64,9 @@ module "api" {
 
   # Log configuration
   log_retention_days = 3
+
+  # Pass SSM prefix for secrets
+  ssm_prefix = var.ssm_prefix
 
   secrets = [
     {
