@@ -43,4 +43,17 @@ variable "public_subnet_cidr" {
   description = "CIDR block for public subnet"
   type        = string
   default     = "10.1.0.0/24"  # Different CIDR for staging
+}
+
+variable "domain_name" {
+  description = "Domain name for the API"
+  type        = string
+  default     = "api.staging.platform.notablenomads.com"
+}
+
+variable "zone_id" {
+  description = "Route53 hosted zone ID for notablenomads.com"
+  type        = string
+  # You'll need to get this from your AWS Console or using AWS CLI:
+  # aws route53 list-hosted-zones | grep notablenomads.com -B1
 } 
