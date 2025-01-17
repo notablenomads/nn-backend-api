@@ -8,7 +8,7 @@ terraform {
   required_version = ">= 1.2.0"
 
   backend "s3" {
-    bucket         = "nn-terraform-state"
+    bucket         = "nn-terraform-state-eu"
     key            = "staging/terraform.tfstate"
     region         = "eu-central-1"
     dynamodb_table = "nn-terraform-locks"
