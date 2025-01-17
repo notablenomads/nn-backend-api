@@ -16,7 +16,7 @@ http:
     path: '/v1/health'
     healthy_threshold: 2
     unhealthy_threshold: 2
-    interval: 10s
+    interval: 30s
     timeout: 5s
 
 # Configuration for your containers and service.
@@ -66,3 +66,10 @@ scaling:
   cpu_percentage: 70 # Scale up at 70% CPU utilization
   memory_percentage: 70 # Scale up at 70% memory utilization
   requests: 1000 # Scale up at 1000 requests per minute
+
+# Use Fargate Spot for cost savings
+compute:
+  type: 'spot'
+  spot:
+    maximum_percent: 100
+    minimum_healthy_percent: 0
