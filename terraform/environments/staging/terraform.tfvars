@@ -7,4 +7,6 @@ vpc_cidr           = "10.1.0.0/16"
 private_subnet_cidr = "10.1.2.0/24"
 public_subnet_cidr  = "10.1.0.0/24"
 
-ssm_prefix = "/platform/staging" 
+ssm_prefix = "/platform/staging"
+zone_id = "Z09251511N0OESPVIRFES"
+domain_name = "api.staging.platform.notablenomads.com" 

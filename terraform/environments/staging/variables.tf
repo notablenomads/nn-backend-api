@@ -54,6 +54,5 @@ variable "domain_name" {
 variable "zone_id" {
   description = "Route53 hosted zone ID for notablenomads.com"
   type        = string
-  # You'll need to get this from your AWS Console or using AWS CLI:
-  # aws route53 list-hosted-zones | grep notablenomads.com -B1
+  default     = "Z09251511N0OESPVIRFES"
 } 
