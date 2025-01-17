@@ -30,8 +30,3 @@ observability:
   container_logs:
     retention: 3
     encryption: false
-
-# Use 100% Fargate Spot for maximum cost savings
-capacity_providers:
-  fargate: 0
-  fargate_spot: 100
