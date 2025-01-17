@@ -66,7 +66,7 @@ module "api" {
     },
     {
       name  = "CORS_ENABLED_DOMAINS"
-      value = "*.notablenomads.com,notablenomads.com"
+      value = "*.notablenomads.com,notablenomads.com,*.platform.notablenomads.com,platform.notablenomads.com"
     },
     {
       name  = "CORS_RESTRICT"
@@ -74,7 +74,7 @@ module "api" {
     },
     {
       name  = "LOG_LEVEL"
-      value = "warn"                # Changed to warn to reduce log volume while keeping important info
+      value = "warn"
     }
   ]
   secrets = [
@@ -102,7 +102,7 @@ resource "aws_route53_record" "platform_ns" {
   zone_id = "Z09251511N0OESPVIRFES"  # Parent domain zone ID (notablenomads.com)
   name    = "platform.notablenomads.com"
   type    = "NS"
-  ttl     = "300"
+  ttl     = "60"  # Reduced from 300 to 60 seconds for faster propagation
 
   records = [
     "ns-329.awsdns-41.com",
