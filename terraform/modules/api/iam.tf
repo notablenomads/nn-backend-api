@@ -1,4 +1,8 @@
-# ECS Task Execution Role
+###################################
+# IAM Roles and Policies
+###################################
+
+# ECS Task Execution Role - Used by ECS to pull images and write logs
 resource "aws_iam_role" "ecs_execution_role" {
   name = "${var.app_name}-${var.environment}-ecs-execution"
 
@@ -18,19 +22,20 @@ resource "aws_iam_role" "ecs_execution_role" {
   tags = {
     Name        = "${var.app_name}-${var.environment}-ecs-execution"
     Environment = var.environment
-    Project     = var.app_name
     ManagedBy   = "terraform"
+    Service     = "api"
   }
 }
 
+# Attach AWS managed policy for ECS task execution
 resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   role       = aws_iam_role.ecs_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Allow reading SSM parameters
-resource "aws_iam_role_policy" "ecs_execution_ssm" {
-  name = "${var.app_name}-${var.environment}-ecs-execution-ssm"
+# Allow reading SSM parameters for secrets
+resource "aws_iam_role_policy" "ecs_execution_role_ssm" {
+  name = "${var.app_name}-${var.environment}-ssm-access"
   role = aws_iam_role.ecs_execution_role.id
 
   policy = jsonencode({
@@ -40,18 +45,17 @@ resource "aws_iam_role_policy" "ecs_execution_ssm" {
         Effect = "Allow"
         Action = [
           "ssm:GetParameters",
-          "kms:Decrypt"
+          "ssm:GetParameter"
         ]
         Resource = [
-          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_prefix}/*",
-          "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+          "arn:aws:ssm:${var.aws_region}:*:parameter${var.ssm_prefix}/*"
         ]
       }
     ]
   })
 }
 
-# ECS Task Role
+# ECS Task Role - Used by the application itself
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.app_name}-${var.environment}-ecs-task"
 
@@ -71,8 +75,8 @@ resource "aws_iam_role" "ecs_task_role" {
   tags = {
     Name        = "${var.app_name}-${var.environment}-ecs-task"
     Environment = var.environment
-    Project     = var.app_name
     ManagedBy   = "terraform"
+    Service     = "api"
   }
 }
 

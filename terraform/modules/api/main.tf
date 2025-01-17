@@ -1,10 +1,14 @@
+###################################
+# ECS Resources
+###################################
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
 
   setting {
     name  = "containerInsights"
-    value = "disabled"
+    value = "disabled"  # Disabled for cost optimization
   }
 
   tags = {
@@ -53,7 +57,7 @@ resource "aws_ecs_task_definition" "api" {
 
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture       = "ARM64"
+    cpu_architecture       = "ARM64"  # Using ARM for cost optimization
   }
 
   tags = {
@@ -80,7 +84,7 @@ resource "aws_ecs_service" "api" {
   }
 
   capacity_provider_strategy {
-    capacity_provider = "FARGATE_SPOT"
+    capacity_provider = "FARGATE_SPOT"  # Using Spot for cost optimization
     weight           = 100
   }
 
@@ -105,6 +109,10 @@ resource "aws_ecs_service" "api" {
   }
 }
 
+###################################
+# Load Balancer Resources
+###################################
+
 # Application Load Balancer
 resource "aws_lb" "api" {
   name               = "${var.app_name}-${var.environment}-alb"
@@ -114,7 +122,7 @@ resource "aws_lb" "api" {
   subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
-  idle_timeout = 30
+  idle_timeout              = 30
 
   tags = {
     Name        = "${var.app_name}-${var.environment}-alb"
@@ -124,18 +132,18 @@ resource "aws_lb" "api" {
   }
 }
 
-# ALB Target Group
+# ALB Target Group - Defines where traffic will be routed
 resource "aws_lb_target_group" "api" {
   name        = "${var.app_name}-${var.environment}-tg"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
-  target_type = "ip"
+  target_type = "ip"  # Required for Fargate
 
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 300
+    interval            = 300    # 5 minutes
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
@@ -144,10 +152,14 @@ resource "aws_lb_target_group" "api" {
     unhealthy_threshold = 3
   }
 
-  deregistration_delay = 0
+  deregistration_delay = 0  # Immediate deregistration
 }
 
-# HTTP Listener
+###################################
+# HTTPS/TLS Configuration
+###################################
+
+# HTTP Listener - Redirects all HTTP to HTTPS
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.api.arn
   port              = "80"
@@ -164,20 +176,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "api" {
-  name              = "/ecs/${var.app_name}-${var.environment}-api"
-  retention_in_days = var.log_retention_days
-
-  tags = {
-    Name        = "${var.app_name}-${var.environment}-logs"
-    Environment = var.environment
-    ManagedBy   = "terraform"
-    Service     = "api"
-  }
-}
-
-# ACM Certificate
+# ACM Certificate for HTTPS
 resource "aws_acm_certificate" "api" {
   domain_name       = var.domain_name
   validation_method = "DNS"
@@ -194,7 +193,7 @@ resource "aws_acm_certificate" "api" {
   }
 }
 
-# DNS Validation Record
+# Certificate DNS Validation
 resource "aws_route53_record" "cert_validation" {
   for_each = {
     for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
@@ -218,7 +217,7 @@ resource "aws_acm_certificate_validation" "api" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# HTTPS Listener
+# HTTPS Listener - Handles secure traffic
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.api.arn
   port              = "443"
@@ -234,16 +233,37 @@ resource "aws_lb_listener" "https" {
   depends_on = [aws_acm_certificate_validation.api]
 }
 
-# API DNS Record
+###################################
+# DNS Configuration
+###################################
+
+# API DNS Record - Points domain to ALB
 resource "aws_route53_record" "api_alias" {
-  zone_id = var.zone_id
-  name    = var.domain_name
-  type    = "A"
+  zone_id         = var.zone_id
+  name            = var.domain_name
+  type            = "A"
   allow_overwrite = true
 
   alias {
     name                   = aws_lb.api.dns_name
     zone_id                = aws_lb.api.zone_id
     evaluate_target_health = true
+  }
+}
+
+###################################
+# Monitoring
+###################################
+
+# CloudWatch Log Group for API logs
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/ecs/${var.app_name}-${var.environment}-api"
+  retention_in_days = var.log_retention_days
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-logs"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
   }
 } 
