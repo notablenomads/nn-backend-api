@@ -1,18 +1,16 @@
 terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-  required_version = ">= 1.2.0"
-
   backend "s3" {
     bucket         = "nn-terraform-state-eu"
     key            = "production/terraform.tfstate"
     region         = "eu-central-1"
     dynamodb_table = "nn-terraform-locks"
-    encrypt        = true
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -20,70 +18,79 @@ provider "aws" {
   region = var.aws_region
 }
 
-# VPC Configuration
 module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
+  source = "../../modules/vpc"
 
-  name = "${var.app_name}-${var.environment}"
-  cidr = var.vpc_cidr
-
-  azs             = ["${var.aws_region}a"]
-  private_subnets = [var.private_subnet_cidr]
-  public_subnets  = [var.public_subnet_cidr]
-
-  enable_nat_gateway = true
-  single_nat_gateway = true
-
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = {
-    Name        = "${var.app_name}-${var.environment}"
-    Environment = var.environment
-    Project     = var.app_name
-    ManagedBy   = "terraform"
-  }
+  app_name    = var.app_name
+  environment = var.environment
 }
 
-# API Service
 module "api" {
   source = "../../modules/api"
 
-  aws_region         = var.aws_region
-  app_name           = var.app_name
-  environment        = var.environment
-  vpc_id            = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnets
-  public_subnet_ids  = module.vpc.public_subnets
-  ecr_repository_url = var.ecr_repository_url
-
-  # Task configuration
-  task_cpu    = 256
-  task_memory = 512
-  desired_count = 1
-
-  # Log configuration
-  log_retention_days = 3
-
-  # Pass SSM prefix for secrets
-  ssm_prefix = var.ssm_prefix
-
+  app_name            = var.app_name
+  environment         = var.environment
+  aws_region          = var.aws_region
+  vpc_id              = module.vpc.vpc_id
+  public_subnet_ids   = module.vpc.public_subnet_ids
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  ecr_repository_url  = var.ecr_repository_url
+  container_port      = 3000
+  task_cpu           = 512  # Higher CPU for production
+  task_memory        = 1024 # Higher memory for production
+  ssm_prefix         = "/platform/production"
+  domain_name        = var.domain_name
+  zone_id            = "Z02232681YNYU29ZE5JT1"
+  environment_variables = [
+    {
+      name  = "NODE_ENV"
+      value = "production"
+    },
+    {
+      name  = "APP_NAME"
+      value = "Notable Nomads Backend API"
+    },
+    {
+      name  = "PORT"
+      value = "3000"
+    },
+    {
+      name  = "HOST"
+      value = "0.0.0.0"
+    },
+    {
+      name  = "API_PREFIX"
+      value = "v1"
+    },
+    {
+      name  = "CORS_ENABLED_DOMAINS"
+      value = "*.notablenomads.com,notablenomads.com"
+    },
+    {
+      name  = "CORS_RESTRICT"
+      value = "true"  # Enable CORS restrictions in production
+    },
+    {
+      name  = "LOG_LEVEL"
+      value = "info"  # Less verbose logging in production
+    }
+  ]
   secrets = [
     {
       name      = "***REMOVED***"
-      valueFrom = "${var.ssm_prefix}/aws/region"
+      valueFrom = "/platform/production/aws/access_key_id"
     },
     {
       name      = "***REMOVED***"
-      valueFrom = "${var.ssm_prefix}/aws/access_key_id"
+      valueFrom = "/platform/production/aws/secret_access_key"
     },
     {
       name      = "***REMOVED***"
-      valueFrom = "${var.ssm_prefix}/aws/secret_access_key"
+      valueFrom = "/platform/production/aws/region"
     },
     {
       name      = "***REMOVED***"
-      valueFrom = "${var.ssm_prefix}/gemini/api_key"
+      valueFrom = "/platform/production/gemini/api_key"
     }
   ]
 } 

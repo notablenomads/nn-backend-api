@@ -47,6 +47,10 @@ module "api" {
       value = "staging"
     },
     {
+      name  = "APP_NAME"
+      value = "Notable Nomads Backend API"
+    },
+    {
       name  = "PORT"
       value = "3000"
     },
@@ -56,7 +60,19 @@ module "api" {
     },
     {
       name  = "API_PREFIX"
-      value = "/v1"
+      value = "v1"
+    },
+    {
+      name  = "CORS_ENABLED_DOMAINS"
+      value = "*.notablenomads.com,notablenomads.com"
+    },
+    {
+      name  = "CORS_RESTRICT"
+      value = "false"
+    },
+    {
+      name  = "LOG_LEVEL"
+      value = "debug"
     }
   ]
   secrets = [
