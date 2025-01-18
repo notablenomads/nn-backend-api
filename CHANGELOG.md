@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.12](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.11...v0.0.12) (2025-01-18)
+
+
+### Features
+
+* add parent_zone_id variable and update EC2 launch template configuration ([8680685](https://github.com/Notable-Nomads/nn-backend-api/commit/8680685d087ba74098e703363272e181b8783c75))
+* add SSM parameters for environment variables and secrets in staging ([3512fd4](https://github.com/Notable-Nomads/nn-backend-api/commit/3512fd46064d13abb6d10d0a7f87c3e1f7a405e2))
+* enhance API deployment with improved health checks and IAM permissions ([cbc21df](https://github.com/Notable-Nomads/nn-backend-api/commit/cbc21dfe921746f74369615203b0c3065472d08d))
+* enhance EC2 module with configurable instance type and SSM parameter overwrite ([5787cb9](https://github.com/Notable-Nomads/nn-backend-api/commit/5787cb94810742f5480d1758a3f0a54af8483072))
+* enhance EC2 module with improved IAM policies and logging configuration ([ebbfded](https://github.com/Notable-Nomads/nn-backend-api/commit/ebbfded20b14412929d6d749fe7ee9851664fbd5))
+* enhance IAM policies for EC2 instance access to ECR and SSM parameters ([3eef85a](https://github.com/Notable-Nomads/nn-backend-api/commit/3eef85adde833f64e37d8c8880a02c9241bf5415))
+* implement EC2-based API deployment and enhance DNS management ([44bd637](https://github.com/Notable-Nomads/nn-backend-api/commit/44bd637a2f771ab6349e735f504b28bdea35929d))
+* refactor DNS management and add SSM parameters for environment variables in production ([ba5392c](https://github.com/Notable-Nomads/nn-backend-api/commit/ba5392c306ab623c6ed25394b93e20e17f0c640b))
+* update AI chat service to use default API key and adjust validation schema ([98452ff](https://github.com/Notable-Nomads/nn-backend-api/commit/98452ff474acc64331826f9cc2a25262a6fe2732))
+* update production outputs and remove SSM parameter overwrite option ([1362138](https://github.com/Notable-Nomads/nn-backend-api/commit/1362138206a160d16435e22ace9f9c32e9eb9757))
+* update SSM parameter configuration for staging environment ([e45a479](https://github.com/Notable-Nomads/nn-backend-api/commit/e45a479f18630436a0a43df4bc71580c341b723f))
+* update SSM parameter handling and IAM policies for EC2 module ([37e4893](https://github.com/Notable-Nomads/nn-backend-api/commit/37e4893c9ce8297d44dd0b8de4e97a51adcde251))
+* update SSM parameters for staging environment ([b0a97cb](https://github.com/Notable-Nomads/nn-backend-api/commit/b0a97cb0b86497f10e46937f62115b78155a56f5))
+
 ### [0.0.11](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.10...v0.0.11) (2025-01-17)
 
 
