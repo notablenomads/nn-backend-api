@@ -13,17 +13,21 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Set minimum Terraform version
+  required_version = ">= 1.0.0"
 }
 
 provider "aws" {
   region = var.aws_region
-}
 
-module "vpc" {
-  source = "../../modules/vpc"
-
-  app_name    = var.app_name
-  environment = var.environment
+  default_tags {
+    tags = {
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Project     = var.app_name
+    }
+  }
 }
 
 # Get the zone ID from the shared state
@@ -36,6 +40,14 @@ data "terraform_remote_state" "shared" {
       name = "nn-backend-api-shared"
     }
   }
+}
+
+module "vpc" {
+  source = "../../modules/vpc"
+
+  app_name    = var.app_name
+  environment = var.environment
+  vpc_cidr    = var.vpc_cidr
 }
 
 # Create SSM parameters for environment variables (non-sensitive)
@@ -57,20 +69,19 @@ resource "aws_ssm_parameter" "env_variables" {
   name      = "${var.ssm_prefix}/${each.key}"
   type      = "String"
   value     = each.value
-  overwrite = true
+  tier      = "Standard"
+
   tags = {
-    Environment = var.environment
     Type        = "Environment Variable"
-    ManagedBy   = "Terraform"
-    Service     = "api"
     UpdatedAt   = timestamp()
   }
-}
 
-# Note: Secrets are managed manually in SSM Parameter Store:
-# - ${var.ssm_prefix}/***REMOVED***
-# - ${var.ssm_prefix}/***REMOVED***
-# - ${var.ssm_prefix}/***REMOVED***
+  lifecycle {
+    ignore_changes = [
+      tags["UpdatedAt"]
+    ]
+  }
+}
 
 module "api" {
   source = "../../modules/api_ec2"
@@ -92,4 +103,15 @@ module "api" {
   
   environment_variables = []
   secrets = []
+}
+
+# Outputs for reference
+output "api_endpoint" {
+  description = "The API endpoint URL"
+  value       = "https://${var.domain_name}"
+}
+
+output "load_balancer_dns" {
+  description = "The DNS name of the load balancer"
+  value       = module.api.load_balancer_dns
 } 

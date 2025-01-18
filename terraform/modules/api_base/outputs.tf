@@ -13,7 +13,7 @@ output "alb_arn" {
 }
 
 output "target_group_arn" {
-  description = "ARN of the ALB target group"
+  description = "The ARN of the target group"
   value       = aws_lb_target_group.api.arn
 }
 
@@ -27,7 +27,7 @@ output "alb_security_group_id" {
 }
 
 output "backend_security_group_id" {
-  description = "ID of the backend security group"
+  description = "The ID of the backend security group"
   value       = aws_security_group.backend.id
 }
 
@@ -36,7 +36,7 @@ output "backend_security_group_id" {
 ###################################
 
 output "cloudwatch_log_group" {
-  description = "Name of the CloudWatch log group"
+  description = "The name of the CloudWatch log group"
   value       = aws_cloudwatch_log_group.api.name
 }
 
@@ -52,4 +52,9 @@ output "domain_name" {
 output "certificate_arn" {
   description = "ARN of the ACM certificate"
   value       = aws_acm_certificate.api.arn
+}
+
+output "load_balancer_dns" {
+  description = "The DNS name of the load balancer"
+  value       = aws_lb.api.dns_name
 } 
