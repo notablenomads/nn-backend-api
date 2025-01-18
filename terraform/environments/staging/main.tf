@@ -50,6 +50,7 @@ resource "aws_ssm_parameter" "env_variables" {
     LOG_LEVEL           = "error"
     EMAIL_FROM_ADDRESS  = "no-reply@mail.notablenomads.com"
     EMAIL_TO_ADDRESS    = "contact@notablenomads.com"
+    ***REMOVED***          = var.aws_region
   }
 
   name  = "/platform/staging/${each.key}"
@@ -59,28 +60,15 @@ resource "aws_ssm_parameter" "env_variables" {
     Environment = var.environment
     Type        = "Environment Variable"
     ManagedBy   = "Terraform"
+    Service     = "api"
+    UpdatedAt   = timestamp()
   }
 }
 
-# Create SSM parameters for secrets (sensitive)
-resource "aws_ssm_parameter" "secrets" {
-  for_each = {
-    ***REMOVED***       = "AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo"
-    ***REMOVED***    = "AKIAWP3KORIQBJJIAZ62"
-    ***REMOVED*** = "cikPPjwzMsM0/yPPD4Zw2LX09ujdULmS3Kv6FP8e"
-    ***REMOVED***           = var.aws_region
-  }
-
-  name      = "/platform/staging/${each.key}"
-  type      = "SecureString"
-  value     = each.value
-  overwrite = true
-  tags = {
-    Environment = var.environment
-    Type        = "Secret"
-    ManagedBy   = "Terraform"
-  }
-}
+# Note: Secrets are managed manually in SSM Parameter Store:
+# - /platform/staging/***REMOVED***
+# - /platform/staging/***REMOVED***
+# - /platform/staging/***REMOVED***
 
 # You can choose either EC2 or ECS deployment by commenting/uncommenting the appropriate module
 module "api" {
@@ -104,4 +92,4 @@ module "api" {
   # as they are managed by SSM parameters above
   environment_variables = []
   secrets = []
-} 
+}
