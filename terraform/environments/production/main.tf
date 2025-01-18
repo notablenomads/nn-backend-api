@@ -56,7 +56,6 @@ resource "aws_ssm_parameter" "env_variables" {
   name      = "/platform/production/${each.key}"
   type      = "String"
   value     = each.value
-  overwrite = true
   tags = {
     Environment = var.environment
     Type        = "Environment Variable"
