@@ -8,8 +8,8 @@ output "alb_dns_name" {
 }
 
 output "cloudwatch_log_group" {
-  description = "Name of the CloudWatch log group for API logs"
-  value       = module.base.cloudwatch_log_grouph
+  description = "The CloudWatch log group for the API"
+  value       = module.base.cloudwatch_log_group
 }
 
 ###################################

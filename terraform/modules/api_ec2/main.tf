@@ -106,6 +106,7 @@ resource "aws_launch_template" "api" {
                 --recursive \
                 --with-decryption \
                 --region ${var.aws_region} \
+                --query 'Parameters[*].{Name: Name, Value: Value}' \
                 --output json > /etc/api/env.json
               
               # Get secrets from SSM Parameter Store
@@ -114,19 +115,24 @@ resource "aws_launch_template" "api" {
                 --names ${join(" ", [for s in var.secrets : s.valueFrom])} \
                 --with-decryption \
                 --region ${var.aws_region} \
+                --query 'Parameters[*].{Name: Name, Value: Value}' \
                 --output json > /etc/api/secrets.json
               
               # Combine environment variables and secrets into a single env file
-              jq -r '.Parameters[] | .Name + "=" + .Value' /etc/api/env.json > /etc/api/container.env
-              jq -r '.Parameters[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/secrets.json >> /etc/api/container.env
+              jq -r '.[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/env.json > /etc/api/container.env
+              jq -r '.[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/secrets.json >> /etc/api/container.env
               
-              # Start the container
+              # Start the container with proper logging
               echo "Starting the API container..."
               docker run -d \
                 --name api \
                 --restart always \
                 -p ${var.container_port}:${var.container_port} \
                 --env-file /etc/api/container.env \
+                --log-driver=awslogs \
+                --log-opt awslogs-group=/ec2/platform-staging-api \
+                --log-opt awslogs-region=${var.aws_region} \
+                --log-opt awslogs-create-group=true \
                 ${var.ecr_repository_url}:latest
               
               echo "User data script completed."

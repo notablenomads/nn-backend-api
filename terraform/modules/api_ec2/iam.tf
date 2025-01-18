@@ -83,6 +83,7 @@ resource "aws_iam_role_policy" "ssm_access" {
         ]
         Resource = [
           "arn:aws:ssm:${var.aws_region}:*:parameter${var.ssm_prefix}/*",
+          "arn:aws:ssm:${var.aws_region}:*:parameter/platform/${var.environment}/*",
           "*"
         ]
       }
