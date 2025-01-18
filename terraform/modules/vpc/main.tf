@@ -1,37 +1,3 @@
-variable "availability_zones" {
-  description = "List of availability zones"
-  type        = list(string)
-  default     = ["eu-central-1a", "eu-central-1b"]
-}
-
-variable "public_subnet_cidrs" {
-  description = "CIDR blocks for public subnets"
-  type        = list(string)
-  default     = ["10.1.0.0/24", "10.1.1.0/24"]
-}
-
-variable "private_subnet_cidrs" {
-  description = "CIDR blocks for private subnets"
-  type        = list(string)
-  default     = ["10.1.2.0/24", "10.1.3.0/24"]
-}
-
-variable "app_name" {
-  description = "Application name"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.1.0.0/16"
-}
-
 locals {
   tags = {
     Project     = var.app_name
@@ -40,124 +6,128 @@ locals {
   }
 }
 
-// ... existing code ...
-
 # VPC
-resource "aws_vpc" "this" {
-  count = 1
-
+resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}"
-  })
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-vpc"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
 }
 
 # Internet Gateway
-resource "aws_internet_gateway" "this" {
-  count = 1
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
 
-  vpc_id = aws_vpc.this[0].id
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-igw"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
 
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}"
-  })
+# Public Subnets
+resource "aws_subnet" "public" {
+  count             = length(var.availability_zones)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone = var.availability_zones[count.index]
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-public-${var.availability_zones[count.index]}"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Type        = "public"
+  }
+}
+
+# Private Subnets
+resource "aws_subnet" "private" {
+  count             = length(var.availability_zones)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + length(var.availability_zones))
+  availability_zone = var.availability_zones[count.index]
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-private-${var.availability_zones[count.index]}"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Type        = "private"
+  }
+}
+
+# NAT Gateway (Single NAT Gateway for cost optimization)
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-nat-eip"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-nat"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
 # Route Tables
 resource "aws_route_table" "public" {
-  count = 1
+  vpc_id = aws_vpc.main.id
 
-  vpc_id = aws_vpc.this[0].id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
 
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-public"
-  })
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-public-rt"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Type        = "public"
+  }
 }
 
 resource "aws_route_table" "private" {
-  count = 1
+  vpc_id = aws_vpc.main.id
 
-  vpc_id = aws_vpc.this[0].id
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
 
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-private"
-  })
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-private-rt"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Type        = "private"
+  }
 }
 
-# Routes
-resource "aws_route" "public_internet_gateway" {
-  count = 1
-
-  route_table_id         = aws_route_table.public[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.this[0].id
-}
-
-# NAT Gateway configuration
-resource "aws_eip" "nat" {
-  count  = 1  # Single NAT Gateway
-  domain = "vpc"
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-nat"
-  })
-}
-
-resource "aws_nat_gateway" "this" {
-  count = 1  # Single NAT Gateway
-
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id  # Place in first public subnet
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}"
-  })
-}
-
-# Single route for all private subnets
-resource "aws_route" "private_nat_gateway" {
-  count = 1  # Only one route needed as all private subnets use the same route table
-
-  route_table_id         = aws_route_table.private[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.this[0].id
-}
-
-resource "aws_subnet" "public" {
-  count                   = length(var.availability_zones)
-  vpc_id                  = aws_vpc.this[0].id
-  cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = true
-  
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-public-${count.index + 1}"
-  })
-}
-
-resource "aws_subnet" "private" {
-  count             = length(var.availability_zones)
-  vpc_id            = aws_vpc.this[0].id
-  cidr_block        = var.private_subnet_cidrs[count.index]
-  availability_zone = var.availability_zones[count.index]
-  
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-private-${count.index + 1}"
-  })
-}
-
-# Update route table associations
-resource "aws_route_table_association" "private" {
-  count          = length(var.availability_zones)
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private[0].id
-}
-
+# Route Table Associations
 resource "aws_route_table_association" "public" {
-  count          = length(var.availability_zones)
+  count          = length(aws_subnet.public)
   subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public[0].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count          = length(aws_subnet.private)
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 } 
