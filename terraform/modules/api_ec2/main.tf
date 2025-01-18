@@ -1,0 +1,157 @@
+###################################
+# Base Infrastructure
+###################################
+
+module "base" {
+  source = "../api_base"
+
+  app_name           = var.app_name
+  environment        = var.environment
+  vpc_id             = var.vpc_id
+  public_subnet_ids  = var.public_subnet_ids
+  container_port     = var.container_port
+  target_type        = "instance"
+  log_retention_days = var.log_retention_days
+  log_group_prefix   = "ec2"
+  domain_name        = var.domain_name
+  zone_id            = var.zone_id
+}
+
+###################################
+# SSM Parameters
+###################################
+
+# Create SSM parameters for environment variables
+resource "aws_ssm_parameter" "environment_variables" {
+  for_each = { for env in var.environment_variables : env.name => env.value }
+
+  name  = "${var.ssm_prefix}/env/${each.key}"
+  type  = "String"
+  value = each.value
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Service     = "api"
+  }
+}
+
+###################################
+# EC2 Launch Template
+###################################
+
+resource "aws_launch_template" "api" {
+  name_prefix   = "${var.app_name}-${var.environment}-"
+  image_id      = "ami-0faab6bdbac9486fb" # Amazon Linux 2023 ARM64
+  instance_type = "t4g.small"             # ARM-based instance for cost optimization
+
+  network_interfaces {
+    associate_public_ip_address = false
+    security_groups            = [module.base.backend_security_group_id]
+  }
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_profile.name
+  }
+
+  user_data = base64encode(<<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y docker jq unzip
+
+              # Start and enable Docker
+              systemctl start docker
+              systemctl enable docker
+              
+              # Install AWS CLI
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              ./aws/install
+              
+              # Login to ECR
+              aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${split("/", var.ecr_repository_url)[0]}
+              
+              # Create environment file directory
+              mkdir -p /etc/api
+              
+              # Get environment variables from SSM Parameter Store
+              aws ssm get-parameters-by-path \
+                --path "${var.ssm_prefix}/env" \
+                --recursive \
+                --with-decryption \
+                --region ${var.aws_region} \
+                --output json > /etc/api/env.json
+
+              # Get secrets from SSM Parameter Store
+              aws ssm get-parameters \
+                --names ${join(" ", [for s in var.secrets : s.valueFrom])} \
+                --with-decryption \
+                --region ${var.aws_region} \
+                --output json > /etc/api/secrets.json
+
+              # Combine environment variables and secrets into a single env file
+              jq -r '.Parameters[] | .Name + "=" + .Value' /etc/api/env.json > /etc/api/container.env
+              jq -r '.Parameters[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/secrets.json >> /etc/api/container.env
+              
+              # Start the container
+              docker run -d \
+                --name api \
+                --restart always \
+                -p ${var.container_port}:${var.container_port} \
+                --env-file /etc/api/container.env \
+                ${var.ecr_repository_url}:latest
+              EOF
+  )
+
+  monitoring {
+    enabled = true
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name        = "${var.app_name}-${var.environment}"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+      Service     = "api"
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+###################################
+# Auto Scaling Group
+###################################
+
+resource "aws_autoscaling_group" "api" {
+  name                = "${var.app_name}-${var.environment}-asg"
+  desired_capacity    = var.desired_count
+  max_size           = var.desired_count + 1
+  min_size           = var.desired_count
+  target_group_arns  = [module.base.target_group_arn]
+  vpc_zone_identifier = var.private_subnet_ids
+
+  launch_template {
+    id      = aws_launch_template.api.id
+    version = "$Latest"
+  }
+
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+
+  tag {
+    key                 = "Name"
+    value              = "${var.app_name}-${var.environment}"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Environment"
+    value              = var.environment
+    propagate_at_launch = true
+  }
+} 
