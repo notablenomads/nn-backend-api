@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.13](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.12...v0.0.13) (2025-01-18)
+
+
+### Features
+
+* add default ECR repository URL to production variables ([33c66d8](https://github.com/Notable-Nomads/nn-backend-api/commit/33c66d824df2fd8a9cf81d1a864f4255624d808f))
+* add Terraform cloud configuration and remove S3 backend for production and staging environments ([22b5e3f](https://github.com/Notable-Nomads/nn-backend-api/commit/22b5e3f94e65d924edfd62985885b1a6085e7bbf))
+* enhance production and shared environment configurations ([984157e](https://github.com/Notable-Nomads/nn-backend-api/commit/984157ebaa787ce5d98a29572c69c5a7f8d2c313))
+* enhance production environment configuration with new variables and SSM parameter updates ([e139c57](https://github.com/Notable-Nomads/nn-backend-api/commit/e139c577fe93a2b831147a2139d2f821c44958d1))
+* enhance staging environment configuration and EC2 module ([ab5971e](https://github.com/Notable-Nomads/nn-backend-api/commit/ab5971ed7f8ae2b61b37748388ce5efa95e32270))
+* implement Terraform Cloud configuration and enhance shared environment setup ([2086c8c](https://github.com/Notable-Nomads/nn-backend-api/commit/2086c8cc0a342204015d5f5611b946a2e320e242))
+
 ### [0.0.12](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.11...v0.0.12) (2025-01-18)
 
 

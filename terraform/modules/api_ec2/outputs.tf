@@ -48,4 +48,9 @@ output "backend_security_group_id" {
 output "ec2_role_name" {
   description = "Name of the EC2 IAM role"
   value       = aws_iam_role.ec2_role.name
+}
+
+output "load_balancer_dns" {
+  description = "The DNS name of the load balancer"
+  value       = module.base.load_balancer_dns
 } 

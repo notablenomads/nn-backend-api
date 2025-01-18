@@ -125,4 +125,10 @@ variable "instance_type" {
   description = "The EC2 instance type to use"
   type        = string
   default     = "t4g.nano"
+}
+
+variable "ami_id" {
+  description = "AMI ID for EC2 instances"
+  type        = string
+  default     = "ami-04c372a99a14aed4e"  # Amazon Linux 2023 ARM64
 } 
