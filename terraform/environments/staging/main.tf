@@ -25,8 +25,22 @@ module "vpc" {
   environment = var.environment
 }
 
+# Get the zone ID from the shared state
+data "terraform_remote_state" "shared" {
+  backend = "s3"
+  
+  config = {
+    bucket         = "nn-terraform-state-eu"
+    key            = "shared/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "nn-terraform-locks"
+  }
+}
+
+# You can choose either EC2 or ECS deployment by commenting/uncommenting the appropriate module
 module "api" {
-  source = "../../modules/api"
+  source = "../../modules/api_ec2"  # For EC2 deployment
+  # source = "../../modules/api"    # For ECS deployment
 
   app_name            = var.app_name
   environment         = var.environment
@@ -36,13 +50,11 @@ module "api" {
   private_subnet_ids  = module.vpc.private_subnet_ids
   ecr_repository_url  = var.ecr_repository_url
   container_port      = 3000
-  task_cpu           = 256
-  task_memory        = 512
-  log_retention_days = 1
-  desired_count      = 1
+  desired_count       = 1
+  log_retention_days  = 1
   ssm_prefix         = "/platform/staging"
-  domain_name        = var.domain_name
-  zone_id            = "Z09251511N0OESPVIRFES"
+  domain_name        = "api.staging.platform.notablenomads.com"
+  zone_id            = data.terraform_remote_state.shared.outputs.platform_zone_id
   environment_variables = [
     {
       name  = "NODE_ENV"
