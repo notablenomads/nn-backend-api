@@ -43,8 +43,8 @@ resource "aws_ssm_parameter" "environment_variables" {
 
 resource "aws_launch_template" "api" {
   name_prefix   = "${var.app_name}-${var.environment}-"
-  image_id      = "ami-0faab6bdbac9486fb" # Amazon Linux 2023 ARM64
-  instance_type = "t4g.small"             # ARM-based instance for cost optimization
+  image_id      = "ami-04c372a99a14aed4e" # Amazon Linux 2023 ARM64
+  instance_type = "t4g.nano"              # ARM-based instance as specified
 
   network_interfaces {
     associate_public_ip_address = false
