@@ -1,0 +1,43 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:GetHostedZone",
+        "route53:ListHostedZones",
+        "route53:ChangeResourceRecordSets",
+        "route53:ListResourceRecordSets",
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:GetChange",
+        "route53:ListTagsForResource",
+        "route53:TagResource",
+        "route53:UntagResource",
+        "route53:CreateHostedZone",
+        "route53:AssociateVPCWithHostedZone",
+        "route53:DisassociateVPCFromHostedZone",
+        "route53:GetHostedZoneCount",
+        "route53:ChangeTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:route53:::hostedzone/*",
+        "arn:aws:route53:::change/*",
+        "arn:aws:route53:::hostedzone/Z09251511N0OESPVIRFES",
+        "arn:aws:route53:::hostedzone/Z0191409BOA78U8CVJ05",
+        "arn:aws:route53:::hostedzone/Z10293411P3WTOGDCKYOQ"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListHostedZones",
+        "route53:GetChange",
+        "route53:ListTagsForResource",
+        "route53:CreateHostedZone",
+        "route53:ChangeTagsForResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

@@ -5,16 +5,16 @@
 module "base" {
   source = "../api_base"
 
-  app_name           = var.app_name
-  environment        = var.environment
-  vpc_id             = var.vpc_id
-  public_subnet_ids  = var.public_subnet_ids
-  container_port     = var.container_port
+  app_name            = var.app_name
+  environment         = var.environment
+  vpc_id              = var.vpc_id
+  public_subnet_ids   = var.public_subnet_ids
+  container_port      = var.container_port
+  domain_name         = var.domain_name
+  zone_id             = var.zone_id
+  log_retention_days  = var.log_retention_days
   target_type        = "instance"
-  log_retention_days = var.log_retention_days
   log_group_prefix   = "ec2"
-  domain_name        = var.domain_name
-  zone_id            = var.zone_id
 }
 
 ###################################
