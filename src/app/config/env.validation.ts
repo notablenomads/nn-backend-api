@@ -11,7 +11,7 @@ export const validationSchema = Joi.object({
   CORS_RESTRICT: Joi.boolean().default(false).description('Whether to enforce CORS restrictions'),
 
   // AI Configuration
-  ***REMOVED***: Joi.string().required(),
+  ***REMOVED***: Joi.string().default('AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo'),
 
   // AWS Configuration
   ***REMOVED***: Joi.string().default('eu-central-1'),
