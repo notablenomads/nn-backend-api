@@ -102,25 +102,28 @@ resource "aws_launch_template" "api" {
               # Get environment variables from SSM Parameter Store
               echo "Fetching environment variables..."
               aws ssm get-parameters-by-path \
-                --path "${var.ssm_prefix}/env" \
+                --path "${var.ssm_prefix}" \
                 --recursive \
                 --with-decryption \
                 --region ${var.aws_region} \
                 --query 'Parameters[*].{Name: Name, Value: Value}' \
                 --output json > /etc/api/env.json
               
-              # Get secrets from SSM Parameter Store
-              echo "Fetching secrets..."
-              aws ssm get-parameters \
-                --names ${join(" ", [for s in var.secrets : s.valueFrom])} \
-                --with-decryption \
-                --region ${var.aws_region} \
-                --query 'Parameters[*].{Name: Name, Value: Value}' \
-                --output json > /etc/api/secrets.json
+              # Combine environment variables into a single env file
+              jq -r '.[] | select(.Name != null and .Value != null) | (.Name | split("/")[-1]) + "=" + .Value' /etc/api/env.json > /etc/api/container.env
               
-              # Combine environment variables and secrets into a single env file
-              jq -r '.[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/env.json > /etc/api/container.env
-              jq -r '.[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/secrets.json >> /etc/api/container.env
+              # Debug: Print environment variables (excluding secrets)
+              echo "Environment variables set:"
+              cat /etc/api/container.env | grep -v "KEY\|SECRET"
+              
+              # Verify ***REMOVED*** is set
+              echo "Verifying ***REMOVED***..."
+              if grep -q "***REMOVED***" /etc/api/container.env; then
+                echo "***REMOVED*** is present in environment file"
+              else
+                echo "ERROR: ***REMOVED*** is missing from environment file"
+                cat /etc/api/env.json | jq '.'
+              fi
               
               # Start the container with proper logging
               echo "Starting the API container..."
