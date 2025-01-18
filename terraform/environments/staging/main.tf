@@ -37,10 +37,54 @@ data "terraform_remote_state" "shared" {
   }
 }
 
+# Create SSM parameters for environment variables (non-sensitive)
+resource "aws_ssm_parameter" "env_variables" {
+  for_each = {
+    NODE_ENV             = "staging"
+    APP_NAME            = "Notable Nomads Backend API"
+    PORT                = "3000"
+    HOST                = "0.0.0.0"
+    API_PREFIX          = "v1"
+    CORS_ENABLED_DOMAINS = "*.notablenomads.com,notablenomads.com"
+    CORS_RESTRICT       = "false"
+    LOG_LEVEL           = "error"
+    EMAIL_FROM_ADDRESS  = "no-reply@mail.notablenomads.com"
+    EMAIL_TO_ADDRESS    = "contact@notablenomads.com"
+  }
+
+  name  = "/platform/staging/${each.key}"
+  type  = "String"
+  value = each.value
+  tags = {
+    Environment = var.environment
+    Type        = "Environment Variable"
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Create SSM parameters for secrets (sensitive)
+resource "aws_ssm_parameter" "secrets" {
+  for_each = {
+    GEMINI_API_KEY       = "AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo"
+    AWS_ACCESS_KEY_ID    = "AKIAWP3KORIQBJJIAZ62"
+    AWS_SECRET_ACCESS_KEY = "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"
+    AWS_REGION           = var.aws_region
+  }
+
+  name      = "/platform/staging/${each.key}"
+  type      = "SecureString"
+  value     = each.value
+  overwrite = true
+  tags = {
+    Environment = var.environment
+    Type        = "Secret"
+    ManagedBy   = "Terraform"
+  }
+}
+
 # You can choose either EC2 or ECS deployment by commenting/uncommenting the appropriate module
 module "api" {
   source = "../../modules/api_ec2"  # For EC2 deployment
-  # source = "../../modules/api"    # For ECS deployment
 
   app_name            = var.app_name
   environment         = var.environment
@@ -55,56 +99,9 @@ module "api" {
   ssm_prefix         = "/platform/staging"
   domain_name        = "api.staging.platform.notablenomads.com"
   zone_id            = data.terraform_remote_state.shared.outputs.platform_zone_id
-  environment_variables = [
-    {
-      name  = "NODE_ENV"
-      value = "staging"
-    },
-    {
-      name  = "APP_NAME"
-      value = "Notable Nomads Backend API"
-    },
-    {
-      name  = "PORT"
-      value = "3000"
-    },
-    {
-      name  = "HOST"
-      value = "0.0.0.0"
-    },
-    {
-      name  = "API_PREFIX"
-      value = "v1"
-    },
-    {
-      name  = "CORS_ENABLED_DOMAINS"
-      value = "*.notablenomads.com,notablenomads.com"
-    },
-    {
-      name  = "CORS_RESTRICT"
-      value = "false"
-    },
-    {
-      name  = "LOG_LEVEL"
-      value = "error"
-    }
-  ]
-  secrets = [
-    {
-      name      = "AWS_ACCESS_KEY_ID"
-      valueFrom = "/platform/staging/aws/access_key_id"
-    },
-    {
-      name      = "AWS_SECRET_ACCESS_KEY"
-      valueFrom = "/platform/staging/aws/secret_access_key"
-    },
-    {
-      name      = "AWS_REGION"
-      valueFrom = "/platform/staging/aws/region"
-    },
-    {
-      name      = "GEMINI_API_KEY"
-      valueFrom = "/platform/staging/gemini/api_key"
-    }
-  ]
+  
+  # We don't need to specify environment_variables and secrets here anymore
+  # as they are managed by SSM parameters above
+  environment_variables = []
+  secrets = []
 } 
