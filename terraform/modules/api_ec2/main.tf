@@ -25,7 +25,7 @@ module "base" {
 resource "aws_ssm_parameter" "environment_variables" {
   for_each = { for env in var.environment_variables : env.name => env.value }
 
-  name  = "${var.ssm_prefix}/env/${each.key}"
+  name  = "${var.ssm_prefix}/${each.key}"
   type  = "String"
   value = each.value
 
@@ -108,21 +108,36 @@ resource "aws_launch_template" "api" {
                 --region ${var.aws_region} \
                 --query 'Parameters[*].{Name: Name, Value: Value}' \
                 --output json > /etc/api/env.json
+
+              echo "Raw SSM parameters (excluding sensitive values):"
+              cat /etc/api/env.json | jq 'map(.Value |= if contains("KEY") or contains("SECRET") then "[REDACTED]" else . end)'
               
               # Combine environment variables into a single env file
-              jq -r '.[] | select(.Name != null and .Value != null) | (.Name | split("/")[-1]) + "=" + .Value' /etc/api/env.json > /etc/api/container.env
+              echo "Processing environment variables..."
+              jq -r '.[] | select(.Name != null and .Value != null) | . as $param | 
+                ($param.Name | split("/") | last) + "=" + $param.Value' /etc/api/env.json > /etc/api/container.env
               
-              # Debug: Print environment variables (excluding secrets)
-              echo "Environment variables set:"
-              cat /etc/api/container.env | grep -v "KEY\|SECRET"
+              # Debug: Print environment variables structure
+              echo "Environment file structure:"
+              cat /etc/api/container.env | while read line; do
+                key=$(echo $line | cut -d= -f1)
+                if [[ $key != *"KEY"* && $key != *"SECRET"* ]]; then
+                  echo "$key is set"
+                fi
+              done
               
-              # Verify ***REMOVED*** is set
-              echo "Verifying ***REMOVED***..."
+              # Verify ***REMOVED*** specifically
+              echo "Checking ***REMOVED*** in SSM response:"
+              cat /etc/api/env.json | jq '.[] | select(.Name | endswith("***REMOVED***")) | .Name'
+              
+              # Verify ***REMOVED*** in environment file
+              echo "Checking ***REMOVED*** in environment file:"
               if grep -q "***REMOVED***" /etc/api/container.env; then
                 echo "***REMOVED*** is present in environment file"
               else
                 echo "ERROR: ***REMOVED*** is missing from environment file"
-                cat /etc/api/env.json | jq '.'
+                echo "Available environment variables (excluding secrets):"
+                cat /etc/api/container.env | grep -v "KEY\|SECRET"
               fi
               
               # Start the container with proper logging
