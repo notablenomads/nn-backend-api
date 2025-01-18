@@ -77,7 +77,7 @@ resource "aws_iam_role_policy" "ssm_access" {
           "ssm:GetParametersByPath"
         ]
         Resource = [
-          "arn:aws:ssm:${var.aws_region}:*:parameter/platform/${var.environment}/*"
+          "arn:aws:ssm:${var.aws_region}:*:parameter/*"
         ]
       },
       {
