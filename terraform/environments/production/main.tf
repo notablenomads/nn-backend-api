@@ -1,4 +1,12 @@
 terraform {
+  cloud {
+    organization = "notablenomads"
+
+    workspaces {
+      name = "nn-backend-api-production"
+    }
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -49,7 +57,6 @@ resource "aws_ssm_parameter" "env_variables" {
   name      = "/platform/production/${each.key}"
   type      = "String"
   value     = each.value
-  overwrite = true
   tags = {
     Environment = var.environment
     Type        = "Environment Variable"
