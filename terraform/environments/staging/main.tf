@@ -25,8 +25,55 @@ module "vpc" {
   environment = var.environment
 }
 
+# Get the zone ID from the shared state
+data "terraform_remote_state" "shared" {
+  backend = "s3"
+  
+  config = {
+    bucket         = "nn-terraform-state-eu"
+    key            = "shared/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "nn-terraform-locks"
+  }
+}
+
+# Create SSM parameters for environment variables (non-sensitive)
+resource "aws_ssm_parameter" "env_variables" {
+  for_each = {
+    NODE_ENV             = "staging"
+    APP_NAME            = "Notable Nomads Backend API"
+    PORT                = "3000"
+    HOST                = "0.0.0.0"
+    API_PREFIX          = "v1"
+    CORS_ENABLED_DOMAINS = "*.notablenomads.com,notablenomads.com"
+    CORS_RESTRICT       = "false"
+    LOG_LEVEL           = "error"
+    EMAIL_FROM_ADDRESS  = "no-reply@mail.notablenomads.com"
+    EMAIL_TO_ADDRESS    = "contact@notablenomads.com"
+    ***REMOVED***          = var.aws_region
+  }
+
+  name      = "/platform/staging/${each.key}"
+  type      = "String"
+  value     = each.value
+  overwrite = true
+  tags = {
+    Environment = var.environment
+    Type        = "Environment Variable"
+    ManagedBy   = "Terraform"
+    Service     = "api"
+    UpdatedAt   = timestamp()
+  }
+}
+
+# Note: Secrets are managed manually in SSM Parameter Store:
+# - /platform/staging/***REMOVED***
+# - /platform/staging/***REMOVED***
+# - /platform/staging/***REMOVED***
+
+# You can choose either EC2 or ECS deployment by commenting/uncommenting the appropriate module
 module "api" {
-  source = "../../modules/api"
+  source = "../../modules/api_ec2"  # For EC2 deployment
 
   app_name            = var.app_name
   environment         = var.environment
@@ -36,63 +83,14 @@ module "api" {
   private_subnet_ids  = module.vpc.private_subnet_ids
   ecr_repository_url  = var.ecr_repository_url
   container_port      = 3000
-  task_cpu           = 256
-  task_memory        = 512
-  log_retention_days = 1
-  desired_count      = 1
+  desired_count       = 1
+  log_retention_days  = 1
   ssm_prefix         = "/platform/staging"
-  domain_name        = var.domain_name
-  zone_id            = "Z09251511N0OESPVIRFES"
-  environment_variables = [
-    {
-      name  = "NODE_ENV"
-      value = "staging"
-    },
-    {
-      name  = "APP_NAME"
-      value = "Notable Nomads Backend API"
-    },
-    {
-      name  = "PORT"
-      value = "3000"
-    },
-    {
-      name  = "HOST"
-      value = "0.0.0.0"
-    },
-    {
-      name  = "API_PREFIX"
-      value = "v1"
-    },
-    {
-      name  = "CORS_ENABLED_DOMAINS"
-      value = "*.notablenomads.com,notablenomads.com"
-    },
-    {
-      name  = "CORS_RESTRICT"
-      value = "false"
-    },
-    {
-      name  = "LOG_LEVEL"
-      value = "error"
-    }
-  ]
-  secrets = [
-    {
-      name      = "***REMOVED***"
-      valueFrom = "/platform/staging/aws/access_key_id"
-    },
-    {
-      name      = "***REMOVED***"
-      valueFrom = "/platform/staging/aws/secret_access_key"
-    },
-    {
-      name      = "***REMOVED***"
-      valueFrom = "/platform/staging/aws/region"
-    },
-    {
-      name      = "***REMOVED***"
-      valueFrom = "/platform/staging/gemini/api_key"
-    }
-  ]
-} 
+  domain_name        = "api.staging.platform.notablenomads.com"
+  zone_id            = data.terraform_remote_state.shared.outputs.platform_zone_id
+  
+  # We don't need to specify environment_variables and secrets here anymore
+  # as they are managed by SSM parameters above
+  environment_variables = []
+  secrets = []
+}

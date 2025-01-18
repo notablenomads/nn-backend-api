@@ -1,20 +1,30 @@
-# Create the platform subdomain hosted zone
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "aws_route53_zone" "platform" {
   name = "platform.notablenomads.com"
 
   tags = {
-    Name        = "platform-subdomain"
-    Environment = var.environment
+    Name        = "platform-zone"
     ManagedBy   = "terraform"
+    Environment = "shared"
   }
 }
 
-# Create NS record in parent domain for delegation
-resource "aws_route53_record" "platform_ns" {
-  zone_id = var.parent_zone_id  # notablenomads.com zone ID
-  name    = "platform.notablenomads.com"
-  type    = "NS"
-  ttl     = "60"
+# Output the zone ID for use in other modules
+output "platform_zone_id" {
+  description = "The Route53 zone ID for platform.notablenomads.com"
+  value       = aws_route53_zone.platform.zone_id
+}
 
-  records = aws_route53_zone.platform.name_servers
+# Output the name servers for the zone
+output "platform_name_servers" {
+  description = "The name servers for platform.notablenomads.com"
+  value       = aws_route53_zone.platform.name_servers
 } 
