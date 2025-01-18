@@ -53,9 +53,10 @@ resource "aws_ssm_parameter" "env_variables" {
     ***REMOVED***          = var.aws_region
   }
 
-  name  = "/platform/staging/${each.key}"
-  type  = "String"
-  value = each.value
+  name      = "/platform/staging/${each.key}"
+  type      = "String"
+  value     = each.value
+  overwrite = true
   tags = {
     Environment = var.environment
     Type        = "Environment Variable"
