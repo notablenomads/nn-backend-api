@@ -19,6 +19,7 @@ variable "environment" {
 variable "ecr_repository_url" {
   description = "ECR repository URL"
   type        = string
+  default     = "446362978848.dkr.ecr.eu-central-1.amazonaws.com/platform-api"
 }
 
 variable "domain_name" {
