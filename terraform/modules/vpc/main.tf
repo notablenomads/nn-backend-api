@@ -40,12 +40,8 @@ locals {
   }
 }
 
-// ... existing code ...
-
 # VPC
 resource "aws_vpc" "this" {
-  count = 1
-
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -57,78 +53,17 @@ resource "aws_vpc" "this" {
 
 # Internet Gateway
 resource "aws_internet_gateway" "this" {
-  count = 1
-
-  vpc_id = aws_vpc.this[0].id
+  vpc_id = aws_vpc.this.id
 
   tags = merge(local.tags, {
     Name = "${var.app_name}-${var.environment}"
   })
 }
 
-# Route Tables
-resource "aws_route_table" "public" {
-  count = 1
-
-  vpc_id = aws_vpc.this[0].id
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-public"
-  })
-}
-
-resource "aws_route_table" "private" {
-  count = 1
-
-  vpc_id = aws_vpc.this[0].id
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-private"
-  })
-}
-
-# Routes
-resource "aws_route" "public_internet_gateway" {
-  count = 1
-
-  route_table_id         = aws_route_table.public[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.this[0].id
-}
-
-# NAT Gateway configuration
-resource "aws_eip" "nat" {
-  count  = 1  # Single NAT Gateway
-  domain = "vpc"
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}-nat"
-  })
-}
-
-resource "aws_nat_gateway" "this" {
-  count = 1  # Single NAT Gateway
-
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id  # Place in first public subnet
-
-  tags = merge(local.tags, {
-    Name = "${var.app_name}-${var.environment}"
-  })
-}
-
-# Single route for all private subnets
-resource "aws_route" "private_nat_gateway" {
-  count = 1  # Only one route needed as all private subnets use the same route table
-
-  route_table_id         = aws_route_table.private[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.this[0].id
-}
-
+# Public Subnets
 resource "aws_subnet" "public" {
   count                   = length(var.availability_zones)
-  vpc_id                  = aws_vpc.this[0].id
+  vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = true
@@ -138,9 +73,10 @@ resource "aws_subnet" "public" {
   })
 }
 
+# Private Subnets
 resource "aws_subnet" "private" {
   count             = length(var.availability_zones)
-  vpc_id            = aws_vpc.this[0].id
+  vpc_id            = aws_vpc.this.id
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
   
@@ -149,15 +85,60 @@ resource "aws_subnet" "private" {
   })
 }
 
-# Update route table associations
+# NAT Gateway (Single NAT Gateway for cost optimization)
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = merge(local.tags, {
+    Name = "${var.app_name}-${var.environment}-nat"
+  })
+}
+
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id  # Place in first public subnet
+
+  tags = merge(local.tags, {
+    Name = "${var.app_name}-${var.environment}"
+  })
+}
+
+# Route Tables
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = merge(local.tags, {
+    Name = "${var.app_name}-${var.environment}-public"
+  })
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = merge(local.tags, {
+    Name = "${var.app_name}-${var.environment}-private"
+  })
+}
+
+# Route Table Associations
 resource "aws_route_table_association" "private" {
   count          = length(var.availability_zones)
   subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private[0].id
+  route_table_id = aws_route_table.private.id
 }
 
 resource "aws_route_table_association" "public" {
   count          = length(var.availability_zones)
   subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public[0].id
+  route_table_id = aws_route_table.public.id
 } 
