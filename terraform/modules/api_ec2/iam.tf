@@ -44,12 +44,18 @@ resource "aws_iam_role_policy" "ecr_access" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken",
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = ["*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage"
         ]
-        Resource = "*"
+        Resource = ["arn:aws:ecr:${var.aws_region}:*:repository/${split("/", var.ecr_repository_url)[1]}"]
       }
     ]
   })
@@ -68,7 +74,15 @@ resource "aws_iam_role_policy" "ssm_access" {
         Action = [
           "ssm:GetParameter",
           "ssm:GetParameters",
-          "ssm:GetParametersByPath",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:*:parameter/platform/${var.environment}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ssm:UpdateInstanceInformation",
           "ssmmessages:CreateControlChannel",
           "ssmmessages:CreateDataChannel",
@@ -81,12 +95,7 @@ resource "aws_iam_role_policy" "ssm_access" {
           "ec2messages:GetMessages",
           "ec2messages:SendReply"
         ]
-        Resource = [
-          "arn:aws:ssm:${var.aws_region}:*:parameter${var.ssm_prefix}/*",
-          "arn:aws:ssm:${var.aws_region}:*:parameter/platform/${var.environment}/*",
-          "arn:aws:ssm:${var.aws_region}:*:parameter/platform/staging/*",
-          "*"
-        ]
+        Resource = ["*"]
       }
     ]
   })
@@ -109,7 +118,8 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
           "logs:DescribeLogStreams"
         ]
         Resource = [
-          "arn:aws:logs:${var.aws_region}:*:log-group:/ec2/${var.app_name}-${var.environment}-api:*"
+          "arn:aws:logs:${var.aws_region}:*:log-group:/ec2/${var.app_name}-${var.environment}-api:*",
+          "arn:aws:logs:${var.aws_region}:*:log-group:/ec2/${var.app_name}-${var.environment}-api:*:*"
         ]
       }
     ]
