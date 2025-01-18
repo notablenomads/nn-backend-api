@@ -143,6 +143,63 @@ copilot svc metrics
 - **CPU**: 256 units
 - **Networking**: Private subnet with public IP
 
+## Docker and Infrastructure Deployment
+
+### Building and Pushing Docker Image
+
+```bash
+# Build the Docker image
+docker build -t nn-backend-api .
+
+# Log in to AWS ECR (replace with your AWS region)
+aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com
+
+# Tag the image (replace with your ECR repository URI)
+docker tag nn-backend-api:latest YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
+
+# Push the image to ECR
+docker push YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
+```
+
+### Terraform Deployment
+
+The infrastructure is managed using Terraform. The configuration is organized in environments (staging/production) and modules.
+
+```bash
+# Initialize Terraform
+cd terraform/environments/[staging|production]
+terraform init
+
+# Plan the deployment
+terraform plan -var-file=terraform.tfvars
+
+# Apply the changes
+terraform apply -var-file=terraform.tfvars
+
+# Destroy infrastructure (if needed)
+terraform destroy -var-file=terraform.tfvars
+```
+
+#### Infrastructure Components
+
+The Terraform configuration manages the following AWS resources:
+
+- ECS Fargate cluster and service
+- Application Load Balancer
+- VPC and networking components
+- IAM roles and policies
+- ECR repository
+- CloudWatch logs
+
+#### Environment-specific Configuration
+
+Environment-specific variables are stored in `terraform.tfvars` files:
+
+- `terraform/environments/staging/terraform.tfvars`
+- `terraform/environments/production/terraform.tfvars`
+
+Update these files with your specific configuration values before deployment.
+
 ## Contributing
 
 1. Fork the repository
