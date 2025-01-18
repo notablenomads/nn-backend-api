@@ -23,6 +23,7 @@ module "vpc" {
 
   app_name    = var.app_name
   environment = var.environment
+  vpc_cidr    = var.vpc_cidr
 }
 
 # Get the zone ID from the shared state
@@ -47,7 +48,7 @@ resource "aws_ssm_parameter" "env_variables" {
     API_PREFIX          = "v1"
     CORS_ENABLED_DOMAINS = "*.notablenomads.com,notablenomads.com"
     CORS_RESTRICT       = "false"
-    LOG_LEVEL           = "error"
+    LOG_LEVEL           = "debug"
     EMAIL_FROM_ADDRESS  = "no-reply@mail.notablenomads.com"
     EMAIL_TO_ADDRESS    = "contact@notablenomads.com"
     AWS_REGION          = var.aws_region
@@ -73,7 +74,7 @@ resource "aws_ssm_parameter" "env_variables" {
 
 # You can choose either EC2 or ECS deployment by commenting/uncommenting the appropriate module
 module "api" {
-  source = "../../modules/api_ec2"  # For EC2 deployment
+  source = "../../modules/api_ec2"
 
   app_name            = var.app_name
   environment         = var.environment
@@ -86,11 +87,10 @@ module "api" {
   desired_count       = 1
   log_retention_days  = 1
   ssm_prefix         = "/platform/staging"
-  domain_name        = "api.staging.platform.notablenomads.com"
+  domain_name        = var.domain_name
   zone_id            = data.terraform_remote_state.shared.outputs.platform_zone_id
+  instance_type      = "t4g.nano"
   
-  # We don't need to specify environment_variables and secrets here anymore
-  # as they are managed by SSM parameters above
   environment_variables = []
   secrets = []
 }
