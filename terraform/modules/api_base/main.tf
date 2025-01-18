@@ -25,18 +25,18 @@ resource "aws_lb_target_group" "api" {
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
-  target_type = var.target_type # "ip" for ECS, "instance" for EC2
+  target_type = var.target_type
 
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 300
+    unhealthy_threshold = 5
+    interval            = 30
     matcher            = "200"
     path               = "/v1/health"
     port               = "traffic-port"
     protocol           = "HTTP"
     timeout            = 5
-    unhealthy_threshold = 3
   }
 
   deregistration_delay = 30
