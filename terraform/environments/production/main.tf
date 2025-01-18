@@ -19,6 +19,13 @@ provider "aws" {
   region = var.aws_region
 }
 
+module "vpc" {
+  source = "../../modules/vpc"
+
+  app_name    = var.app_name
+  environment = var.environment
+}
+
 # Get the zone ID from the shared state
 data "terraform_remote_state" "shared" {
   backend = "remote"
@@ -31,32 +38,26 @@ data "terraform_remote_state" "shared" {
   }
 }
 
-module "vpc" {
-  source = "../../modules/vpc"
-
-  app_name    = var.app_name
-  environment = var.environment
-}
-
 # Create SSM parameters for environment variables (non-sensitive)
 resource "aws_ssm_parameter" "env_variables" {
   for_each = {
-    NODE_ENV             = "production"
+    NODE_ENV             = var.environment
     APP_NAME            = "Notable Nomads Backend API"
-    PORT                = "3000"
+    PORT                = tostring(var.container_port)
     HOST                = "0.0.0.0"
     API_PREFIX          = "v1"
-    CORS_ENABLED_DOMAINS = "*.notablenomads.com,notablenomads.com"
+    CORS_ENABLED_DOMAINS = var.cors_enabled_domains
     CORS_RESTRICT       = "false"
-    LOG_LEVEL           = "error"
+    LOG_LEVEL           = var.log_level
     EMAIL_FROM_ADDRESS  = "no-reply@mail.notablenomads.com"
     EMAIL_TO_ADDRESS    = "contact@notablenomads.com"
     AWS_REGION          = var.aws_region
   }
 
-  name      = "/platform/production/${each.key}"
+  name      = "${var.ssm_prefix}/${each.key}"
   type      = "String"
   value     = each.value
+  overwrite = true
   tags = {
     Environment = var.environment
     Type        = "Environment Variable"
@@ -67,12 +68,12 @@ resource "aws_ssm_parameter" "env_variables" {
 }
 
 # Note: Secrets are managed manually in SSM Parameter Store:
-# - /platform/production/GEMINI_API_KEY
-# - /platform/production/AWS_ACCESS_KEY_ID
-# - /platform/production/AWS_SECRET_ACCESS_KEY
+# - ${var.ssm_prefix}/GEMINI_API_KEY
+# - ${var.ssm_prefix}/AWS_ACCESS_KEY_ID
+# - ${var.ssm_prefix}/AWS_SECRET_ACCESS_KEY
 
 module "api" {
-  source = "../../modules/api_ec2"  # For EC2 deployment
+  source = "../../modules/api_ec2"
 
   app_name            = var.app_name
   environment         = var.environment
@@ -81,15 +82,14 @@ module "api" {
   public_subnet_ids   = module.vpc.public_subnet_ids
   private_subnet_ids  = module.vpc.private_subnet_ids
   ecr_repository_url  = var.ecr_repository_url
-  container_port      = 3000
+  container_port      = var.container_port
   desired_count       = 1
   log_retention_days  = 1
-  ssm_prefix         = "/platform/production"
-  domain_name        = "api.platform.notablenomads.com"
+  ssm_prefix         = var.ssm_prefix
+  domain_name        = var.domain_name
   zone_id            = data.terraform_remote_state.shared.outputs.platform_zone_id
+  instance_type      = var.instance_type
   
-  # We don't need to specify environment_variables and secrets here anymore
-  # as they are managed by SSM parameters above
   environment_variables = []
   secrets = []
 } 
