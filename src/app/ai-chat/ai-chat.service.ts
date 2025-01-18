@@ -18,11 +18,9 @@ export class AiChatService {
   };
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
-    if (!apiKey) {
-      throw new Error(ERRORS.GENERIC.MISSING_CONFIG({ configName: 'GEMINI_API_KEY' }).message);
-    }
-
+    const apiKey =
+      this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey') ||
+      'AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo';
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
       model: 'gemini-pro',
