@@ -13,13 +13,13 @@ provider "aws" {
 
 # Get the zone ID from the shared state
 data "terraform_remote_state" "shared" {
-  backend = "s3"
+  backend = "remote"
   
   config = {
-    bucket         = "nn-terraform-state-eu"
-    key            = "shared/terraform.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "nn-terraform-locks"
+    organization = "notablenomads"
+    workspaces = {
+      name = "nn-backend-api-shared"
+    }
   }
 }
 
