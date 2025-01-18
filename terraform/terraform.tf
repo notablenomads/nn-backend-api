@@ -3,7 +3,7 @@ terraform {
     organization = "notablenomads"
 
     workspaces {
-      tags = ["nn-backend-api"]
+      name = "nn-backend-api-${terraform.workspace}"
     }
   }
 } 
