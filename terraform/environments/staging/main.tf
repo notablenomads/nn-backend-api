@@ -1,11 +1,4 @@
 terraform {
-  backend "s3" {
-    bucket         = "nn-terraform-state-eu"
-    key            = "staging/terraform.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "nn-terraform-locks"
-  }
-
   required_providers {
     aws = {
       source  = "hashicorp/aws"
