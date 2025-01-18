@@ -119,4 +119,10 @@ variable "tags" {
     ManagedBy = "terraform"
     Service   = "api"
   }
+}
+
+variable "instance_type" {
+  description = "The EC2 instance type to use"
+  type        = string
+  default     = "t4g.nano"
 } 
