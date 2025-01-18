@@ -57,50 +57,79 @@ resource "aws_launch_template" "api" {
 
   user_data = base64encode(<<-EOF
               #!/bin/bash
+              
+              # Enable logging
+              exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+              echo "Starting user data script execution..."
+              
+              # Test internet connectivity
+              echo "Testing internet connectivity..."
+              curl -v https://amazon.com 2>&1
+              
+              # Install and start SSM agent
+              echo "Installing SSM agent..."
+              dnf install -y amazon-ssm-agent
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+              
+              # Update system
+              echo "Updating system packages..."
               yum update -y
               yum install -y docker jq unzip
-
+              
               # Start and enable Docker
+              echo "Starting Docker service..."
               systemctl start docker
               systemctl enable docker
               
               # Install AWS CLI
+              echo "Installing AWS CLI..."
               curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               ./aws/install
               
+              # Test AWS connectivity
+              echo "Testing AWS connectivity..."
+              aws sts get-caller-identity
+              
               # Login to ECR
+              echo "Logging into ECR..."
               aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${split("/", var.ecr_repository_url)[0]}
               
               # Create environment file directory
               mkdir -p /etc/api
               
               # Get environment variables from SSM Parameter Store
+              echo "Fetching environment variables..."
               aws ssm get-parameters-by-path \
                 --path "${var.ssm_prefix}/env" \
                 --recursive \
                 --with-decryption \
                 --region ${var.aws_region} \
                 --output json > /etc/api/env.json
-
+              
               # Get secrets from SSM Parameter Store
+              echo "Fetching secrets..."
               aws ssm get-parameters \
                 --names ${join(" ", [for s in var.secrets : s.valueFrom])} \
                 --with-decryption \
                 --region ${var.aws_region} \
                 --output json > /etc/api/secrets.json
-
+              
               # Combine environment variables and secrets into a single env file
               jq -r '.Parameters[] | .Name + "=" + .Value' /etc/api/env.json > /etc/api/container.env
               jq -r '.Parameters[] | .Name | split("/")[-1] + "=" + .Value' /etc/api/secrets.json >> /etc/api/container.env
               
               # Start the container
+              echo "Starting the API container..."
               docker run -d \
                 --name api \
                 --restart always \
                 -p ${var.container_port}:${var.container_port} \
                 --env-file /etc/api/container.env \
                 ${var.ecr_repository_url}:latest
+              
+              echo "User data script completed."
               EOF
   )
 
