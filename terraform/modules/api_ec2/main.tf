@@ -44,7 +44,7 @@ resource "aws_ssm_parameter" "environment_variables" {
 resource "aws_launch_template" "api" {
   name_prefix   = "${var.app_name}-${var.environment}-"
   image_id      = "ami-04c372a99a14aed4e" # Amazon Linux 2023 ARM64
-  instance_type = "t4g.nano"              # ARM-based instance as specified
+  instance_type = var.instance_type        # Make instance type configurable
 
   network_interfaces {
     associate_public_ip_address = false
@@ -148,7 +148,7 @@ resource "aws_launch_template" "api" {
                 -p ${var.container_port}:${var.container_port} \
                 --env-file /etc/api/container.env \
                 --log-driver=awslogs \
-                --log-opt awslogs-group=/ec2/platform-staging-api \
+                --log-opt awslogs-group=/ec2/platform-${var.environment}-api \
                 --log-opt awslogs-region=${var.aws_region} \
                 --log-opt awslogs-create-group=true \
                 ${var.ecr_repository_url}:latest
