@@ -23,7 +23,7 @@ resource "random_id" "target_group_suffix" {
 # Target Group
 resource "aws_lb_target_group" "api" {
   name        = "${var.app_name}-${var.environment}-tg-${random_id.target_group_suffix.hex}"
-  port        = 80
+  port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "instance"
@@ -33,8 +33,8 @@ resource "aws_lb_target_group" "api" {
     healthy_threshold   = 2
     interval            = 30
     matcher            = "200"
-    path               = "/health"
-    port               = "traffic-port"
+    path               = "/v1/health"
+    port               = var.container_port
     protocol           = "HTTP"
     timeout            = 5
     unhealthy_threshold = 2
