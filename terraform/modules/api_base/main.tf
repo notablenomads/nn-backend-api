@@ -78,11 +78,6 @@ resource "aws_acm_certificate" "api" {
   }
 }
 
-# Output validation options for debugging
-output "acm_validation_options" {
-  value = aws_acm_certificate.api.domain_validation_options
-}
-
 resource "aws_route53_record" "cert_validation" {
   for_each = {
     for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => {
@@ -98,17 +93,6 @@ resource "aws_route53_record" "cert_validation" {
   ttl             = 60
   type            = each.value.type
   zone_id         = var.zone_id
-}
-
-# Output created DNS records for debugging
-output "validation_dns_records" {
-  value = {
-    for k, v in aws_route53_record.cert_validation : k => {
-      name    = v.name
-      records = v.records
-      type    = v.type
-    }
-  }
 }
 
 resource "aws_acm_certificate_validation" "api" {
