@@ -148,6 +148,41 @@ curl https://api.platform.notablenomads.com/v1/health
 ssh root@your-server-ip "docker-compose logs -f"
 ```
 
+### Redeployment
+
+To redeploy updated code:
+
+1. Deploy the latest changes:
+
+```bash
+# Deploy updates
+./deploy.sh your-server-ip
+```
+
+2. Optional: Update SSL if needed:
+
+```bash
+# Update SSL certificate
+ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+```
+
+3. Verify the redeployment:
+
+```bash
+# Check API health
+curl https://api.platform.notablenomads.com/v1/health
+
+# Monitor deployment logs
+ssh root@your-server-ip "docker-compose logs -f"
+```
+
+Note: The deployment script will:
+
+- Build a new Docker image
+- Transfer it to the server
+- Update the running containers
+- Preserve SSL certificates and configurations
+
 ### Maintenance Commands
 
 #### Service Management
@@ -203,6 +238,25 @@ ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/access
 
 # View nginx error logs
 ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/error.log"
+```
+
+#### Environment Variables Management
+
+```bash
+# View current .env file content
+ssh root@your-server-ip "cat /root/.env"
+
+# Edit .env file directly on server
+ssh root@your-server-ip "nano /root/.env"
+
+# Copy new .env file to server
+scp .env root@your-server-ip:/root/.env
+
+# View environment variables in running container
+ssh root@your-server-ip "docker-compose exec api env"
+
+# After changing .env, restart the services to apply changes
+ssh root@your-server-ip "cd /root && docker-compose restart"
 ```
 
 #### Deployment Files
