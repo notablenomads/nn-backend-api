@@ -119,252 +119,175 @@ yarn format
 
 ## Deployment
 
-The project uses AWS Copilot for deployment. The service runs on AWS ECS Fargate.
-
-```bash
-# Deploy to production
-copilot deploy --env production
-
-# View service logs
-copilot svc logs
-
-# View service status
-copilot svc status
-
-# View service metrics
-copilot svc metrics
-```
-
-### Infrastructure
-
-- **Service Type**: Backend Service
-- **Compute**: AWS Fargate
-- **Memory**: 512 MiB
-- **CPU**: 256 units
-- **Networking**: Private subnet with public IP
-
-## Docker and Infrastructure Deployment
-
-### Building and Pushing Docker Image
-
-```bash
-# Build the Docker image
-docker build -t nn-backend-api .
-
-# Log in to AWS ECR (replace with your AWS region)
-aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com
-
-# Tag the image (replace with your ECR repository URI)
-docker tag nn-backend-api:latest YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
-
-# Push the image to ECR
-docker push YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
-```
-
-### Terraform Deployment
-
-The infrastructure is managed using Terraform. The configuration is organized in environments (staging/production) and modules.
-
-```bash
-# Initialize Terraform
-cd terraform/environments/[staging|production]
-terraform init
-
-# Plan the deployment
-terraform plan -var-file=terraform.tfvars
-
-# Apply the changes
-terraform apply -var-file=terraform.tfvars
-
-# Destroy infrastructure (if needed)
-terraform destroy -var-file=terraform.tfvars
-```
-
-#### Infrastructure Components
-
-The Terraform configuration manages the following AWS resources:
-
-- ECS Fargate cluster and service
-- Application Load Balancer
-- VPC and networking components
-- IAM roles and policies
-- ECR repository
-- CloudWatch logs
-
-#### Environment-specific Configuration
-
-Environment-specific variables are stored in `terraform.tfvars` files:
-
-- `terraform/environments/staging/terraform.tfvars`
-- `terraform/environments/production/terraform.tfvars`
-
-Update these files with your specific configuration values before deployment.
-
-## Deployment on Hetzner
-
 ### Prerequisites
 
-1. A Hetzner Cloud account
-2. Docker installed on your local machine
-3. SSH access to your Hetzner server
+- Node.js ≥18.0.0
+- Yarn v4.6.0
+- Docker
+- A domain name pointing to your server
 
-### Initial Server Setup
+### Production Deployment (Hetzner)
 
-1. Create a new server on Hetzner Cloud:
+1. Initial Deployment:
 
-   - Choose Ubuntu 22.04 or Debian 11
-   - Select your preferred server size (CX11 is good for starting)
-   - Add your SSH key during creation
+```bash
+# Deploy the application
+./deploy.sh your-server-ip
 
-2. Once the server is created, SSH into it:
+# Generate SSL certificate
+ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+```
 
-   ```bash
-   ssh root@your-server-ip
-   ```
+2. Verify Deployment:
 
-3. Install Docker and Docker Compose:
+```bash
+# Check if the API is accessible
+curl https://api.platform.notablenomads.com/v1/health
 
-   ```bash
-   # Update package list
-   apt update
-   apt upgrade -y
+# View logs
+ssh root@your-server-ip "docker-compose logs -f"
+```
 
-   # Install required packages
-   apt install -y apt-transport-https ca-certificates curl software-properties-common
+### Maintenance Commands
 
-   # Add Docker's official GPG key
-   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+#### Service Management
 
-   # Add Docker repository
-   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+```bash
+# Restart all services
+ssh root@your-server-ip "cd /root && docker-compose restart"
 
-   # Install Docker
-   apt update
-   apt install -y docker-ce docker-ce-cli containerd.io
+# Stop all services
+ssh root@your-server-ip "cd /root && docker-compose down"
 
-   # Start and enable Docker
-   systemctl start docker
-   systemctl enable docker
-   ```
+# Start all services
+ssh root@your-server-ip "cd /root && docker-compose up -d"
 
-### Deployment Steps
+# View real-time logs
+ssh root@your-server-ip "docker-compose logs -f"
 
-1. Build your Docker image locally:
+# View logs for a specific service (api, nginx)
+ssh root@your-server-ip "docker-compose logs -f api"
+ssh root@your-server-ip "docker-compose logs -f nginx"
+```
 
-   ```bash
-   docker build -t nn-backend-api .
-   ```
+#### SSL Certificate Management
 
-2. Tag your image:
+```bash
+# Check certificate expiration
+ssh root@your-server-ip "openssl x509 -in /root/ssl/fullchain.pem -noout -dates"
 
-   ```bash
-   docker tag nn-backend-api your-registry/nn-backend-api:latest
-   ```
+# Check certificate validity period
+ssh root@your-server-ip "openssl x509 -in /root/ssl/fullchain.pem -text -noout | grep -A2 'Validity'"
 
-3. Push your code to the server:
+# Manually renew certificate (if needed)
+ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
 
-   ```bash
-   # Option 1: Using Docker Hub (requires Docker Hub account)
-   docker push your-registry/nn-backend-api:latest
+# View certificate renewal schedule
+ssh root@your-server-ip "crontab -l"
+```
 
-   # Option 2: Direct transfer to server (recommended for small teams)
-   docker save nn-backend-api | ssh root@your-server-ip 'docker load'
-   ```
+#### Monitoring
 
-4. On the server, create a docker-compose.yml file:
+```bash
+# Check API health
+curl https://api.platform.notablenomads.com/v1/health
 
-   ```yaml
-   version: '3.8'
-   services:
-     api:
-       image: nn-backend-api:latest
-       restart: always
-       ports:
-         - '3000:3000'
-       env_file:
-         - .env
-   ```
+# Monitor resource usage
+ssh root@your-server-ip "docker stats"
 
-5. Copy your .env file to the server:
+# Check running containers
+ssh root@your-server-ip "docker-compose ps"
 
-   ```bash
-   scp .env root@your-server-ip:/root/.env
-   ```
+# View nginx access logs
+ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/access.log"
 
-6. Run the application:
-   ```bash
-   docker-compose up -d
-   ```
+# View nginx error logs
+ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/error.log"
+```
 
-### Setting up Nginx (Optional but Recommended)
+#### Deployment Files
 
-1. Install Nginx:
+The following files are used for deployment:
 
-   ```bash
-   apt install -y nginx
-   ```
+- `deploy.sh`: Main deployment script
+- `docker-compose.yml`: Docker services configuration
+- `nginx.conf`: Nginx reverse proxy configuration
+- `setup-ssl.sh`: SSL certificate setup script
 
-2. Create Nginx configuration:
+### Server Configuration
 
-   ```bash
-   nano /etc/nginx/sites-available/nn-backend-api
-   ```
+The production server uses the following setup:
 
-   Add the following configuration:
+- **Web Server**: Nginx (reverse proxy)
+- **SSL**: Let's Encrypt (auto-renewal every 12 hours)
+- **Container Orchestration**: Docker Compose
+- **Health Monitoring**: Built-in health checks
+- **Security**:
+  - HTTPS redirection
+  - HTTP/2 enabled
+  - Modern SSL configuration
+  - Security headers
+  - WebSocket support
 
-   ```nginx
-   server {
-       listen 80;
-       server_name your-domain.com;
+### Security Headers
 
-       location / {
-           proxy_pass http://localhost:3000;
-           proxy_http_version 1.1;
-           proxy_set_header Upgrade $http_upgrade;
-           proxy_set_header Connection 'upgrade';
-           proxy_set_header Host $host;
-           proxy_cache_bypass $http_upgrade;
-       }
-   }
-   ```
+The following security headers are enabled:
 
-3. Enable the site:
-   ```bash
-   ln -s /etc/nginx/sites-available/nn-backend-api /etc/nginx/sites-enabled/
-   nginx -t
-   systemctl restart nginx
-   ```
+```nginx
+add_header Strict-Transport-Security "max-age=63072000" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer-when-downgrade" always;
+add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+```
 
-### SSL Setup with Certbot (Recommended)
+### Troubleshooting
 
-1. Install Certbot:
+1. If the API is not accessible:
 
-   ```bash
-   apt install -y certbot python3-certbot-nginx
-   ```
+```bash
+# Check if containers are running
+ssh root@your-server-ip "docker-compose ps"
 
-2. Obtain SSL certificate:
-   ```bash
-   certbot --nginx -d your-domain.com
-   ```
+# Check logs for errors
+ssh root@your-server-ip "docker-compose logs"
+```
 
-### Maintenance
+2. If SSL certificate is not working:
 
-- To update the application:
+```bash
+# Verify certificate files exist
+ssh root@your-server-ip "ls -la /root/ssl/"
 
-  ```bash
-  # Pull new image
-  docker pull your-registry/nn-backend-api:latest
+# Check nginx configuration
+ssh root@your-server-ip "docker-compose exec nginx nginx -t"
 
-  # Restart containers
-  docker-compose down
-  docker-compose up -d
-  ```
+# Regenerate certificate
+ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+```
 
-- To view logs:
-  ```bash
-  docker-compose logs -f
-  ```
+3. If WebSocket connection fails:
+
+```bash
+# Check nginx logs for WebSocket errors
+ssh root@your-server-ip "docker-compose logs nginx | grep -i websocket"
+
+# Verify WebSocket configuration in nginx.conf
+ssh root@your-server-ip "cat /root/nginx.conf | grep -A 10 'proxy_set_header Upgrade'"
+```
+
+### Backup
+
+To backup the deployment configuration:
+
+```bash
+# Create a backup directory
+ssh root@your-server-ip "cd /root && tar -czf backup-\$(date +%Y%m%d).tar.gz docker-compose.yml nginx.conf ssl/"
+
+# Download the backup locally
+scp root@your-server-ip:/root/backup-*.tar.gz ./backups/
+```
 
 ## Contributing
 
