@@ -5,6 +5,9 @@ export interface IAppConfig {
   apiPrefix: string;
   corsEnabledDomains: string[];
   corsRestrict: boolean;
+  name: string;
+  description: string;
+  version: string;
 }
 
 export interface IAiConfig {

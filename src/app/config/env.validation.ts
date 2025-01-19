@@ -10,6 +10,11 @@ export const validationSchema = Joi.object({
     .description('Comma-separated list of allowed domains'),
   CORS_RESTRICT: Joi.boolean().default(false).description('Whether to enforce CORS restrictions'),
 
+  // App Information
+  APP_NAME: Joi.string().required(),
+  APP_DESCRIPTION: Joi.string().required(),
+  APP_VERSION: Joi.string().required(),
+
   // AI Configuration
   GEMINI_API_KEY: Joi.string().default('AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo'),
 

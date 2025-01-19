@@ -10,6 +10,9 @@ export default (): IConfig => ({
       .split(',')
       .map((domain) => domain.trim()),
     corsRestrict: process.env.CORS_RESTRICT === 'true',
+    name: process.env.APP_NAME || 'Notable Nomads API',
+    description: process.env.APP_DESCRIPTION || 'The backend API for the Notable Nomads platform',
+    version: process.env.APP_VERSION || '0.0.1',
   },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',

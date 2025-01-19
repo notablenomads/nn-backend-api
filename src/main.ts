@@ -67,9 +67,9 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(config));
 
   const options = new DocumentBuilder()
-    .setTitle(process.env.npm_package_name)
-    .setVersion(process.env.npm_package_version)
-    .setDescription(process.env.npm_package_description)
+    .setTitle(config.get('app.name'))
+    .setDescription(config.get('app.description'))
+    .setVersion(config.get('app.version'))
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, options);
