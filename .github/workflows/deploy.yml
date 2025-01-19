@@ -1,0 +1,58 @@
+name: Deploy on Release
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build application
+        run: yarn build
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 91.107.249.14 >> ~/.ssh/known_hosts
+
+      - name: Create GPG-encrypted env file
+        run: |
+          echo "${{ secrets.ENV_CONTENT }}" | base64 -d > .env
+          echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 .env
+          rm .env
+
+      - name: Deploy to production
+        run: |
+          ./deploy.sh 91.107.249.14
+
+      - name: Update environment on server
+        run: |
+          ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
+          scp .env.gpg root@91.107.249.14:/root/
+          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+          ssh root@91.107.249.14 "cd /root && docker-compose restart"
+
+      - name: Verify deployment
+        run: |
+          sleep 30  # Wait for services to start
+          curl --fail https://api.platform.notablenomads.com/v1/health || exit 1

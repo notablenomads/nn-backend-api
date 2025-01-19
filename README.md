@@ -119,6 +119,56 @@ yarn format
 
 ## Deployment
 
+### Automated Deployment
+
+The application is automatically deployed when:
+
+1. A new release is published on GitHub
+2. A new version tag (v\*) is pushed to the main branch
+
+#### Setting up GitHub Actions
+
+1. Generate SSH key for GitHub Actions:
+
+   ```bash
+   # Generate new SSH key
+   ssh-keygen -t rsa -b 4096 -C "github-actions@notablenomads.com" -f github-actions
+
+   # Add public key to server
+   cat github-actions.pub | ssh root@your-server-ip "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+
+   # Copy private key content (to add to GitHub Secrets)
+   cat github-actions
+   ```
+
+2. Add required GitHub Secrets:
+
+   - `SSH_PRIVATE_KEY`: The private key content from step 1
+   - `ENV_CONTENT`: Base64-encoded content of .env file
+     ```bash
+     base64 -i .env | tr -d '\n' | pbcopy
+     ```
+   - `GPG_PASSPHRASE`: Passphrase for GPG encryption
+
+3. Add secrets in GitHub:
+   - Go to your repository
+   - Navigate to Settings > Secrets and variables > Actions
+   - Click "New repository secret"
+   - Add each secret with its corresponding value
+
+To trigger a deployment:
+
+```bash
+# Create and push a new version tag
+git tag v1.0.0
+git push origin v1.0.0
+
+# Or create a new release through GitHub's interface
+# Go to Releases > Draft a new release
+```
+
+### Manual Deployment
+
 ### Prerequisites
 
 - Node.js ≥18.0.0
