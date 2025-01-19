@@ -200,6 +200,172 @@ Environment-specific variables are stored in `terraform.tfvars` files:
 
 Update these files with your specific configuration values before deployment.
 
+## Deployment on Hetzner
+
+### Prerequisites
+
+1. A Hetzner Cloud account
+2. Docker installed on your local machine
+3. SSH access to your Hetzner server
+
+### Initial Server Setup
+
+1. Create a new server on Hetzner Cloud:
+
+   - Choose Ubuntu 22.04 or Debian 11
+   - Select your preferred server size (CX11 is good for starting)
+   - Add your SSH key during creation
+
+2. Once the server is created, SSH into it:
+
+   ```bash
+   ssh root@your-server-ip
+   ```
+
+3. Install Docker and Docker Compose:
+
+   ```bash
+   # Update package list
+   apt update
+   apt upgrade -y
+
+   # Install required packages
+   apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+   # Add Docker's official GPG key
+   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+   # Add Docker repository
+   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+   # Install Docker
+   apt update
+   apt install -y docker-ce docker-ce-cli containerd.io
+
+   # Start and enable Docker
+   systemctl start docker
+   systemctl enable docker
+   ```
+
+### Deployment Steps
+
+1. Build your Docker image locally:
+
+   ```bash
+   docker build -t nn-backend-api .
+   ```
+
+2. Tag your image:
+
+   ```bash
+   docker tag nn-backend-api your-registry/nn-backend-api:latest
+   ```
+
+3. Push your code to the server:
+
+   ```bash
+   # Option 1: Using Docker Hub (requires Docker Hub account)
+   docker push your-registry/nn-backend-api:latest
+
+   # Option 2: Direct transfer to server (recommended for small teams)
+   docker save nn-backend-api | ssh root@your-server-ip 'docker load'
+   ```
+
+4. On the server, create a docker-compose.yml file:
+
+   ```yaml
+   version: '3.8'
+   services:
+     api:
+       image: nn-backend-api:latest
+       restart: always
+       ports:
+         - '3000:3000'
+       env_file:
+         - .env
+   ```
+
+5. Copy your .env file to the server:
+
+   ```bash
+   scp .env root@your-server-ip:/root/.env
+   ```
+
+6. Run the application:
+   ```bash
+   docker-compose up -d
+   ```
+
+### Setting up Nginx (Optional but Recommended)
+
+1. Install Nginx:
+
+   ```bash
+   apt install -y nginx
+   ```
+
+2. Create Nginx configuration:
+
+   ```bash
+   nano /etc/nginx/sites-available/nn-backend-api
+   ```
+
+   Add the following configuration:
+
+   ```nginx
+   server {
+       listen 80;
+       server_name your-domain.com;
+
+       location / {
+           proxy_pass http://localhost:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
+
+3. Enable the site:
+   ```bash
+   ln -s /etc/nginx/sites-available/nn-backend-api /etc/nginx/sites-enabled/
+   nginx -t
+   systemctl restart nginx
+   ```
+
+### SSL Setup with Certbot (Recommended)
+
+1. Install Certbot:
+
+   ```bash
+   apt install -y certbot python3-certbot-nginx
+   ```
+
+2. Obtain SSL certificate:
+   ```bash
+   certbot --nginx -d your-domain.com
+   ```
+
+### Maintenance
+
+- To update the application:
+
+  ```bash
+  # Pull new image
+  docker pull your-registry/nn-backend-api:latest
+
+  # Restart containers
+  docker-compose down
+  docker-compose up -d
+  ```
+
+- To view logs:
+  ```bash
+  docker-compose logs -f
+  ```
+
 ## Contributing
 
 1. Fork the repository
