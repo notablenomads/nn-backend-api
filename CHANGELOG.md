@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.20](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.19...v0.0.20) (2025-01-19)
+
+
+### Features
+
+* add script for setting GitHub secrets and SSH key generation ([817ccd4](https://github.com/Notable-Nomads/nn-backend-api/commit/817ccd482ed83df4312e7166148ff2487eb9167f))
+
 ### [0.0.19](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.18...v0.0.19) (2025-01-19)
 
 ### [0.0.18](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.17...v0.0.18) (2025-01-19)
