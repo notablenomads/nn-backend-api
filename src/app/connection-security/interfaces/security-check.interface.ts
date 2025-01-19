@@ -35,15 +35,32 @@ export interface IBrowserInfo {
   version: string;
   os: string;
   platform: string;
+  engine: string;
+  engineVersion: string;
   isMobile: boolean;
   isBot: boolean;
+  device: {
+    type: string;
+    model: string;
+    vendor: string;
+  };
 }
 
 export interface IHeadersInfo {
   acceptLanguage?: string;
   acceptEncoding?: string;
   referer?: string;
-  [key: string]: string | undefined;
+  doNotTrack: boolean;
+  securityHeaders: {
+    hasHSTS: boolean;
+    hasXFrameOptions: boolean;
+    hasXSSProtection: boolean;
+    hasNoSniff: boolean;
+    hasCSP: boolean;
+    hasReferrerPolicy: boolean;
+    hasPermissionsPolicy: boolean;
+  };
+  [key: string]: any;
 }
 
 export interface ICookiesInfo {
@@ -52,17 +69,27 @@ export interface ICookiesInfo {
   };
   totalCount: number;
   thirdPartyCookies: string[];
+  analysis: {
+    tracking: string[];
+    session: string[];
+    persistent: string[];
+  };
 }
 
 export interface ITlsInfo {
   protocol: string;
   cipherSuite: string;
   keyExchange?: string;
+  securityLevel: string;
+  warnings?: string[];
   serverCertificate?: {
     issuer: string;
     validFrom: string;
     validTo: string;
     bits: number;
+    fingerprint: string;
+    serialNumber: string;
+    subject: any;
   };
 }
 

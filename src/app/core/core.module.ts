@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CorsService } from './services/cors.service';
 import { validationSchema } from '../config/env.validation';
 import configuration from '../config/configuration';
+
 @Global()
 @Module({
   imports: [

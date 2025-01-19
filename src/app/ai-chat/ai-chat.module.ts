@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AiChatService } from './ai-chat.service';
 import { AiChatGateway } from './ai-chat.gateway';
+import { AiChatService } from './ai-chat.service';
 
 @Module({
-  providers: [AiChatService, AiChatGateway],
-  exports: [AiChatService],
+  providers: [AiChatGateway, AiChatService],
 })
 export class AiChatModule {}
