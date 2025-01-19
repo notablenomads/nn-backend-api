@@ -26,6 +26,9 @@ jobs:
           corepack enable
           yarn --version
 
+      - name: Setup Yarn config
+        run: cp .yarnrc.yml-example .yarnrc.yml
+
       - name: Install dependencies
         run: yarn install --immutable --immutable-cache
 
