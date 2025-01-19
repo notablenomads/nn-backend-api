@@ -124,149 +124,147 @@ yarn format
 - Node.js ≥18.0.0
 - Yarn v4.6.0
 - Docker
+- GPG (for secure environment management)
 - A domain name pointing to your server
 
-### Production Deployment (Hetzner)
+### Initial Production Deployment
 
-1. Initial Deployment:
+1. Set up environment variables securely:
+
+   ```bash
+   # Encrypt your .env file locally
+   gpg --symmetric --cipher-algo AES256 .env
+   ```
+
+   You'll be prompted to create an encryption password. Save this password securely!
+
+2. Deploy the application:
+
+   ```bash
+   # Deploy the application
+   ./deploy.sh your-server-ip
+   ```
+
+3. Set up secure environment on the server:
+
+   ```bash
+   # Create secure directory
+   ssh root@your-server-ip "mkdir -p /root/secrets && chmod 700 /root/secrets"
+
+   # Copy encrypted file
+   scp .env.gpg root@your-server-ip:/root/
+
+   # Decrypt on server (you'll be prompted for the password)
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+   ```
+
+4. Generate SSL certificate:
+
+   ```bash
+   ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+   ```
+
+5. Verify deployment:
+
+   ```bash
+   # Check if the API is accessible
+   curl https://api.platform.notablenomads.com/v1/health
+
+   # View logs
+   ssh root@your-server-ip "docker-compose logs -f"
+   ```
+
+### Redeployment Process
+
+When redeploying with environment changes:
+
+1. Update and re-encrypt your local `.env` file:
+
+   ```bash
+   # Re-encrypt with any changes
+   gpg --symmetric --cipher-algo AES256 .env
+   ```
+
+2. Deploy and update environment:
+
+   ```bash
+   # Deploy code changes
+   ./deploy.sh your-server-ip
+
+   # Update encrypted environment
+   scp .env.gpg root@your-server-ip:/root/
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
+   # Restart services to apply changes
+   ssh root@your-server-ip "cd /root && docker-compose restart"
+   ```
+
+When redeploying without environment changes:
 
 ```bash
-# Deploy the application
+# Simply deploy code changes
 ./deploy.sh your-server-ip
-
-# Generate SSL certificate
-ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
 ```
 
-2. Verify Deployment:
+### Environment Security
+
+The deployment uses a secure environment setup:
+
+1. **Local Environment**:
+
+   - `.env`: Contains plain text environment variables (never committed)
+   - `.env.gpg`: Encrypted version of `.env` (safe to transfer)
+
+2. **Server Environment**:
+
+   - `/root/secrets/.env`: Decrypted environment file (restricted permissions)
+   - `/root/.env.gpg`: Encrypted backup (safe to keep)
+
+3. **Security Measures**:
+   - Environment variables are encrypted at rest
+   - Decrypted file is stored in a restricted directory
+   - Secrets directory is mounted read-only in containers
+   - Access requires GPG decryption password
+   - Regular rotation of encryption passwords recommended
+
+### Environment Management
+
+#### Viewing Variables
 
 ```bash
-# Check if the API is accessible
-curl https://api.platform.notablenomads.com/v1/health
+# View encrypted env file content (requires password)
+ssh root@your-server-ip "gpg -d /root/.env.gpg"
 
-# View logs
-ssh root@your-server-ip "docker-compose logs -f"
-```
-
-### Redeployment
-
-To redeploy updated code:
-
-1. Deploy the latest changes:
-
-```bash
-# Deploy updates
-./deploy.sh your-server-ip
-```
-
-2. Optional: Update SSL if needed:
-
-```bash
-# Update SSL certificate
-ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
-```
-
-3. Verify the redeployment:
-
-```bash
-# Check API health
-curl https://api.platform.notablenomads.com/v1/health
-
-# Monitor deployment logs
-ssh root@your-server-ip "docker-compose logs -f"
-```
-
-Note: The deployment script will:
-
-- Build a new Docker image
-- Transfer it to the server
-- Update the running containers
-- Preserve SSL certificates and configurations
-
-### Maintenance Commands
-
-#### Service Management
-
-```bash
-# Restart all services
-ssh root@your-server-ip "cd /root && docker-compose restart"
-
-# Stop all services
-ssh root@your-server-ip "cd /root && docker-compose down"
-
-# Start all services
-ssh root@your-server-ip "cd /root && docker-compose up -d"
-
-# View real-time logs
-ssh root@your-server-ip "docker-compose logs -f"
-
-# View logs for a specific service (api, nginx)
-ssh root@your-server-ip "docker-compose logs -f api"
-ssh root@your-server-ip "docker-compose logs -f nginx"
-```
-
-#### SSL Certificate Management
-
-```bash
-# Check certificate expiration
-ssh root@your-server-ip "openssl x509 -in /root/ssl/fullchain.pem -noout -dates"
-
-# Check certificate validity period
-ssh root@your-server-ip "openssl x509 -in /root/ssl/fullchain.pem -text -noout | grep -A2 'Validity'"
-
-# Manually renew certificate (if needed)
-ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
-
-# View certificate renewal schedule
-ssh root@your-server-ip "crontab -l"
-```
-
-#### Monitoring
-
-```bash
-# Check API health
-curl https://api.platform.notablenomads.com/v1/health
-
-# Monitor resource usage
-ssh root@your-server-ip "docker stats"
-
-# Check running containers
-ssh root@your-server-ip "docker-compose ps"
-
-# View nginx access logs
-ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/access.log"
-
-# View nginx error logs
-ssh root@your-server-ip "docker-compose exec nginx tail -f /var/log/nginx/error.log"
-```
-
-#### Environment Variables Management
-
-```bash
-# View current .env file content
-ssh root@your-server-ip "cat /root/.env"
-
-# Edit .env file directly on server
-ssh root@your-server-ip "nano /root/.env"
-
-# Copy new .env file to server
-scp .env root@your-server-ip:/root/.env
-
-# View environment variables in running container
+# View variables in running container
 ssh root@your-server-ip "docker-compose exec api env"
-
-# After changing .env, restart the services to apply changes
-ssh root@your-server-ip "cd /root && docker-compose restart"
 ```
 
-#### Deployment Files
+#### Updating Variables
 
-The following files are used for deployment:
+1. Update your local `.env` file
+2. Re-encrypt and deploy:
 
-- `deploy.sh`: Main deployment script
-- `docker-compose.yml`: Docker services configuration
-- `nginx.conf`: Nginx reverse proxy configuration
-- `setup-ssl.sh`: SSL certificate setup script
+   ```bash
+   # Re-encrypt
+   gpg --symmetric --cipher-algo AES256 .env
+
+   # Copy and decrypt on server
+   scp .env.gpg root@your-server-ip:/root/
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
+   # Restart services
+   ssh root@your-server-ip "cd /root && docker-compose restart"
+   ```
+
+#### Security Best Practices
+
+- Never commit `.env` or `.env.gpg` files
+- Store GPG encryption password in a secure password manager
+- Rotate encryption passwords regularly (recommended every 90 days)
+- Monitor access logs for unauthorized attempts
+- Limit SSH access to authorized IPs only
+- Regularly audit environment variable access
+- Keep encrypted backups of environment files
 
 ### Server Configuration
 
