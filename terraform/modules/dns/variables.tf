@@ -1,1 +1,0 @@
-# No variables needed for this module as it's managing a fixed resource 
