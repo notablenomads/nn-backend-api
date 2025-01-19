@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.15](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.14...v0.0.15) (2025-01-19)
+
+
+### Features
+
+* implement automated deployment process with GitHub Actions ([82986a2](https://github.com/Notable-Nomads/nn-backend-api/commit/82986a2068f159baa24655ad454a5dedb5c113b6))
+
 ### [0.0.14](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.13...v0.0.14) (2025-01-19)
 
 
