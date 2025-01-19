@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.22](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.20...v0.0.22) (2025-01-19)
+
+
+### Features
+
+* update dependencies and add connection security module ([d10a432](https://github.com/Notable-Nomads/nn-backend-api/commit/d10a43270eb6ced7ade3a888dd6f545de296a4a6))
+
 ### [0.0.21](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.20...v0.0.21) (2025-01-19)
 
 
