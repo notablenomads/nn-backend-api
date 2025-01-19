@@ -20,7 +20,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          yarn --version
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
