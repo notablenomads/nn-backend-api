@@ -30,7 +30,7 @@ jobs:
         run: cp .yarnrc.yml-example .yarnrc.yml
 
       - name: Install dependencies
-        run: yarn install --immutable --immutable-cache
+        run: yarn install
 
       - name: Build application
         run: yarn build
