@@ -126,37 +126,44 @@ The application is automatically deployed when:
 1. A new release is published on GitHub
 2. A new version tag (v\*) is pushed to the main branch
 
-#### Setting up GitHub Actions
+#### Setting up GitHub Actions Deployment
 
-1. Generate SSH key for GitHub Actions:
+1. Install prerequisites:
 
    ```bash
-   # Generate new SSH key
-   ssh-keygen -t rsa -b 4096 -C "github-actions@notablenomads.com" -f github-actions
+   # Install GitHub CLI
+   brew install gh
 
-   # Add public key to server
-   cat github-actions.pub | ssh root@your-server-ip "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
-
-   # Copy private key content (to add to GitHub Secrets)
-   cat github-actions
+   # Login to GitHub CLI
+   gh auth login
    ```
 
-2. Add required GitHub Secrets:
+2. Run the automated setup script:
 
-   - `SSH_PRIVATE_KEY`: The private key content from step 1
-   - `ENV_CONTENT`: Base64-encoded content of .env file
-     ```bash
-     base64 -i .env | tr -d '\n' | pbcopy
-     ```
-   - `GPG_PASSPHRASE`: Passphrase for GPG encryption
+   ```bash
+   # Make the script executable
+   chmod +x scripts/set-github-secrets.sh
 
-3. Add secrets in GitHub:
-   - Go to your repository
-   - Navigate to Settings > Secrets and variables > Actions
-   - Click "New repository secret"
-   - Add each secret with its corresponding value
+   # Run the script
+   ./scripts/set-github-secrets.sh
+   ```
 
-To trigger a deployment:
+   The script will:
+
+   - Set up required GitHub secrets from your local `.env` file
+   - Generate SSH keys for GitHub Actions
+   - Configure GPG encryption for secure environment variables
+   - Provide instructions for adding SSH keys to your server
+
+3. Add the SSH public key to your server (the script will show you the exact command)
+
+#### GitHub Secrets Used
+
+- `ENV_CONTENT`: Base64-encoded content of your `.env` file
+- `GPG_PASSPHRASE`: Passphrase for encrypting environment variables
+- `SSH_PRIVATE_KEY`: SSH key for server access
+
+#### Triggering Deployments
 
 ```bash
 # Create and push a new version tag
