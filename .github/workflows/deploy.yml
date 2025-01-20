@@ -34,12 +34,19 @@ jobs:
 
       - name: Generate app variables
         run: |
+          VERSION=$(node -p "require('./package.json').version")
           echo "APP_NAME=${{ github.event.repository.name }}" >> .env
           echo "APP_DESCRIPTION=$(node -p "require('./package.json').description")" >> .env
-          echo "APP_VERSION=$(node -p "require('./package.json').version")" >> .env
+          echo "APP_VERSION=$VERSION" >> .env
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Build
+      - name: Build application
         run: yarn build
+
+      - name: Build Docker image
+        run: |
+          docker build -t nn-backend-api:${{ env.VERSION }} -t nn-backend-api:latest .
+          docker save nn-backend-api:${{ env.VERSION }} > nn-backend-api.tar
 
       - name: Set up SSH
         run: |
@@ -54,20 +61,28 @@ jobs:
           echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 .env
           rm .env
 
-      - name: Deploy to production
+      - name: Copy deployment files
         run: |
-          ./deploy.sh 91.107.249.14
+          scp nn-backend-api.tar root@91.107.249.14:/root/
+          scp docker-compose.yml root@91.107.249.14:/root/
+          scp nginx.conf root@91.107.249.14:/root/
+          scp .env.gpg root@91.107.249.14:/root/
 
-      - name: Update environment on server
+      - name: Deploy to production
         run: |
           # Stop and remove existing containers
           ssh root@91.107.249.14 "cd /root && docker-compose down"
+
+          # Load new Docker image
+          ssh root@91.107.249.14 "cd /root && docker load < nn-backend-api.tar && rm nn-backend-api.tar"
+
+          # Update environment
+          ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
+          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
           # Clean up old images
           ssh root@91.107.249.14 "docker image prune -f"
-          # Set up environment
-          ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
-          scp .env.gpg root@91.107.249.14:/root/
-          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
           # Start new containers
           ssh root@91.107.249.14 "cd /root && docker-compose up -d"
 
