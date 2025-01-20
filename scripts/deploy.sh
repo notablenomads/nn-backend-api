@@ -20,19 +20,20 @@ NC='\033[0m'
 # Make scripts executable
 chmod +x scripts/build-image.sh
 chmod +x scripts/verify-dns.sh
+chmod +x scripts/deploy-app.sh
 chmod +x scripts/setup-ssl.sh
 
-# Step 1: Build and push Docker image
-echo -e "\n${BLUE}Step 1: Building and pushing Docker image${NC}"
-if ! ./scripts/build-image.sh; then
-    echo -e "${RED}Failed to build and push Docker image${NC}"
+# Step 1: Verify DNS configuration first
+echo -e "\n${BLUE}Step 1: Verifying DNS configuration${NC}"
+if ! ./scripts/verify-dns.sh "$SERVER_IP"; then
+    echo -e "${RED}DNS verification failed${NC}"
     exit 1
 fi
 
-# Step 2: Verify DNS configuration
-echo -e "\n${BLUE}Step 2: Verifying DNS configuration${NC}"
-if ! ./scripts/verify-dns.sh "$SERVER_IP"; then
-    echo -e "${RED}DNS verification failed${NC}"
+# Step 2: Build and push Docker image
+echo -e "\n${BLUE}Step 2: Building and pushing Docker image${NC}"
+if ! ./scripts/build-image.sh; then
+    echo -e "${RED}Failed to build and push Docker image${NC}"
     exit 1
 fi
 
@@ -42,6 +43,29 @@ if ! ./scripts/deploy-app.sh "$SERVER_IP"; then
     echo -e "${RED}Application deployment failed${NC}"
     exit 1
 fi
+
+# Wait for application to be accessible
+echo -e "\n${YELLOW}Waiting for application to be accessible...${NC}"
+TIMEOUT=60
+START_TIME=$(date +%s)
+
+while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED_TIME -gt $TIMEOUT ]; then
+        echo -e "${RED}Timeout waiting for application to be accessible${NC}"
+        exit 1
+    fi
+    
+    if curl -s -f http://${DOMAIN}/nginx-health >/dev/null 2>&1; then
+        echo -e "${GREEN}Application is accessible!${NC}"
+        break
+    fi
+    
+    echo "Waiting for application to start... ($((TIMEOUT - ELAPSED_TIME))s remaining)"
+    sleep 5
+done
 
 # Step 4: Set up SSL (staging)
 echo -e "\n${BLUE}Step 4: Setting up SSL certificates (staging)${NC}"

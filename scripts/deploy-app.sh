@@ -57,10 +57,6 @@ ssh $SERVER_USER@$SERVER_IP << EOF
     echo "Logging out from Docker Hub..."
     docker logout
 
-    # Start following logs in the background
-    docker compose logs -f &
-    LOGS_PID=\$!
-    
     # Function to show container details
     show_container_details() {
         local container_name=\$1
@@ -69,21 +65,23 @@ ssh $SERVER_USER@$SERVER_IP << EOF
         docker compose ps \${container_name}
         echo -e "\n${BLUE}Container Health Check Configuration:${NC}"
         docker inspect \$(docker compose ps -q \${container_name}) | grep -A 10 "Health"
-        echo -e "\n${BLUE}Process List:${NC}"
-        docker compose exec -T \${container_name} ps aux || true
+        echo -e "\n${BLUE}Container Logs:${NC}"
+        docker compose logs --tail=50 \${container_name}
         echo -e "\n${BLUE}Network Connectivity Test:${NC}"
         if [ "\${container_name}" = "api" ]; then
             docker compose exec -T \${container_name} wget -qO- --timeout=5 http://localhost:3000/v1/health || echo "Failed to connect to API health check"
+            echo -e "\n${BLUE}Listening Ports:${NC}"
+            docker compose exec -T \${container_name} netstat -tlpn || echo "netstat not available"
+            echo -e "\n${BLUE}Environment Variables:${NC}"
+            docker compose exec -T \${container_name} env | grep -E 'HOST|PORT|NODE_ENV'
         else
             docker compose exec -T \${container_name} wget -qO- --timeout=5 http://localhost/nginx-health || echo "Failed to connect to Nginx health check"
         fi
-        echo -e "\n${BLUE}Recent Logs:${NC}"
-        docker compose logs --tail=50 \${container_name}
     }
     
     # Wait for services to be healthy
     echo -e "${GREEN}Waiting for services to be healthy...${NC}"
-    TIMEOUT=300
+    TIMEOUT=120
     START_TIME=\$(date +%s)
     LAST_STATUS=""
     
@@ -94,8 +92,6 @@ ssh $SERVER_USER@$SERVER_IP << EOF
         if [ \$ELAPSED_TIME -gt \$TIMEOUT ]; then
             echo -e "${RED}Timeout waiting for services to be healthy${NC}"
             echo -e "${YELLOW}Showing detailed diagnostics...${NC}"
-            # Kill the logs follower
-            kill \$LOGS_PID
             show_container_details "api"
             show_container_details "nginx"
             exit 1
@@ -109,36 +105,25 @@ ssh $SERVER_USER@$SERVER_IP << EOF
             echo -e "\n${GREEN}Health status changed - \$CURRENT_STATUS${NC}"
             LAST_STATUS="\$CURRENT_STATUS"
             
-            # If API is still starting after 30 seconds, show details
-            if [ \$ELAPSED_TIME -gt 30 ] && [ "\$API_HEALTH" = "starting" ]; then
-                echo -e "\n${YELLOW}API container is taking longer than expected to start. Showing details:${NC}"
+            # If API is unhealthy or still starting after 30 seconds, show details
+            if [ \$ELAPSED_TIME -gt 30 ] && [ "\$API_HEALTH" != "healthy" ]; then
+                echo -e "\n${YELLOW}API container is taking longer than expected. Showing details:${NC}"
                 show_container_details "api"
             fi
         fi
         
         if [ "\$API_HEALTH" = "healthy" ] && [ "\$NGINX_HEALTH" = "healthy" ]; then
             echo -e "\n${GREEN}All services are healthy!${NC}"
-            # Kill the logs follower
-            kill \$LOGS_PID
             break
         fi
         
         sleep 10
     done
     
-    # Verify deployment
+    # Final verification
     echo -e "\n${GREEN}Verifying deployment...${NC}"
-    echo -e "${BLUE}Testing Nginx health check...${NC}"
-    if curl -v http://localhost/nginx-health 2>&1; then
-        echo -e "${GREEN}Nginx is responding correctly${NC}"
-    else
-        echo -e "${RED}Error: Nginx health check failed${NC}"
-        show_container_details "nginx"
-        exit 1
-    fi
-    
-    echo -e "\n${BLUE}Testing API health check...${NC}"
-    if curl -v http://localhost/v1/health 2>&1; then
+    echo -e "${BLUE}Testing API health check directly...${NC}"
+    if curl -v http://localhost:3000/v1/health 2>&1; then
         echo -e "${GREEN}API is responding correctly${NC}"
     else
         echo -e "${RED}Error: API health check failed${NC}"
@@ -146,7 +131,14 @@ ssh $SERVER_USER@$SERVER_IP << EOF
         exit 1
     fi
     
-    echo -e "\n${GREEN}All verification checks passed!${NC}"
+    echo -e "\n${BLUE}Testing through Nginx...${NC}"
+    if curl -v http://localhost/v1/health 2>&1; then
+        echo -e "${GREEN}Nginx proxy to API is working correctly${NC}"
+    else
+        echo -e "${RED}Error: Nginx proxy to API failed${NC}"
+        show_container_details "nginx"
+        exit 1
+    fi
 EOF
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"

@@ -44,22 +44,30 @@ echo -e "${GREEN}DNS configuration is correct!${NC}"
 
 # Check DNS propagation
 echo -e "\n${YELLOW}Checking DNS propagation...${NC}"
+PROPAGATION_WARNINGS=0
+
 if ! dig +short ${DOMAIN} @8.8.8.8 | grep -q "^${SERVER_IP}$"; then
     echo -e "${YELLOW}Warning: DNS changes may not have propagated to Google DNS (8.8.8.8) yet${NC}"
-    echo "This might take some time. You can proceed, but SSL certificate generation might fail."
+    PROPAGATION_WARNINGS=$((PROPAGATION_WARNINGS + 1))
 fi
 
 if ! dig +short ${DOMAIN} @1.1.1.1 | grep -q "^${SERVER_IP}$"; then
     echo -e "${YELLOW}Warning: DNS changes may not have propagated to Cloudflare DNS (1.1.1.1) yet${NC}"
-    echo "This might take some time. You can proceed, but SSL certificate generation might fail."
+    PROPAGATION_WARNINGS=$((PROPAGATION_WARNINGS + 1))
 fi
 
-echo -e "\n${GREEN}DNS verification completed!${NC}"
+# Optional connectivity checks
+echo -e "\n${YELLOW}Running optional connectivity checks...${NC}"
 
-# Check if port 80 is accessible
-echo -e "\nChecking HTTP (port 80) accessibility..."
-nc -zv $DOMAIN 80 2>&1 || echo "Port 80 is not accessible"
+echo "Checking HTTP (port 80) accessibility..."
+if nc -zv $DOMAIN 80 2>/dev/null; then
+    echo -e "${GREEN}Port 80 is accessible${NC}"
+else
+    echo -e "${YELLOW}Warning: Port 80 is not accessible yet (this is normal if Nginx isn't running)${NC}"
+fi
 
-# Test the ACME challenge path directly
-echo -e "\nTesting ACME challenge path..."
-curl -v http://$DOMAIN/.well-known/acme-challenge/test 2>&1 | grep "404" 
+echo -e "\n${GREEN}DNS verification completed successfully!${NC}"
+if [ $PROPAGATION_WARNINGS -gt 0 ]; then
+    echo -e "${YELLOW}Note: Some DNS servers haven't updated yet. This is normal and may take up to 48 hours.${NC}"
+    echo -e "${YELLOW}You can proceed with deployment, but SSL certificate generation might fail until DNS propagates.${NC}"
+fi 
