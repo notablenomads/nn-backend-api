@@ -99,6 +99,9 @@ jobs:
             docker-compose down || true
             docker system prune -f
             docker volume prune -f
+            
+            echo '=== Installing jq ==='
+            apt-get update && apt-get install -y jq
           }"
 
           # Update environment
@@ -168,20 +171,32 @@ jobs:
             echo '\n=== Initial Container Status ==='
             docker-compose ps
             
+            # Get container name from docker-compose
+            API_CONTAINER=\$(docker-compose ps -q api)
+            
+            if [ -z \"\$API_CONTAINER\" ]; then
+              echo 'Error: API container not found!'
+              docker-compose logs
+              exit 1
+            fi
+            
+            echo '\n=== Container Name ==='
+            echo \$API_CONTAINER
+            
             # Check if container is running and healthy
-            if ! docker ps --filter "name=root-api-1" --filter "status=running" --format '{{.Names}}' | grep -q "root-api-1"; then
+            if ! docker ps --filter "id=\$API_CONTAINER" --filter "status=running" --format '{{.Names}}' | grep -q ""; then
               echo '\n=== Container Failed to Start ==='
               echo '\n--- Container Details ---'
-              docker inspect root-api-1 --format '{{.State.Status}}, Health: {{.State.Health.Status}}, Exit Code: {{.State.ExitCode}}'
+              docker inspect \$API_CONTAINER --format '{{.State.Status}}, Health: {{.State.Health.Status}}, Exit Code: {{.State.ExitCode}}'
               
               echo '\n--- Last Health Check Result ---'
-              docker inspect root-api-1 --format '{{json .State.Health}}' | jq
+              docker inspect \$API_CONTAINER --format '{{json .State.Health}}' | jq || echo
               
               echo '\n--- Container Logs (Last 200 lines) ---'
               docker-compose logs --tail=200 api
               
               echo '\n--- Environment Variables in Container ---'
-              docker exec root-api-1 printenv || true
+              docker exec \$API_CONTAINER printenv || true
               
               exit 1
             fi
@@ -201,20 +216,29 @@ jobs:
 
           echo "\n=== Checking API Container Status ==="
           ssh root@91.107.249.14 "cd /root && {
+            # Get container name from docker-compose
+            API_CONTAINER=\$(docker-compose ps -q api)
+            
+            if [ -z \"\$API_CONTAINER\" ]; then
+              echo 'Error: API container not found!'
+              docker-compose logs
+              exit 1
+            fi
+            
             echo '\n--- Container Details ---'
-            docker inspect root-api-1 --format '{{.State.Status}}, Health: {{.State.Health.Status}}, Exit Code: {{.State.ExitCode}}'
+            docker inspect \$API_CONTAINER --format '{{.State.Status}}, Health: {{.State.Health.Status}}, Exit Code: {{.State.ExitCode}}'
             
             echo '\n--- Health Check Logs ---'
-            docker inspect root-api-1 --format '{{json .State.Health}}' | jq
+            docker inspect \$API_CONTAINER --format '{{json .State.Health}}' | jq || echo
             
             echo '\n--- Recent Container Logs ---'
             docker-compose logs --no-color --tail=100 api
             
             echo '\n--- Process List Inside Container ---'
-            docker exec root-api-1 ps aux || true
+            docker exec \$API_CONTAINER ps aux || true
             
             echo '\n--- Node Process Status ---'
-            docker exec root-api-1 node -v && docker exec root-api-1 pm2 list || true
+            docker exec \$API_CONTAINER node -v && docker exec \$API_CONTAINER pm2 list || true
           }"
 
           echo "\n=== Attempting Health Check ==="
@@ -226,10 +250,11 @@ jobs:
 
           echo "\nHealth check failed. Showing final diagnostics..."
           ssh root@91.107.249.14 "cd /root && {
+            API_CONTAINER=\$(docker-compose ps -q api)
             echo '\n=== Final Container Status ==='
             docker-compose ps
             echo '\n=== Memory Usage ==='
-            docker stats --no-stream root-api-1
+            docker stats --no-stream \$API_CONTAINER
             echo '\n=== Container Logs ==='
             docker-compose logs --tail=200 api
           }"
