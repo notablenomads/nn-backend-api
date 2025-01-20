@@ -111,30 +111,45 @@ jobs:
 
       - name: Verify deployment
         run: |
-          echo "Waiting for services to start..."
-          sleep 30
+          echo "Waiting for initial startup..."
+          sleep 15
 
-          echo "Checking container status and logs..."
+          echo "=== Initial Container Status ==="
+          ssh root@91.107.249.14 "cd /root && docker-compose ps"
+
+          echo "\n=== Checking API Container Status ==="
           ssh root@91.107.249.14 "cd /root && {
-            echo '=== Container Status ==='
-            docker-compose ps
+            echo '\n--- Container Details ---'
+            docker inspect root-api-1 --format '{{.State.Status}}, Health: {{.State.Health.Status}}, Exit Code: {{.State.ExitCode}}'
             
-            echo '\n=== API Container Logs ==='
-            docker-compose logs --tail=100 api
+            echo '\n--- Health Check Logs ---'
+            docker inspect root-api-1 --format '{{json .State.Health}}' | jq
             
-            echo '\n=== Nginx Container Logs ==='
-            docker-compose logs --tail=50 nginx
+            echo '\n--- Container Logs ---'
+            docker-compose logs --no-color --tail=50 api
             
-            echo '\n=== API Container Details ==='
-            docker inspect root-api-1
+            echo '\n--- Environment Variables ---'
+            docker-compose config | grep -A 10 'api:'
             
-            echo '\n=== Environment Variables ==='
-            docker-compose config
+            echo '\n--- Resource Usage ---'
+            docker stats root-api-1 --no-stream --format 'table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}'
           }"
 
-          echo "Attempting health check..."
-          curl -v https://api.platform.notablenomads.com/v1/health || {
-            echo "Health check failed. Showing recent logs and exiting..."
-            ssh root@91.107.249.14 "cd /root && docker-compose logs --tail=200"
-            exit 1
-          }
+          echo "\n=== Checking Nginx Container ==="
+          ssh root@91.107.249.14 "cd /root && {
+            echo '\n--- Nginx Status ---'
+            docker-compose ps nginx
+            echo '\n--- Nginx Logs ---'
+            docker-compose logs --no-color --tail=20 nginx
+          }"
+
+          echo "\n=== Attempting Health Check ==="
+          for i in {1..3}; do
+            echo "\nAttempt $i:"
+            curl -v --max-time 10 https://api.platform.notablenomads.com/v1/health && exit 0
+            sleep 10
+          done
+
+          echo "\nHealth check failed after 3 attempts. Showing final container status..."
+          ssh root@91.107.249.14 "cd /root && docker-compose ps"
+          exit 1
