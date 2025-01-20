@@ -111,7 +111,30 @@ jobs:
 
       - name: Verify deployment
         run: |
-          sleep 30  # Wait for services to start
-          echo "Checking running containers and their versions..."
-          ssh root@91.107.249.14 "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'"
-          curl --fail https://api.platform.notablenomads.com/v1/health || exit 1
+          echo "Waiting for services to start..."
+          sleep 30
+
+          echo "Checking container status and logs..."
+          ssh root@91.107.249.14 "cd /root && {
+            echo '=== Container Status ==='
+            docker-compose ps
+            
+            echo '\n=== API Container Logs ==='
+            docker-compose logs --tail=100 api
+            
+            echo '\n=== Nginx Container Logs ==='
+            docker-compose logs --tail=50 nginx
+            
+            echo '\n=== API Container Details ==='
+            docker inspect root-api-1
+            
+            echo '\n=== Environment Variables ==='
+            docker-compose config
+          }"
+
+          echo "Attempting health check..."
+          curl -v https://api.platform.notablenomads.com/v1/health || {
+            echo "Health check failed. Showing recent logs and exiting..."
+            ssh root@91.107.249.14 "cd /root && docker-compose logs --tail=200"
+            exit 1
+          }
