@@ -360,3 +360,203 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Authors
 
 - **Mahdi Rashidi** - _Initial work_ - [mrdevx](https://github.com/mrdevx)
+
+# Notable Nomads Backend API Deployment
+
+This repository contains the backend API for Notable Nomads along with deployment scripts for managing the application deployment and SSL certificates.
+
+## Deployment Scripts
+
+The deployment process is managed through several scripts in the `scripts/` directory:
+
+### 1. Main Deployment Script (`scripts/deploy.sh`)
+
+The main script for deploying the application to the server.
+
+```bash
+# Deploy with staging SSL certificates (for testing)
+DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
+
+# Deploy with production SSL certificates
+DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+```
+
+This script:
+
+- Verifies DNS configuration
+- Builds and pushes Docker image
+- Sets up server configuration
+- Manages SSL certificates
+- Deploys the application
+
+### 2. SSL Certificate Management (`scripts/ssl-cert.sh`)
+
+Dedicated script for managing SSL certificates.
+
+```bash
+# Check existing certificates
+./ssl-cert.sh
+
+# Force renew existing certificates
+./ssl-cert.sh --force-renew
+
+# Generate new staging certificates
+./ssl-cert.sh --new --staging
+
+# Generate new production certificates
+./ssl-cert.sh --new
+```
+
+### 3. Cleanup Script (`scripts/cleanup.sh`)
+
+Script for cleaning up the server environment.
+
+```bash
+# Normal cleanup (preserves SSL certificates)
+./scripts/cleanup.sh 91.107.249.14
+
+# Force cleanup (removes everything including SSL certificates)
+./scripts/cleanup.sh 91.107.249.14 --force
+```
+
+## Directory Structure
+
+```
+.
+├── scripts/
+│   ├── deploy.sh      # Main deployment script
+│   ├── ssl-cert.sh    # SSL certificate management
+│   └── cleanup.sh     # Server cleanup script
+├── docker-compose.yml # Docker services configuration
+├── nginx.conf        # Nginx reverse proxy configuration
+└── .env             # Environment variables
+```
+
+## Deployment Process
+
+1. **Prerequisites**:
+
+   - Docker Hub account and access token
+   - Domain name pointing to your server (A record)
+   - SSH access to the server
+
+2. **Initial Deployment**:
+
+   ```bash
+   # First deployment with staging certificates
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
+
+   # Once verified, deploy with production certificates
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+   ```
+
+3. **SSL Certificate Management**:
+
+   ```bash
+   # On the server, you can manage certificates
+   cd /root
+   ./ssl-cert.sh --force-renew  # Renew certificates
+   ./ssl-cert.sh --new          # Generate new certificates
+   ```
+
+4. **Cleanup If Needed**:
+
+   ```bash
+   # Clean up while preserving certificates
+   ./scripts/cleanup.sh 91.107.249.14
+
+   # Full cleanup including certificates
+   ./scripts/cleanup.sh 91.107.249.14 --force
+   ```
+
+## Configuration Files
+
+### docker-compose.yml
+
+Contains service definitions for:
+
+- API service (Node.js application)
+- Nginx reverse proxy
+- SSL certificate management
+
+### nginx.conf
+
+Nginx configuration including:
+
+- SSL/TLS settings
+- Proxy settings
+- Security headers
+- HTTP to HTTPS redirection
+
+### .env
+
+Environment variables for:
+
+- API configuration
+- Database settings
+- Other application settings
+
+## Troubleshooting
+
+1. **SSL Certificate Issues**:
+
+   ```bash
+   # Check certificate status
+   ./ssl-cert.sh
+
+   # Force certificate renewal
+   ./ssl-cert.sh --force-renew
+   ```
+
+2. **Deployment Issues**:
+
+   ```bash
+   # Check logs
+   ssh root@91.107.249.14 'docker-compose logs'
+
+   # Clean up and retry
+   ./scripts/cleanup.sh 91.107.249.14
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+   ```
+
+3. **Container Health Checks**:
+
+   ```bash
+   # Check container status
+   ssh root@91.107.249.14 'docker-compose ps'
+
+   # Check specific service logs
+   ssh root@91.107.249.14 'docker-compose logs api'
+   ```
+
+## Security Notes
+
+1. Always store sensitive information in `.env` files
+2. Use Docker Hub tokens instead of passwords
+3. Keep SSL certificates backed up
+4. Use production certificates only after staging is verified
+5. Regularly update dependencies and Docker images
+
+## Maintenance
+
+1. **Certificate Renewal**:
+
+   - SSL certificates auto-renew every 3 months
+   - Force renewal if needed: `./ssl-cert.sh --force-renew`
+
+2. **Updates**:
+
+   - Regular deployment updates the application
+   - Use cleanup script before major updates
+
+3. **Backups**:
+   - SSL certificates are automatically backed up
+   - Database backups should be configured separately
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
