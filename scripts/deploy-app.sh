@@ -29,7 +29,7 @@ scp docker-compose.yml .env "$SERVER_USER@$SERVER_IP:/root/"
 
 # Deploy the application
 echo -e "${GREEN}[INFO] Deploying application...${NC}"
-ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
+ssh "$SERVER_USER@$SERVER_IP" <<-'EOF'
 cd /root
 
 # Pull the latest image
@@ -78,4 +78,4 @@ else
 fi
 
 echo "Deployment completed successfully!"
-ENDSSH 
+EOF
