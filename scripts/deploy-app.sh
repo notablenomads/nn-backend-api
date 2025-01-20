@@ -15,47 +15,68 @@ SERVER_IP="$1"
 SERVER_USER="root"
 DOCKER_HUB_USERNAME="mrdevx"
 
-echo -e "\033[0;34mDeploying to server ${SERVER_IP}...\033[0m"
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${GREEN}Deploying to server ${SERVER_IP}...\033[0m"
 
 # Check for Docker Hub token
 if [ -z "$DOCKER_HUB_TOKEN" ]; then
-    echo -e "\033[0;31mError: DOCKER_HUB_TOKEN environment variable is required\033[0m"
+    echo -e "${RED}Error: DOCKER_HUB_TOKEN environment variable is not set${NC}"
     exit 1
 fi
 
 # Set up Docker Hub authentication on server
-echo -e "\033[0;34mSetting up Docker Hub authentication on server...\033[0m"
+echo -e "${GREEN}Setting up Docker Hub authentication on server...\033[0m"
 ssh $SERVER_USER@$SERVER_IP "echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin"
 
 # Copy configuration files
-echo -e "\033[0;34mCopying configuration files...\033[0m"
+echo -e "${GREEN}Copying configuration files...\033[0m"
 scp docker-compose.yml nginx.conf .env $SERVER_USER@$SERVER_IP:/root/
 
-# Deploy application
-echo -e "\033[0;34mDeploying application...\033[0m"
-ssh $SERVER_USER@$SERVER_IP << EOF
-    cd /root
-    # Stop existing containers
-    docker compose down
-    # Clean up any stale containers
-    docker container prune -f
-    # Start API first
-    docker compose up -d api
-    # Wait for API to start
-    echo "Waiting for API to start..."
-    sleep 10
-    # Start Nginx
-    docker compose up -d nginx
-    # Show container status
-    docker compose ps
-    # Show logs
-    docker compose logs
-EOF
+# Deploy and debug
+ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
+cd /root
+
+echo "Stopping existing containers..."
+docker compose down --remove-orphans
+
+echo "Starting services..."
+docker compose up -d
+
+echo "Waiting for services to start..."
+sleep 10
+
+echo "Container Status:"
+docker compose ps
+
+echo "Container Logs:"
+docker compose logs --tail=50
+
+echo "Checking ports:"
+netstat -tlpn | grep -E ':80|:443|:3000'
+
+echo "Testing API directly:"
+curl -v http://localhost:3000/v1/health
+
+echo "Testing through Nginx:"
+curl -v http://localhost/v1/health
+
+echo "DNS Resolution:"
+dig api.notablenomads.com +short
+
+echo "Nginx Configuration Test:"
+docker compose exec nginx nginx -t
+
+echo "Nginx Configuration:"
+docker compose exec nginx cat /etc/nginx/conf.d/default.conf
+ENDSSH
 
 # Log out from Docker Hub
-echo -e "\033[0;34mLogging out from Docker Hub...\033[0m"
+echo -e "${GREEN}Logging out from Docker Hub...\033[0m"
 ssh $SERVER_USER@$SERVER_IP "docker logout"
 
-echo -e "\033[0;32mDeployment completed!\033[0m"
-echo -e "\nYour application should now be running at http://$SERVER_IP"
-echo -e "You can check the logs with: ssh $SERVER_USER@$SERVER_IP 'docker compose logs -f'"
+echo -e "${GREEN}Deployment complete. Check the output above for any issues.${NC}"
