@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'yarn'
 
       - name: Enable Corepack
         run: |
@@ -30,21 +31,29 @@ jobs:
         run: cp .yarnrc.yml-example .yarnrc.yml
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
-      - name: Generate app variables
+      - name: Generate app variables and version
+        id: vars
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          DOCKER_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/nn-backend-api"
+
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE=${DOCKER_IMAGE}" >> $GITHUB_ENV
+
+          # Create .env for the application
           echo "APP_NAME=${{ github.event.repository.name }}" >> .env
           echo "APP_DESCRIPTION=$(node -p "require('./package.json').description")" >> .env
-          echo "APP_VERSION=$VERSION" >> .env
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION=${VERSION}" >> .env
 
       - name: Build application
         run: yarn build
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -62,8 +71,10 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/nn-backend-api:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/nn-backend-api:${{ env.VERSION }}
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
 
       - name: Set up SSH
         run: |
@@ -78,34 +89,62 @@ jobs:
           echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 .env
           rm .env
 
-      - name: Copy config files
+      - name: Prepare server environment
         run: |
-          scp docker-compose.yml nginx.conf .env.gpg root@91.107.249.14:/root/
+          # Create deployment directory if it doesn't exist
+          ssh root@91.107.249.14 "mkdir -p /root/app"
+
+          # Copy configuration files
+          scp docker-compose.yml nginx.conf .env.gpg root@91.107.249.14:/root/app/
+
+          # Create secrets directory with proper permissions
+          ssh root@91.107.249.14 "mkdir -p /root/app/secrets && chmod 700 /root/app/secrets"
+
+          # Decrypt environment file
+          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/app/.env.gpg > /root/app/secrets/.env && chmod 600 /root/app/secrets/.env"
+
+          # Create version and Docker Hub username file
+          echo "APP_VERSION=${{ env.VERSION }}" > version.env
+          echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" >> version.env
+          scp version.env root@91.107.249.14:/root/app/.env.version
+          rm version.env
 
       - name: Deploy to production
         run: |
-          # Stop existing containers
-          ssh root@91.107.249.14 "cd /root && docker-compose down"
-
-          # Update environment
-          ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
-          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-
-          # Create version file
-          echo "APP_VERSION=${{ env.VERSION }}" | ssh root@91.107.249.14 "cat > /root/.env.version"
-
-          # Login to Docker Hub on server
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | ssh root@91.107.249.14 "docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin"
-
-          # Start new containers with version
-          ssh root@91.107.249.14 "cd /root && set -a && source .env.version && docker-compose up -d"
-
-          # Clean up old images
-          ssh root@91.107.249.14 "docker image prune -f --all --filter 'until=24h'"
+          ssh root@91.107.249.14 "cd /root/app && {
+            echo 'Stopping existing containers...'
+            docker-compose down || true
+            
+            echo 'Logging into Docker Hub...'
+            echo '${{ secrets.DOCKERHUB_TOKEN }}' | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+            
+            echo 'Pulling new images...'
+            docker-compose pull
+            
+            echo 'Starting new containers...'
+            set -a && source .env.version && docker-compose up -d
+            
+            echo 'Cleaning up old images...'
+            docker image prune -f --all --filter 'until=24h'
+            
+            echo 'Deployment completed'
+          }"
 
       - name: Verify deployment
         run: |
-          sleep 30  # Wait for services to start
-          echo "Checking running containers and their versions..."
-          ssh root@91.107.249.14 "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'"
-          curl --fail https://api.platform.notablenomads.com/v1/health || exit 1
+          echo "Waiting for services to start..."
+          sleep 30
+
+          echo "Checking container status..."
+          ssh root@91.107.249.14 "cd /root/app && {
+            docker-compose ps
+            echo 'Container logs:'
+            docker-compose logs --tail=50
+          }"
+
+          echo "Verifying API health..."
+          curl --fail --retry 3 --retry-delay 5 https://api.platform.notablenomads.com/v1/health || {
+            echo 'Health check failed. Rolling back...'
+            ssh root@91.107.249.14 "cd /root/app && docker-compose down && docker-compose up -d --force-recreate"
+            exit 1
+          }
