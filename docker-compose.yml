@@ -12,17 +12,13 @@ services:
       - API_PREFIX=v1
       - CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
       - CORS_RESTRICT=false
+    ports:
+      - '0.0.0.0:3000:3000' # Expose to all interfaces
     env_file:
       - .env
     networks:
       - app-network
     restart: always
-    healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3000/v1/health']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
     logging:
       driver: 'json-file'
       options:
@@ -38,8 +34,7 @@ services:
       - nginx_temp:/var/cache/nginx
       - nginx_run:/var/run
     depends_on:
-      api:
-        condition: service_healthy
+      - api
     networks:
       - app-network
     restart: always
