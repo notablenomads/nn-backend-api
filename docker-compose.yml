@@ -9,23 +9,30 @@ services:
     volumes:
       - /root/secrets:/run/secrets:ro
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000/v1/health || exit 1']
-      interval: 10s
-      timeout: 5s
+      test: ['CMD-SHELL', "curl -f http://localhost:3000/v1/health || (echo 'Health check failed' && exit 1)"]
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
     logging:
       driver: 'json-file'
       options:
         max-size: '10m'
         max-file: '3'
         tag: '{{.Name}}'
+        labels: 'app,environment'
     deploy:
       resources:
         limits:
           memory: 1G
+          cpus: '1'
         reservations:
           memory: 512M
+          cpus: '0.5'
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   nginx:
     image: nginx:stable-alpine
@@ -42,7 +49,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'nginx -t && curl -f http://localhost/v1/health || exit 1']
+      test: ['CMD-SHELL', "curl -f http://localhost/v1/health || (echo 'Health check failed' && exit 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -53,7 +60,17 @@ services:
         max-size: '10m'
         max-file: '3'
         tag: '{{.Name}}'
+        labels: 'app,environment'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
 
 networks:
   app-network:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
