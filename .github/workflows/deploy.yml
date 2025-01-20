@@ -22,16 +22,21 @@ jobs:
           node-version: '18'
           cache: 'yarn'
 
-      - name: Enable Corepack
+      - name: Set up Yarn
         run: |
+          # Enable Corepack
           corepack enable
+          # Prepare Yarn version specified in package.json
+          corepack prepare yarn@4.6.0 --activate
+          # Verify Yarn version
           yarn --version
 
-      - name: Setup Yarn config
-        run: cp .yarnrc.yml-example .yarnrc.yml
-
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: |
+          # Copy Yarn config
+          cp .yarnrc.yml-example .yarnrc.yml
+          # Install dependencies with frozen lockfile
+          yarn install --immutable
 
       - name: Generate app variables and version
         id: vars
