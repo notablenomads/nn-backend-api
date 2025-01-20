@@ -5,6 +5,16 @@ SERVER_IP=""
 SERVER_USER="root"
 APP_NAME="nn-backend-api"
 DOMAIN="api.platform.notablenomads.com"
+DOCKER_HUB_USERNAME="mrdevx"  # Your Docker Hub username
+
+# Check if DOCKER_HUB_TOKEN is set
+if [ -z "$DOCKER_HUB_TOKEN" ]; then
+    echo "❌ Error: DOCKER_HUB_TOKEN environment variable is not set"
+    echo "Please set it first:"
+    echo "export DOCKER_HUB_TOKEN=your_token_here"
+    echo "You can generate a token at https://hub.docker.com/settings/security"
+    exit 1
+fi
 
 # Check if SERVER_IP is provided
 if [ -z "$1" ]; then
@@ -15,30 +25,38 @@ else
     SERVER_IP=$1
 fi
 
+DOCKER_IMAGE_NAME="$DOCKER_HUB_USERNAME/$APP_NAME"
+
 echo "🚀 Starting deployment to Hetzner server at $SERVER_IP..."
 
-# Build Docker image
+# Login to Docker Hub using token
+echo "🔑 Logging in to Docker Hub..."
+echo "$DOCKER_HUB_TOKEN" | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+# Build Docker image with Docker Hub tag
 echo "📦 Building Docker image..."
-docker build -t $APP_NAME .
+docker build -t $DOCKER_IMAGE_NAME:latest .
 
-# Save the image to a tar file
-echo "💾 Saving Docker image..."
-docker save $APP_NAME > ${APP_NAME}.tar
+# Push image to Docker Hub
+echo "📤 Pushing image to Docker Hub..."
+docker push $DOCKER_IMAGE_NAME:latest
 
-# Create required directories on the server
-echo "📁 Creating required directories..."
-ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/certbot/conf ~/certbot/www"
+# Create required directories and copy config files to the server
+echo "📁 Setting up server configuration..."
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP "
+    mkdir -p /root/certbot/conf /root/certbot/www /root/secrets
+"
 
-# Copy files to the server
-echo "📤 Copying files to server..."
-scp ${APP_NAME}.tar $SERVER_USER@$SERVER_IP:/root/
-scp .env $SERVER_USER@$SERVER_IP:/root/
-scp docker-compose.yml $SERVER_USER@$SERVER_IP:/root/
-scp nginx.conf $SERVER_USER@$SERVER_IP:/root/
+# Copy configuration files
+echo "📤 Copying configuration files..."
+scp -o ConnectTimeout=60 .env docker-compose.yml nginx.conf $SERVER_USER@$SERVER_IP:/root/
 
 # Execute remote commands
 echo "🔧 Setting up application on server..."
-ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP << ENDSSH
+    # Move .env to secrets directory
+    mv /root/.env /root/secrets/.env
+
     # Install Docker if not present
     if ! command -v docker &> /dev/null; then
         echo "Installing Docker for Ubuntu 22.04..."
@@ -56,8 +74,8 @@ ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
 
         # Add the repository to Apt sources
         echo \
-          "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-          "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+          "deb [arch="\$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          "\$(. /etc/os-release && echo "\$VERSION_CODENAME")" stable" | \
           tee /etc/apt/sources.list.d/docker.list > /dev/null
 
         # Install Docker packages
@@ -69,31 +87,27 @@ ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
         systemctl enable docker
 
         # Add current user to docker group
-        usermod -aG docker $USER
+        usermod -aG docker \$USER
 
         echo "Docker installed successfully!"
     fi
 
-    # Install Docker Compose if not present (using Docker Compose plugin instead of standalone)
+    # Install Docker Compose if not present
     if ! command -v docker-compose &> /dev/null; then
         echo "Setting up Docker Compose..."
-        # Create symbolic link for docker compose plugin
         ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
         echo "Docker Compose setup completed!"
     fi
 
-    # Load the Docker image
-    docker load < ${APP_NAME}.tar
-    rm ${APP_NAME}.tar
-
-    # Install curl for healthcheck
-    apt-get install -y curl
+    # Login to Docker Hub using token
+    echo "🔑 Logging in to Docker Hub on server..."
+    echo "$DOCKER_HUB_TOKEN" | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
     # Stop any running containers and remove old certificates
     docker-compose down
     rm -rf /root/certbot/conf/live /root/certbot/conf/archive
 
-    # Create dummy certificates (with proper directory structure)
+    # Create dummy certificates
     mkdir -p /root/certbot/conf/live/api.platform.notablenomads.com
     mkdir -p /root/certbot/conf/archive/api.platform.notablenomads.com
     
@@ -124,16 +138,13 @@ ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
     docker-compose up -d
 
     # Setup auto-renewal cron job
-    (crontab -l 2>/dev/null; echo "0 12 * * * cd $(pwd) && docker-compose run --rm certbot renew --quiet && docker-compose exec nginx nginx -s reload") | crontab -
+    (crontab -l 2>/dev/null; echo "0 12 * * * cd \$(pwd) && docker-compose run --rm certbot renew --quiet && docker-compose exec nginx nginx -s reload") | crontab -
 
     # Clean up old images
     docker image prune -f
 
     echo "✨ Server setup completed!"
 ENDSSH
-
-# Clean up local tar file
-rm ${APP_NAME}.tar
 
 echo "✅ Deployment completed successfully!"
 echo "🌍 Your application should now be running at https://$DOMAIN"
