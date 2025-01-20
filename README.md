@@ -119,86 +119,227 @@ yarn format
 
 ## Deployment
 
-The project uses AWS Copilot for deployment. The service runs on AWS ECS Fargate.
+### Prerequisites
+
+- Node.js ≥18.0.0
+- Yarn v4.6.0
+- Docker
+- GPG (for secure environment management)
+- A domain name pointing to your server
+
+### Initial Production Deployment
+
+1. Set up environment variables securely:
+
+   ```bash
+   # Encrypt your .env file locally
+   gpg --symmetric --cipher-algo AES256 .env
+   ```
+
+   You'll be prompted to create an encryption password. Save this password securely!
+
+2. Deploy the application:
+
+   ```bash
+   # Deploy the application
+   ./deploy.sh your-server-ip
+   ```
+
+3. Set up secure environment on the server:
+
+   ```bash
+   # Create secure directory
+   ssh root@your-server-ip "mkdir -p /root/secrets && chmod 700 /root/secrets"
+
+   # Copy encrypted file
+   scp .env.gpg root@your-server-ip:/root/
+
+   # Decrypt on server (you'll be prompted for the password)
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+   ```
+
+4. Generate SSL certificate:
+
+   ```bash
+   ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+   ```
+
+5. Verify deployment:
+
+   ```bash
+   # Check if the API is accessible
+   curl https://api.notablenomads.com/v1/health
+
+   # View logs
+   ssh root@your-server-ip "docker-compose logs -f"
+   ```
+
+### Redeployment Process
+
+When redeploying with environment changes:
+
+1. Update and re-encrypt your local `.env` file:
+
+   ```bash
+   # Re-encrypt with any changes
+   gpg --symmetric --cipher-algo AES256 .env
+   ```
+
+2. Deploy and update environment:
+
+   ```bash
+   # Deploy code changes
+   ./deploy.sh your-server-ip
+
+   # Update encrypted environment
+   scp .env.gpg root@your-server-ip:/root/
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
+   # Restart services to apply changes
+   ssh root@your-server-ip "cd /root && docker-compose restart"
+   ```
+
+When redeploying without environment changes:
 
 ```bash
-# Deploy to production
-copilot deploy --env production
-
-# View service logs
-copilot svc logs
-
-# View service status
-copilot svc status
-
-# View service metrics
-copilot svc metrics
+# Simply deploy code changes
+./deploy.sh your-server-ip
 ```
 
-### Infrastructure
+### Environment Security
 
-- **Service Type**: Backend Service
-- **Compute**: AWS Fargate
-- **Memory**: 512 MiB
-- **CPU**: 256 units
-- **Networking**: Private subnet with public IP
+The deployment uses a secure environment setup:
 
-## Docker and Infrastructure Deployment
+1. **Local Environment**:
 
-### Building and Pushing Docker Image
+   - `.env`: Contains plain text environment variables (never committed)
+   - `.env.gpg`: Encrypted version of `.env` (safe to transfer)
+
+2. **Server Environment**:
+
+   - `/root/secrets/.env`: Decrypted environment file (restricted permissions)
+   - `/root/.env.gpg`: Encrypted backup (safe to keep)
+
+3. **Security Measures**:
+   - Environment variables are encrypted at rest
+   - Decrypted file is stored in a restricted directory
+   - Secrets directory is mounted read-only in containers
+   - Access requires GPG decryption password
+   - Regular rotation of encryption passwords recommended
+
+### Environment Management
+
+#### Viewing Variables
 
 ```bash
-# Build the Docker image
-docker build -t nn-backend-api .
+# View encrypted env file content (requires password)
+ssh root@your-server-ip "gpg -d /root/.env.gpg"
 
-# Log in to AWS ECR (replace with your AWS region)
-aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com
-
-# Tag the image (replace with your ECR repository URI)
-docker tag nn-backend-api:latest YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
-
-# Push the image to ECR
-docker push YOUR_AWS_ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/nn-backend-api:latest
+# View variables in running container
+ssh root@your-server-ip "docker-compose exec api env"
 ```
 
-### Terraform Deployment
+#### Updating Variables
 
-The infrastructure is managed using Terraform. The configuration is organized in environments (staging/production) and modules.
+1. Update your local `.env` file
+2. Re-encrypt and deploy:
+
+   ```bash
+   # Re-encrypt
+   gpg --symmetric --cipher-algo AES256 .env
+
+   # Copy and decrypt on server
+   scp .env.gpg root@your-server-ip:/root/
+   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
+
+   # Restart services
+   ssh root@your-server-ip "cd /root && docker-compose restart"
+   ```
+
+#### Security Best Practices
+
+- Never commit `.env` or `.env.gpg` files
+- Store GPG encryption password in a secure password manager
+- Rotate encryption passwords regularly (recommended every 90 days)
+- Monitor access logs for unauthorized attempts
+- Limit SSH access to authorized IPs only
+- Regularly audit environment variable access
+- Keep encrypted backups of environment files
+
+### Server Configuration
+
+The production server uses the following setup:
+
+- **Web Server**: Nginx (reverse proxy)
+- **SSL**: Let's Encrypt (auto-renewal every 12 hours)
+- **Container Orchestration**: Docker Compose
+- **Health Monitoring**: Built-in health checks
+- **Security**:
+  - HTTPS redirection
+  - HTTP/2 enabled
+  - Modern SSL configuration
+  - Security headers
+  - WebSocket support
+
+### Security Headers
+
+The following security headers are enabled:
+
+```nginx
+add_header Strict-Transport-Security "max-age=63072000" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "no-referrer-when-downgrade" always;
+add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+```
+
+### Troubleshooting
+
+1. If the API is not accessible:
 
 ```bash
-# Initialize Terraform
-cd terraform/environments/[staging|production]
-terraform init
+# Check if containers are running
+ssh root@your-server-ip "docker-compose ps"
 
-# Plan the deployment
-terraform plan -var-file=terraform.tfvars
-
-# Apply the changes
-terraform apply -var-file=terraform.tfvars
-
-# Destroy infrastructure (if needed)
-terraform destroy -var-file=terraform.tfvars
+# Check logs for errors
+ssh root@your-server-ip "docker-compose logs"
 ```
 
-#### Infrastructure Components
+2. If SSL certificate is not working:
 
-The Terraform configuration manages the following AWS resources:
+```bash
+# Verify certificate files exist
+ssh root@your-server-ip "ls -la /root/ssl/"
 
-- ECS Fargate cluster and service
-- Application Load Balancer
-- VPC and networking components
-- IAM roles and policies
-- ECR repository
-- CloudWatch logs
+# Check nginx configuration
+ssh root@your-server-ip "docker-compose exec nginx nginx -t"
 
-#### Environment-specific Configuration
+# Regenerate certificate
+ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
+```
 
-Environment-specific variables are stored in `terraform.tfvars` files:
+3. If WebSocket connection fails:
 
-- `terraform/environments/staging/terraform.tfvars`
-- `terraform/environments/production/terraform.tfvars`
+```bash
+# Check nginx logs for WebSocket errors
+ssh root@your-server-ip "docker-compose logs nginx | grep -i websocket"
 
-Update these files with your specific configuration values before deployment.
+# Verify WebSocket configuration in nginx.conf
+ssh root@your-server-ip "cat /root/nginx.conf | grep -A 10 'proxy_set_header Upgrade'"
+```
+
+### Backup
+
+To backup the deployment configuration:
+
+```bash
+# Create a backup directory
+ssh root@your-server-ip "cd /root && tar -czf backup-\$(date +%Y%m%d).tar.gz docker-compose.yml nginx.conf ssl/"
+
+# Download the backup locally
+scp root@your-server-ip:/root/backup-*.tar.gz ./backups/
+```
 
 ## Contributing
 
@@ -219,3 +360,203 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Authors
 
 - **Mahdi Rashidi** - _Initial work_ - [mrdevx](https://github.com/mrdevx)
+
+# Notable Nomads Backend API Deployment
+
+This repository contains the backend API for Notable Nomads along with deployment scripts for managing the application deployment and SSL certificates.
+
+## Deployment Scripts
+
+The deployment process is managed through several scripts in the `scripts/` directory:
+
+### 1. Main Deployment Script (`scripts/deploy.sh`)
+
+The main script for deploying the application to the server.
+
+```bash
+# Deploy with staging SSL certificates (for testing)
+DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
+
+# Deploy with production SSL certificates
+DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+```
+
+This script:
+
+- Verifies DNS configuration
+- Builds and pushes Docker image
+- Sets up server configuration
+- Manages SSL certificates
+- Deploys the application
+
+### 2. SSL Certificate Management (`scripts/ssl-cert.sh`)
+
+Dedicated script for managing SSL certificates.
+
+```bash
+# Check existing certificates
+./ssl-cert.sh
+
+# Force renew existing certificates
+./ssl-cert.sh --force-renew
+
+# Generate new staging certificates
+./ssl-cert.sh --new --staging
+
+# Generate new production certificates
+./ssl-cert.sh --new
+```
+
+### 3. Cleanup Script (`scripts/cleanup.sh`)
+
+Script for cleaning up the server environment.
+
+```bash
+# Normal cleanup (preserves SSL certificates)
+./scripts/cleanup.sh 91.107.249.14
+
+# Force cleanup (removes everything including SSL certificates)
+./scripts/cleanup.sh 91.107.249.14 --force
+```
+
+## Directory Structure
+
+```
+.
+├── scripts/
+│   ├── deploy.sh      # Main deployment script
+│   ├── ssl-cert.sh    # SSL certificate management
+│   └── cleanup.sh     # Server cleanup script
+├── docker-compose.yml # Docker services configuration
+├── nginx.conf        # Nginx reverse proxy configuration
+└── .env             # Environment variables
+```
+
+## Deployment Process
+
+1. **Prerequisites**:
+
+   - Docker Hub account and access token
+   - Domain name pointing to your server (A record)
+   - SSH access to the server
+
+2. **Initial Deployment**:
+
+   ```bash
+   # First deployment with staging certificates
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
+
+   # Once verified, deploy with production certificates
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+   ```
+
+3. **SSL Certificate Management**:
+
+   ```bash
+   # On the server, you can manage certificates
+   cd /root
+   ./ssl-cert.sh --force-renew  # Renew certificates
+   ./ssl-cert.sh --new          # Generate new certificates
+   ```
+
+4. **Cleanup If Needed**:
+
+   ```bash
+   # Clean up while preserving certificates
+   ./scripts/cleanup.sh 91.107.249.14
+
+   # Full cleanup including certificates
+   ./scripts/cleanup.sh 91.107.249.14 --force
+   ```
+
+## Configuration Files
+
+### docker-compose.yml
+
+Contains service definitions for:
+
+- API service (Node.js application)
+- Nginx reverse proxy
+- SSL certificate management
+
+### nginx.conf
+
+Nginx configuration including:
+
+- SSL/TLS settings
+- Proxy settings
+- Security headers
+- HTTP to HTTPS redirection
+
+### .env
+
+Environment variables for:
+
+- API configuration
+- Database settings
+- Other application settings
+
+## Troubleshooting
+
+1. **SSL Certificate Issues**:
+
+   ```bash
+   # Check certificate status
+   ./ssl-cert.sh
+
+   # Force certificate renewal
+   ./ssl-cert.sh --force-renew
+   ```
+
+2. **Deployment Issues**:
+
+   ```bash
+   # Check logs
+   ssh root@91.107.249.14 'docker-compose logs'
+
+   # Clean up and retry
+   ./scripts/cleanup.sh 91.107.249.14
+   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
+   ```
+
+3. **Container Health Checks**:
+
+   ```bash
+   # Check container status
+   ssh root@91.107.249.14 'docker-compose ps'
+
+   # Check specific service logs
+   ssh root@91.107.249.14 'docker-compose logs api'
+   ```
+
+## Security Notes
+
+1. Always store sensitive information in `.env` files
+2. Use Docker Hub tokens instead of passwords
+3. Keep SSL certificates backed up
+4. Use production certificates only after staging is verified
+5. Regularly update dependencies and Docker images
+
+## Maintenance
+
+1. **Certificate Renewal**:
+
+   - SSL certificates auto-renew every 3 months
+   - Force renewal if needed: `./ssl-cert.sh --force-renew`
+
+2. **Updates**:
+
+   - Regular deployment updates the application
+   - Use cleanup script before major updates
+
+3. **Backups**:
+   - SSL certificates are automatically backed up
+   - Database backups should be configured separately
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
