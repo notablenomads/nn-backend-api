@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.14...v0.1.3) (2025-01-20)
+
+
+### Features
+
+* enhance deployment process with Docker Hub integration and server configuration ([cb0265d](https://github.com/Notable-Nomads/nn-backend-api/commit/cb0265d9a56eb1ef924a9c1fae643573d2b999fc))
+* implement comprehensive SSL setup script for secure deployment ([e2bc99d](https://github.com/Notable-Nomads/nn-backend-api/commit/e2bc99dc99e1f178fd8caf106a32527144f0973d))
+
 ### [0.0.14](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.13...v0.0.14) (2025-01-19)
 
 
