@@ -131,6 +131,12 @@ scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
 
 # Step 4: Set up SSL and deploy application
 log_info "Step 4: Setting up SSL and deploying application"
+
+# Copy SSL management script
+log_info "Copying SSL management script..."
+scp scripts/ssl-cert.sh "$SERVER_USER@$SERVER_IP:/root/"
+
+# Execute deployment on remote server
 ssh "$SERVER_USER@$SERVER_IP" << 'DEPLOY'
 #!/bin/bash
 
@@ -159,20 +165,22 @@ log_info "Installing certbot..."
 apt-get update
 apt-get install -y certbot
 
-# Generate SSL certificates using host certbot
-log_info "Generating SSL certificates..."
-certbot certonly --standalone \
-    --preferred-challenges http \
-    --email admin@notablenomads.com \
-    --agree-tos \
-    --no-eff-email \
-    -d api.notablenomads.com \
-    ${USE_STAGING:+--test-cert}
+# Make SSL script executable
+chmod +x ssl-cert.sh
 
-# Copy certificates to the docker volume location
-log_info "Copying certificates to docker volume..."
-mkdir -p /root/certbot/conf
-cp -rL /etc/letsencrypt/* /root/certbot/conf/
+# Handle SSL certificates
+log_info "Handling SSL certificates..."
+if [ -d "/etc/letsencrypt/live/api.notablenomads.com" ]; then
+    log_info "Found existing certificates..."
+    ./ssl-cert.sh --force-renew
+else
+    log_info "No existing certificates found, generating new ones..."
+    if [ "${USE_STAGING}" = "true" ]; then
+        ./ssl-cert.sh --new --staging
+    else
+        ./ssl-cert.sh --new
+    fi
+fi
 
 # Start services
 log_info "Starting services..."
