@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.23](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.22...v0.0.23) (2025-01-20)
+
+
+### Features
+
+* enhance Docker deployment configuration and update GitHub Actions workflow ([ff5ee09](https://github.com/Notable-Nomads/nn-backend-api/commit/ff5ee096220ce70539ed7c51e0ddf4c5e969092a))
+
 ### [0.0.22](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.20...v0.0.22) (2025-01-19)
 
 
