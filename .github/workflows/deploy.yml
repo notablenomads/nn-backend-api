@@ -70,10 +70,10 @@ jobs:
 
       - name: Deploy to production
         run: |
-          # Stop and remove existing containers
+          # Stop existing containers
           ssh root@91.107.249.14 "cd /root && docker-compose down"
 
-          # Load new Docker image
+          # Load new Docker image first
           ssh root@91.107.249.14 "cd /root && docker load < nn-backend-api.tar && rm nn-backend-api.tar"
 
           # Update environment
@@ -83,15 +83,15 @@ jobs:
           # Create version file
           echo "APP_VERSION=${{ env.VERSION }}" | ssh root@91.107.249.14 "cat > /root/.env.version"
 
-          # Clean up old images
-          ssh root@91.107.249.14 "docker image prune -f --all"
-
           # Start new containers with version
           ssh root@91.107.249.14 "cd /root && set -a && source .env.version && docker-compose up -d"
+
+          # Clean up old images only after new containers are running
+          ssh root@91.107.249.14 "docker image prune -f --all --filter 'until=24h'"
 
       - name: Verify deployment
         run: |
           sleep 30  # Wait for services to start
           echo "Checking running containers and their versions..."
-          ssh root@91.107.249.14 "docker ps --format '{{.Image}}'"
+          ssh root@91.107.249.14 "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'"
           curl --fail https://api.platform.notablenomads.com/v1/health || exit 1
