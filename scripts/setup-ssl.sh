@@ -5,7 +5,7 @@ set -e
 # Check if server IP is provided
 if [ -z "$1" ]; then
     echo "Error: Server IP is required"
-    echo "Usage: $0 <server-ip> [--production]"
+    echo "Usage: $0 <server-ip> [--production] [--force-renewal]"
     exit 1
 fi
 
@@ -13,68 +13,90 @@ fi
 SERVER_IP="$1"
 SERVER_USER="root"
 DOMAIN="api.notablenomads.com"
-USE_STAGING=true
+USE_STAGING="true"  # Default to staging for testing
+FORCE_RENEWAL="false"
 
-# Check if --production flag is provided
-if [ "$2" = "--production" ]; then
-    USE_STAGING=false
-fi
+# Parse additional arguments
+shift
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --production)
+            USE_STAGING="false"
+            shift
+            ;;
+        --force-renewal)
+            FORCE_RENEWAL="true"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
 # Colors for output
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${GREEN}[INFO] Setting up SSL certificates...${NC}"
+echo -e "${GREEN}[INFO] Using staging: $USE_STAGING${NC}"
+echo -e "${GREEN}[INFO] Force renewal: $FORCE_RENEWAL${NC}"
 
-# Create required directories
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/www"
-
-# Copy nginx configuration for initial certificate setup
+# Copy nginx configuration
 echo -e "${GREEN}[INFO] Setting up initial nginx configuration...${NC}"
-cat > nginx.conf.tmp << 'EOF'
-server {
-    listen 80;
-    listen [::]:80;
-    server_name api.notablenomads.com;
+scp nginx.conf "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
 
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-EOF
-
-scp nginx.conf.tmp "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
-rm nginx.conf.tmp
-
-# Set up SSL certificates
-echo -e "${GREEN}[INFO] Setting up SSL certificates...${NC}"
-ssh "$SERVER_USER@$SERVER_IP" << ENDSSH
+# Setup SSL certificates
+ssh "$SERVER_USER@$SERVER_IP" << EOF
 cd /root
 
-# Start nginx for certificate validation
+# Create required directories
+mkdir -p /root/certbot/conf
+mkdir -p /root/certbot/www
+
+# Stop any running containers
+docker-compose down
+
+# Start nginx for domain verification
 docker-compose up -d nginx
 
-# Generate certificates
-STAGING_FLAG=""
-if [ "${USE_STAGING}" = "true" ]; then
-    STAGING_FLAG="--test-cert"
+# Get SSL certificate
+if [ "$USE_STAGING" = "true" ]; then
+    staging_arg="--staging"
+else
+    staging_arg=""
 fi
 
-docker-compose run --rm certbot certonly --webroot \
+if [ "$FORCE_RENEWAL" = "true" ]; then
+    renewal_arg="--force-renewal"
+else
+    renewal_arg=""
+fi
+
+docker-compose run --rm certbot certonly \
+    \$staging_arg \
+    \$renewal_arg \
+    --non-interactive \
+    --webroot \
     --webroot-path /var/www/certbot \
-    --email admin@notablenomads.com \
-    --agree-tos --no-eff-email \
-    -d ${DOMAIN} \
-    \${STAGING_FLAG}
+    --email contact@notablenomads.com \
+    --agree-tos \
+    --no-eff-email \
+    -d $DOMAIN
+
+# Verify certificate files exist
+if [ ! -f "/root/certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
+    echo -e "${RED}[ERROR] SSL certificate files not found${NC}"
+    exit 1
+fi
 
 # Set up auto-renewal
-(crontab -l 2>/dev/null || true; echo "0 12 * * * /usr/bin/docker-compose -f /root/docker-compose.yml run --rm certbot renew --quiet") | crontab -
+(crontab -l 2>/dev/null || true; echo "0 12 * * * /usr/bin/docker-compose -f /root/docker-compose.yml run --rm certbot renew --quiet && /usr/bin/docker-compose -f /root/docker-compose.yml exec nginx nginx -s reload") | crontab -
 
-echo "SSL certificates have been set up successfully!"
-ENDSSH
+# Restart nginx to use new certificates
+docker-compose restart nginx
 
-echo -e "${GREEN}[INFO] SSL certificate setup completed!${NC}" 
+echo -e "${GREEN}[INFO] SSL certificate setup completed!${NC}"
+EOF 
