@@ -6,7 +6,7 @@ set -e
 # Configuration
 SERVER_IP=""
 SERVER_USER="root"
-DOMAIN="api.platform.notablenomads.com"
+DOMAIN="api.notablenomads.com"
 EMAIL="contact@notablenomads.com"
 CERTBOT_DIR="/root/certbot"
 USE_STAGING=true  # Set to false for production certificates

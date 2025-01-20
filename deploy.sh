@@ -7,7 +7,7 @@ set -e
 SERVER_IP=""
 SERVER_USER="root"
 APP_NAME="nn-backend-api"
-DOMAIN="api.platform.notablenomads.com"
+DOMAIN="api.notablenomads.com"
 DOCKER_HUB_USERNAME="mrdevx"
 
 # Colors for output
