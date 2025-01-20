@@ -79,14 +79,19 @@ docker push mrdevx/nn-backend-api:latest
 
 # Set up server configuration
 log_info "Setting up server configuration..."
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/www"
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/www /root/ssl_backup"
 
 # Check if SSL certificates exist and back them up
-log_info "Backing up existing SSL certificates..."
+log_info "Checking SSL certificates..."
 ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
-if [ -d "/root/certbot/conf/live" ]; then
-    mkdir -p /root/ssl_backup
-    cp -r /root/certbot/conf/live/* /root/ssl_backup/
+if [ -d "/root/certbot/conf/live" ] && [ -n "$(ls -A /root/certbot/conf/live)" ]; then
+    log_info "Found existing SSL certificates, backing them up..."
+    rm -rf /root/ssl_backup/*
+    cp -rL /root/certbot/conf/live/* /root/ssl_backup/
+    cp -r /root/certbot/conf/archive /root/ssl_backup/
+    cp -r /root/certbot/conf/renewal /root/ssl_backup/
+else
+    log_info "No existing SSL certificates found."
 fi
 ENDSSH
 
@@ -103,7 +108,7 @@ log_info "Starting containers and setting up SSL..."
 ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
 cd /root
 
-# Start nginx without SSL first
+# Start nginx with HTTP configuration first
 cat > nginx.conf.http << 'EOF'
 server {
     listen 80;
@@ -123,10 +128,14 @@ EOF
 mv nginx.conf.http nginx.conf
 docker-compose up -d nginx
 
-# Generate SSL certificates
-if [ -d "/root/ssl_backup" ] && [ "$(ls -A /root/ssl_backup)" ]; then
+# Handle SSL certificates
+if [ -d "/root/ssl_backup" ] && [ -n "$(ls -A /root/ssl_backup)" ]; then
     echo "Restoring SSL certificates from backup..."
+    rm -rf /root/certbot/conf/live /root/certbot/conf/archive /root/certbot/conf/renewal
+    mkdir -p /root/certbot/conf/live
     cp -r /root/ssl_backup/* /root/certbot/conf/live/
+    [ -d "/root/ssl_backup/archive" ] && cp -r /root/ssl_backup/archive /root/certbot/conf/
+    [ -d "/root/ssl_backup/renewal" ] && cp -r /root/ssl_backup/renewal /root/certbot/conf/
 else
     echo "Generating new SSL certificates..."
     STAGING_FLAG=""
@@ -143,7 +152,8 @@ else
 fi
 
 # Restore full nginx configuration and restart
-mv nginx.conf.bak nginx.conf
+cp nginx.conf.bak nginx.conf 2>/dev/null || cp nginx.conf.orig nginx.conf 2>/dev/null || true
+mv nginx.conf.orig nginx.conf 2>/dev/null || true
 docker-compose restart nginx
 
 # Start remaining services

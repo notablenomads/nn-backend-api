@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.3...v0.1.4) (2025-01-20)
+
+
+### Features
+
+* enhance deployment script and configurations for SSL setup and reliability ([36761e1](https://github.com/Notable-Nomads/nn-backend-api/commit/36761e17d6b101bed4b1ee9f6fa32cee2cd14620))
+* enhance SSL setup script with validation and backup features ([e93ab54](https://github.com/Notable-Nomads/nn-backend-api/commit/e93ab54ee7c6ea2bb7aeae2d9008a08d845b2c2c))
+
+
+### Bug Fixes
+
+* update domain references in deployment scripts and configurations ([49056f8](https://github.com/Notable-Nomads/nn-backend-api/commit/49056f84f241a2c4486bf46ab1b0886994611e1b))
+
 ### [0.1.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.14...v0.1.3) (2025-01-20)
 
 
