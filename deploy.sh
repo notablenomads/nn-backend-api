@@ -3,8 +3,16 @@
 # Exit on any error
 set -e
 
+# Check if server IP is provided
+if [ -z "$1" ]; then
+    echo "Error: Server IP is required"
+    echo "Usage: $0 <server-ip> [--production]"
+    exit 1
+fi
+
 # Configuration
-SERVER_IP=""
+SERVER_IP="$1"
+PRODUCTION_FLAG="$2"
 SERVER_USER="root"
 APP_NAME="nn-backend-api"
 DOMAIN="api.notablenomads.com"
@@ -46,123 +54,70 @@ check_ssh_connection() {
     fi
 }
 
-# Validate input parameters
-if [ -z "$1" ]; then
-    log_error "Server IP address is required."
-    echo "Usage: $0 <server-ip> [--production]"
-    exit 1
-fi
+# Make scripts executable
+chmod +x scripts/*.sh
 
-SERVER_IP="$1"
-USE_STAGING=true
+# Function to run a step and check its result
+run_step() {
+    local step_name="$1"
+    local command="$2"
+    
+    echo -e "\n${GREEN}=== Running step: $step_name ===${NC}"
+    if ! $command; then
+        echo -e "${RED}[ERROR] Step '$step_name' failed${NC}"
+        exit 1
+    fi
+}
 
-# Check if --production flag is provided
-if [ "$2" = "--production" ]; then
-    USE_STAGING=false
-    log_info "Using production environment for SSL certificates"
-else
-    log_info "Using staging environment for SSL certificates"
-fi
+# Main deployment process
+echo -e "${GREEN}Starting deployment process...${NC}"
 
-# Check required commands
-check_command "docker"
-check_command "ssh"
-check_command "scp"
+# Step 1: Build and push Docker image
+run_step "Build and push Docker image" "./scripts/build-image.sh"
 
-# Check SSH connection
-check_ssh_connection "$SERVER_USER@$SERVER_IP"
+# Step 2: Initial setup - create directories and copy base files
+echo -e "\n${GREEN}=== Initial server setup ===${NC}"
+ssh $SERVER_USER@$SERVER_IP "mkdir -p /root/certbot/conf /root/certbot/www"
+scp docker-compose.yml .env "$SERVER_USER@$SERVER_IP:/root/"
 
-# Build and push Docker image
-log_info "Building Docker image..."
-docker build -t mrdevx/nn-backend-api:latest .
-docker push mrdevx/nn-backend-api:latest
+# Step 3: Set up initial nginx for certbot
+run_step "Set up SSL certificates" "./scripts/setup-ssl.sh $SERVER_IP $PRODUCTION_FLAG"
 
-# Set up server configuration
-log_info "Setting up server configuration..."
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/www /root/ssl_backup"
+# Step 4: Deploy the application first (so nginx can proxy to it)
+run_step "Deploy application" "./scripts/deploy-app.sh $SERVER_IP"
 
-# Check if SSL certificates exist and back them up
-log_info "Checking SSL certificates..."
-ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
-if [ -d "/root/certbot/conf/live" ] && [ -n "$(ls -A /root/certbot/conf/live)" ]; then
-    log_info "Found existing SSL certificates, backing them up..."
-    rm -rf /root/ssl_backup/*
-    cp -rL /root/certbot/conf/live/* /root/ssl_backup/
-    cp -r /root/certbot/conf/archive /root/ssl_backup/
-    cp -r /root/certbot/conf/renewal /root/ssl_backup/
-else
-    log_info "No existing SSL certificates found."
-fi
-ENDSSH
+# Step 5: Set up final nginx configuration with SSL
+run_step "Set up Nginx" "./scripts/setup-nginx.sh $SERVER_IP"
 
-# Stop existing containers
-log_info "Stopping existing containers..."
-ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker-compose down"
-
-# Copy configuration files
-log_info "Copying configuration files..."
-scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
-
-# Start containers and set up SSL
-log_info "Starting containers and setting up SSL..."
-ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
+# Step 6: Verify deployment
+echo -e "\n${GREEN}=== Verifying deployment ===${NC}"
+ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
 cd /root
 
-# Start nginx with HTTP configuration first
-cat > nginx.conf.http << 'EOF'
-server {
-    listen 80;
-    listen [::]:80;
-    server_name api.notablenomads.com;
+# Check if services are running
+echo "Checking service status..."
+docker-compose ps
 
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-EOF
-
-mv nginx.conf.http nginx.conf
-docker-compose up -d nginx
-
-# Handle SSL certificates
-if [ -d "/root/ssl_backup" ] && [ -n "$(ls -A /root/ssl_backup)" ]; then
-    echo "Restoring SSL certificates from backup..."
-    rm -rf /root/certbot/conf/live /root/certbot/conf/archive /root/certbot/conf/renewal
-    mkdir -p /root/certbot/conf/live
-    cp -r /root/ssl_backup/* /root/certbot/conf/live/
-    [ -d "/root/ssl_backup/archive" ] && cp -r /root/ssl_backup/archive /root/certbot/conf/
-    [ -d "/root/ssl_backup/renewal" ] && cp -r /root/ssl_backup/renewal /root/certbot/conf/
+# Check SSL certificates
+echo -e "\nChecking SSL certificates..."
+if [ -d "/root/certbot/conf/live" ]; then
+    echo "SSL certificates are present"
 else
-    echo "Generating new SSL certificates..."
-    STAGING_FLAG=""
-    if [ "${USE_STAGING}" = true ]; then
-        STAGING_FLAG="--test-cert"
-    fi
-    
-    docker-compose run --rm certbot certonly --webroot \
-        --webroot-path /var/www/certbot \
-        --email admin@notablenomads.com \
-        --agree-tos --no-eff-email \
-        -d api.notablenomads.com \
-        $STAGING_FLAG
+    echo "Warning: SSL certificates not found"
 fi
 
-# Restore full nginx configuration and restart
-cp nginx.conf.bak nginx.conf 2>/dev/null || cp nginx.conf.orig nginx.conf 2>/dev/null || true
-mv nginx.conf.orig nginx.conf 2>/dev/null || true
-docker-compose restart nginx
-
-# Start remaining services
-docker-compose up -d
+# Test API health
+echo -e "\nTesting API health..."
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/v1/health | grep -q "200"; then
+    echo "API is healthy"
+else
+    echo "Warning: API health check failed"
+fi
 ENDSSH
 
-log_info "Deployment completed successfully!"
-echo -e "\n🌍 Your application should now be running at https://api.notablenomads.com"
+echo -e "\n${GREEN}=== Deployment completed successfully! ===${NC}"
 echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
 echo "2. Test the API endpoint: curl https://api.notablenomads.com/v1/health"
-echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'" 
+echo "3. Monitor the logs with: ssh root@$SERVER_IP 'docker-compose logs -f'"
+echo -e "\n${GREEN}To clean up everything, run: ./scripts/cleanup.sh $SERVER_IP${NC}" 
