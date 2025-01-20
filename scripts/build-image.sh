@@ -9,21 +9,31 @@ IMAGE_TAG="latest"
 
 # Color codes for output
 GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'
+NC='\033[0m'
 
-echo -e "${GREEN}Building Docker image ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}...${NC}"
-docker build -t ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG} .
-
-echo -e "${GREEN}Logging in to Docker Hub...${NC}"
+# Check for Docker Hub token
 if [ -z "$DOCKER_HUB_TOKEN" ]; then
-    echo "Error: DOCKER_HUB_TOKEN environment variable is not set"
+    echo -e "${RED}Error: DOCKER_HUB_TOKEN environment variable is not set${NC}"
     exit 1
 fi
+
+echo -e "${GREEN}Building Docker image ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}...${NC}"
+
+# Build the image
+docker build \
+    --build-arg NODE_ENV=production \
+    -t ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG} .
+
+# Login to Docker Hub
+echo -e "${GREEN}Logging in to Docker Hub...${NC}"
 echo "$DOCKER_HUB_TOKEN" | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
 
+# Push the image
 echo -e "${GREEN}Pushing image to Docker Hub...${NC}"
 docker push ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
 
+# Logout for security
 echo -e "${GREEN}Logging out from Docker Hub...${NC}"
 docker logout
 

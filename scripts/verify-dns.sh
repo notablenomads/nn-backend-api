@@ -1,29 +1,60 @@
 #!/bin/bash
+set -e
 
+# Configuration
 DOMAIN="api.notablenomads.com"
-SERVER_IP="$1"
 
-if [ -z "$SERVER_IP" ]; then
-    echo "Error: Server IP is required"
+# Check if server IP is provided
+if [ -z "$1" ]; then
+    echo "Error: Server IP address is required"
     echo "Usage: $0 <server-ip>"
     exit 1
 fi
 
-echo "Checking DNS configuration for $DOMAIN..."
-echo "Expected IP: $SERVER_IP"
+SERVER_IP="$1"
 
-# Get the current IP from DNS
-CURRENT_IP=$(dig +short $DOMAIN)
+# Color codes for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-echo "Current IP from DNS: $CURRENT_IP"
+echo -e "${GREEN}Verifying DNS configuration for ${DOMAIN}...${NC}"
 
-if [ "$CURRENT_IP" = "$SERVER_IP" ]; then
-    echo "✅ DNS is correctly configured"
-else
-    echo "❌ DNS is not correctly configured"
-    echo "Please update your DNS settings to point $DOMAIN to $SERVER_IP"
-    echo "Note: DNS changes may take up to 48 hours to propagate"
+# Get current IP from DNS
+echo -e "\n${YELLOW}Checking DNS A record...${NC}"
+CURRENT_IP=$(dig +short ${DOMAIN} A)
+
+if [ -z "$CURRENT_IP" ]; then
+    echo -e "${RED}Error: No A record found for ${DOMAIN}${NC}"
+    echo "Please configure your DNS to point ${DOMAIN} to ${SERVER_IP}"
+    exit 1
 fi
+
+echo "Current IP from DNS: ${CURRENT_IP}"
+echo "Expected IP: ${SERVER_IP}"
+
+if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
+    echo -e "${RED}Error: DNS is not pointing to the correct IP${NC}"
+    echo "Please update your DNS configuration to point ${DOMAIN} to ${SERVER_IP}"
+    exit 1
+fi
+
+echo -e "${GREEN}DNS configuration is correct!${NC}"
+
+# Check DNS propagation
+echo -e "\n${YELLOW}Checking DNS propagation...${NC}"
+if ! dig +short ${DOMAIN} @8.8.8.8 | grep -q "^${SERVER_IP}$"; then
+    echo -e "${YELLOW}Warning: DNS changes may not have propagated to Google DNS (8.8.8.8) yet${NC}"
+    echo "This might take some time. You can proceed, but SSL certificate generation might fail."
+fi
+
+if ! dig +short ${DOMAIN} @1.1.1.1 | grep -q "^${SERVER_IP}$"; then
+    echo -e "${YELLOW}Warning: DNS changes may not have propagated to Cloudflare DNS (1.1.1.1) yet${NC}"
+    echo "This might take some time. You can proceed, but SSL certificate generation might fail."
+fi
+
+echo -e "\n${GREEN}DNS verification completed!${NC}"
 
 # Check if port 80 is accessible
 echo -e "\nChecking HTTP (port 80) accessibility..."
