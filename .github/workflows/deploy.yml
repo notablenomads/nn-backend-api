@@ -60,10 +60,16 @@ jobs:
 
       - name: Update environment on server
         run: |
+          # Stop and remove existing containers
+          ssh root@91.107.249.14 "cd /root && docker-compose down"
+          # Clean up old images
+          ssh root@91.107.249.14 "docker image prune -f"
+          # Set up environment
           ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
           scp .env.gpg root@91.107.249.14:/root/
           echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-          ssh root@91.107.249.14 "cd /root && docker-compose restart"
+          # Start new containers
+          ssh root@91.107.249.14 "cd /root && docker-compose up -d"
 
       - name: Verify deployment
         run: |

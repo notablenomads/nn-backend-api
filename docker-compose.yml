@@ -18,6 +18,14 @@ services:
       options:
         max-size: '10m'
         max-file: '3'
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: start-first
 
   nginx:
     image: nginx:stable-alpine
@@ -32,6 +40,14 @@ services:
       - app-network
     depends_on:
       - api
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: start-first
 
 networks:
   app-network:
