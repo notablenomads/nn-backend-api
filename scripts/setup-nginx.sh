@@ -14,6 +14,12 @@ SERVER_IP="$1"
 SERVER_USER="root"
 DOMAIN="api.notablenomads.com"
 
+# Check if scp command is available
+if ! command -v scp &> /dev/null; then
+    echo "Error: scp command not found. Please install OpenSSH."
+    exit 1
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -125,6 +131,6 @@ rm nginx.conf
 
 # Restart nginx
 echo -e "${GREEN}[INFO] Restarting Nginx...${NC}"
-ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker-compose restart nginx"
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose restart nginx"
 
-echo -e "${GREEN}[INFO] Nginx setup completed!${NC}" 
+echo -e "${GREEN}[INFO] Nginx setup completed!${NC}"

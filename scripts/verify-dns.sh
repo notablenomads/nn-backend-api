@@ -13,6 +13,12 @@ fi
 
 SERVER_IP="$1"
 
+# Check if dig command is available
+if ! command -v dig &> /dev/null; then
+    echo "Error: dig command not found. Please install dnsutils."
+    exit 1
+fi
+
 # Color codes for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -60,7 +66,7 @@ fi
 echo -e "\n${YELLOW}Running optional connectivity checks...${NC}"
 
 echo "Checking HTTP (port 80) accessibility..."
-if nc -zv $DOMAIN 80 2>/dev/null; then
+if nc -zv $DOMAIN 80; then
     echo -e "${GREEN}Port 80 is accessible${NC}"
 else
     echo -e "${YELLOW}Warning: Port 80 is not accessible yet (this is normal if Nginx isn't running)${NC}"
@@ -70,4 +76,4 @@ echo -e "\n${GREEN}DNS verification completed successfully!${NC}"
 if [ $PROPAGATION_WARNINGS -gt 0 ]; then
     echo -e "${YELLOW}Note: Some DNS servers haven't updated yet. This is normal and may take up to 48 hours.${NC}"
     echo -e "${YELLOW}You can proceed with deployment, but SSL certificate generation might fail until DNS propagates.${NC}"
-fi 
+fi

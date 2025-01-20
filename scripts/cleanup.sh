@@ -13,6 +13,12 @@ fi
 SERVER_IP="$1"
 SERVER_USER="root"
 
+# Check if ssh command is available
+if ! command -v ssh &> /dev/null; then
+    echo "Error: ssh command not found. Please install OpenSSH."
+    exit 1
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -33,7 +39,7 @@ cd /root
 
 # Stop and remove all containers
 echo "Stopping and removing containers..."
-docker-compose down -v
+docker compose down -v
 
 # Remove all configuration files
 echo "Removing configuration files..."
@@ -54,4 +60,4 @@ crontab -r
 echo "Cleanup completed successfully!"
 ENDSSH
 
-echo -e "${GREEN}[INFO] Server cleanup completed!${NC}" 
+echo -e "${GREEN}[INFO] Server cleanup completed!${NC}"

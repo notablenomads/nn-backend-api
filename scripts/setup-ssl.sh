@@ -22,6 +22,12 @@ if [ "$2" = "--production" ]; then
     USE_STAGING=false
 fi
 
+# Check if ssh command is available
+if ! command -v ssh &> /dev/null; then
+    echo "Error: ssh command not found. Please install OpenSSH."
+    exit 1
+fi
+
 # Color codes for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -94,10 +100,10 @@ ssh ${SERVER_USER}@${SERVER_IP} << EOF
     fi
 
     # Set up auto-renewal
-    echo "0 0 * * * docker compose -f /root/docker-compose.yml run --rm certbot renew --quiet" | crontab -
+    (crontab -l ; echo "0 0 * * * docker compose -f /root/docker-compose.yml run --rm certbot renew --quiet") | crontab -
 EOF
 
 echo -e "${GREEN}SSL setup completed! Certificates will auto-renew daily.${NC}"
 if [ "${USE_STAGING}" = true ]; then
     echo -e "${YELLOW}Note: These are staging certificates. Run with --production for valid certificates.${NC}"
-fi 
+fi

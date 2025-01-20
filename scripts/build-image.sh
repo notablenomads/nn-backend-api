@@ -7,6 +7,12 @@ DOCKER_HUB_USERNAME="mrdevx"
 APP_NAME="nn-backend-api"
 IMAGE_TAG="latest"
 
+# Check if docker command is available
+if ! command -v docker &> /dev/null; then
+    echo "Error: docker command not found. Please install Docker."
+    exit 1
+fi
+
 # Color codes for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -37,4 +43,4 @@ docker push ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
 echo -e "${GREEN}Logging out from Docker Hub...${NC}"
 docker logout
 
-echo -e "${GREEN}Successfully built and pushed image ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}${NC}" 
+echo -e "${GREEN}Successfully built and pushed image ${DOCKER_HUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}${NC}"

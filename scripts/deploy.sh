@@ -9,6 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 SERVER_IP="$1"
+DOMAIN="api.notablenomads.com"
 
 # Color codes for output
 GREEN='\033[0;32m'
@@ -78,4 +79,4 @@ echo -e "\n${GREEN}Deployment completed successfully!${NC}"
 echo -e "${YELLOW}Note: SSL certificates are in staging mode. Run setup-ssl.sh with --production for valid certificates.${NC}"
 echo -e "\nNext steps:"
 echo "1. Test the application at http://api.notablenomads.com"
-echo "2. Once everything is working, run: ./scripts/setup-ssl.sh $SERVER_IP --production" 
+echo "2. Once everything is working, run: ./scripts/setup-ssl.sh $SERVER_IP --production"

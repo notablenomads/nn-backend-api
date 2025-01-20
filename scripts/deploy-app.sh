@@ -16,6 +16,12 @@ DOCKER_HUB_USERNAME="mrdevx"
 APP_NAME="nn-backend-api"
 IMAGE_TAG="latest"
 
+# Check if scp command is available
+if ! command -v scp &> /dev/null; then
+    echo "Error: scp command not found. Please install OpenSSH."
+    exit 1
+fi
+
 # Color codes for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
