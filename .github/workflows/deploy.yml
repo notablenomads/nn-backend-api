@@ -80,13 +80,18 @@ jobs:
           ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
           echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
 
-          # Clean up old images
-          ssh root@91.107.249.14 "docker image prune -f"
+          # Create version file
+          echo "APP_VERSION=${{ env.VERSION }}" | ssh root@91.107.249.14 "cat > /root/.env.version"
 
-          # Start new containers
-          ssh root@91.107.249.14 "cd /root && docker-compose up -d"
+          # Clean up old images
+          ssh root@91.107.249.14 "docker image prune -f --all"
+
+          # Start new containers with version
+          ssh root@91.107.249.14 "cd /root && set -a && source .env.version && docker-compose up -d"
 
       - name: Verify deployment
         run: |
           sleep 30  # Wait for services to start
+          echo "Checking running containers and their versions..."
+          ssh root@91.107.249.14 "docker ps --format '{{.Image}}'"
           curl --fail https://api.platform.notablenomads.com/v1/health || exit 1

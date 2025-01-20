@@ -1,6 +1,6 @@
 services:
   api:
-    image: nn-backend-api:${APP_VERSION:-latest}
+    image: nn-backend-api:${APP_VERSION}
     restart: always
     networks:
       - app-network
