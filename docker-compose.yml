@@ -1,6 +1,6 @@
 services:
   api:
-    image: nn-backend-api:${APP_VERSION}
+    image: ${DOCKERHUB_USERNAME}/nn-backend-api:${APP_VERSION}
     restart: always
     networks:
       - app-network

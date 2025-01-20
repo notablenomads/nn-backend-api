@@ -43,10 +43,27 @@ jobs:
       - name: Build application
         run: yarn build
 
-      - name: Build Docker image
-        run: |
-          docker build -t nn-backend-api:${{ env.VERSION }} -t nn-backend-api:latest .
-          docker save nn-backend-api:${{ env.VERSION }} > nn-backend-api.tar
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/nn-backend-api:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/nn-backend-api:${{ env.VERSION }}
 
       - name: Set up SSH
         run: |
@@ -61,20 +78,14 @@ jobs:
           echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 .env
           rm .env
 
-      - name: Copy deployment files
+      - name: Copy config files
         run: |
-          scp nn-backend-api.tar root@91.107.249.14:/root/
-          scp docker-compose.yml root@91.107.249.14:/root/
-          scp nginx.conf root@91.107.249.14:/root/
-          scp .env.gpg root@91.107.249.14:/root/
+          scp docker-compose.yml nginx.conf .env.gpg root@91.107.249.14:/root/
 
       - name: Deploy to production
         run: |
           # Stop existing containers
           ssh root@91.107.249.14 "cd /root && docker-compose down"
-
-          # Load new Docker image first
-          ssh root@91.107.249.14 "cd /root && docker load < nn-backend-api.tar && rm nn-backend-api.tar"
 
           # Update environment
           ssh root@91.107.249.14 "mkdir -p /root/secrets && chmod 700 /root/secrets"
@@ -83,10 +94,13 @@ jobs:
           # Create version file
           echo "APP_VERSION=${{ env.VERSION }}" | ssh root@91.107.249.14 "cat > /root/.env.version"
 
+          # Login to Docker Hub on server
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | ssh root@91.107.249.14 "docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin"
+
           # Start new containers with version
           ssh root@91.107.249.14 "cd /root && set -a && source .env.version && docker-compose up -d"
 
-          # Clean up old images only after new containers are running
+          # Clean up old images
           ssh root@91.107.249.14 "docker image prune -f --all --filter 'until=24h'"
 
       - name: Verify deployment
