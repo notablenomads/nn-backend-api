@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.3...v0.1.5) (2025-01-20)
+
+
+### Features
+
+* add certbot service and update nginx configuration for SSL certificate management ([58cb32b](https://github.com/Notable-Nomads/nn-backend-api/commit/58cb32b40a5777fe9e04ddb4a057dd004cf2eaba))
+* add command availability checks for Docker, SSH, SCP, and DNS utilities in deployment scripts ([f7d0d00](https://github.com/Notable-Nomads/nn-backend-api/commit/f7d0d00e17df008ba093bf4360e51a09f75725e0))
+* add GitHub Actions workflow for automated production deployment ([b5c666e](https://github.com/Notable-Nomads/nn-backend-api/commit/b5c666e07ee304aa22a1bf859e4bb109478e410a))
+* add nginx configuration and enhance SSL setup script for improved deployment ([7abc6c6](https://github.com/Notable-Nomads/nn-backend-api/commit/7abc6c6a23827bc1aa159e9b3a425b08de9b968c))
+* add setup script for GitHub Actions SSH key deployment ([f66ed95](https://github.com/Notable-Nomads/nn-backend-api/commit/f66ed959c5f2ad4a4751c706fdbd938d4043f681))
+* enhance deployment script and configurations for SSL setup and reliability ([36761e1](https://github.com/Notable-Nomads/nn-backend-api/commit/36761e17d6b101bed4b1ee9f6fa32cee2cd14620))
+* enhance deployment script with Docker installation checks and improved error handling ([647b46d](https://github.com/Notable-Nomads/nn-backend-api/commit/647b46debfe556a84a0f5864bdcb9de7a44661cc))
+* enhance docker-compose and deployment scripts for improved configuration and health checks ([7c8d56c](https://github.com/Notable-Nomads/nn-backend-api/commit/7c8d56c76becbb6108d02439df7abab752ff7dd0))
+* enhance SSL management in deployment process ([c9b13ae](https://github.com/Notable-Nomads/nn-backend-api/commit/c9b13ae7d10aa1b227efabd769e6adeb4458d518))
+* enhance SSL setup script with validation and backup features ([e93ab54](https://github.com/Notable-Nomads/nn-backend-api/commit/e93ab54ee7c6ea2bb7aeae2d9008a08d845b2c2c))
+* implement new deployment workflow with enhanced scripts and SSL setup ([a8d739a](https://github.com/Notable-Nomads/nn-backend-api/commit/a8d739af7a7fb2529d79528fe7190019908cbdf2))
+* overhaul deployment process with enhanced scripts and configurations ([d04ebd7](https://github.com/Notable-Nomads/nn-backend-api/commit/d04ebd7abca73ed60dfd0602b6ec15507f7e5687))
+
+
+### Bug Fixes
+
+* update domain references in deployment scripts and configurations ([49056f8](https://github.com/Notable-Nomads/nn-backend-api/commit/49056f84f241a2c4486bf46ab1b0886994611e1b))
+
+### [0.1.4](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.3...v0.1.4) (2025-01-20)
+
+
+### Features
+
+* enhance deployment script and configurations for SSL setup and reliability ([36761e1](https://github.com/Notable-Nomads/nn-backend-api/commit/36761e17d6b101bed4b1ee9f6fa32cee2cd14620))
+* enhance SSL setup script with validation and backup features ([e93ab54](https://github.com/Notable-Nomads/nn-backend-api/commit/e93ab54ee7c6ea2bb7aeae2d9008a08d845b2c2c))
+
+
+### Bug Fixes
+
+* update domain references in deployment scripts and configurations ([49056f8](https://github.com/Notable-Nomads/nn-backend-api/commit/49056f84f241a2c4486bf46ab1b0886994611e1b))
+
+### [0.1.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.14...v0.1.3) (2025-01-20)
+
+
+### Features
+
+* enhance deployment process with Docker Hub integration and server configuration ([cb0265d](https://github.com/Notable-Nomads/nn-backend-api/commit/cb0265d9a56eb1ef924a9c1fae643573d2b999fc))
+* implement comprehensive SSL setup script for secure deployment ([e2bc99d](https://github.com/Notable-Nomads/nn-backend-api/commit/e2bc99dc99e1f178fd8caf106a32527144f0973d))
+
+### [0.0.14](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.13...v0.0.14) (2025-01-19)
+
+
+### Features
+
+* add deployment scripts and configurations for nn-backend-api ([053f1d5](https://github.com/Notable-Nomads/nn-backend-api/commit/053f1d598b4f5ba56b579ad052ac4fd2fcb04aad))
+
 ### [0.0.13](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.12...v0.0.13) (2025-01-18)
 
 
