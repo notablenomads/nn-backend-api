@@ -1,6 +1,6 @@
 {
   "name": "nn-backend-api",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "description": "The backend API for the Notable Nomads backend",
   "author": "Mahdi Rashidi <m8rashidi@gmail.com>",
   "license": "MIT",
