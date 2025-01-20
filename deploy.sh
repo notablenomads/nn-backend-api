@@ -18,46 +18,50 @@ NC='\033[0m'
 
 # Helper functions
 log_info() {
-    echo -e "\033[0;34m[INFO]\033[0m $1"
+    echo -e "\033[0;34m[INFO] $1\033[0m"
 }
 
 log_warn() {
-    echo -e "\033[0;33m[WARN]\033[0m $1"
+    echo -e "\033[0;33m[WARN] $1\033[0m"
 }
 
 log_error() {
-    echo -e "\033[0;31m[ERROR]\033[0m $1"
+    echo -e "\033[0;31m[ERROR] $1\033[0m"
     exit 1
 }
 
 # Check if required commands exist
 check_command() {
-    if ! command -v $1 &> /dev/null; then
-        log_error "Required command '$1' not found. Please install it first."
+    if ! command -v "$1" &> /dev/null; then
+        log_error "Required command '$1' is not installed."
+        exit 1
     fi
 }
 
-# Check if SSH connection works
+# Check if SSH connection can be established
 check_ssh_connection() {
-    if ! ssh -o ConnectTimeout=10 $1 "exit" &> /dev/null; then
-        log_error "Cannot establish SSH connection to $1"
+    if ! ssh -o ConnectTimeout=10 "$1" "echo 'SSH connection successful'" &> /dev/null; then
+        log_error "Could not establish SSH connection to $1"
+        exit 1
     fi
 }
 
 # Validate input parameters
-if [ "$#" -lt 1 ]; then
-    log_error "Usage: $0 <server_ip> [--production]"
+if [ -z "$1" ]; then
+    log_error "Server IP address is required."
+    echo "Usage: $0 <server-ip> [--production]"
+    exit 1
 fi
 
-SERVER_IP=$1
+SERVER_IP="$1"
 USE_STAGING=true
 
-# Check if production flag is set
+# Check if --production flag is provided
 if [ "$2" = "--production" ]; then
     USE_STAGING=false
     log_info "Using production environment for SSL certificates"
 else
-    log_warn "Using staging environment for SSL certificates. Use --production flag to switch to production."
+    log_info "Using staging environment for SSL certificates"
 fi
 
 # Check required commands
@@ -65,7 +69,7 @@ check_command "docker"
 check_command "ssh"
 check_command "scp"
 
-# Verify SSH connection
+# Check SSH connection
 check_ssh_connection "$SERVER_USER@$SERVER_IP"
 
 # Build and push Docker image
@@ -73,102 +77,82 @@ log_info "Building Docker image..."
 docker build -t mrdevx/nn-backend-api:latest .
 docker push mrdevx/nn-backend-api:latest
 
-# Create backup directory on server
+# Set up server configuration
 log_info "Setting up server configuration..."
-ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
-    # Helper functions for remote execution
-    log_info() {
-        echo -e "\033[0;34m[INFO]\033[0m $1"
-    }
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/www"
 
-    log_warn() {
-        echo -e "\033[0;33m[WARN]\033[0m $1"
-    }
-
-    # Create backup directory
+# Check if SSL certificates exist and back them up
+log_info "Backing up existing SSL certificates..."
+ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
+if [ -d "/root/certbot/conf/live" ]; then
     mkdir -p /root/ssl_backup
-    
-    # Backup existing SSL certificates if they exist
-    if [ -d "/root/certbot/conf/live" ]; then
-        log_info "Backing up existing SSL certificates..."
-        cp -r /root/certbot/conf/live/* /root/ssl_backup/
-    else
-        log_warn "No existing SSL certificates found."
-    fi
-
-    # Stop existing containers
-    if [ -f "/root/docker-compose.yml" ]; then
-        log_info "Stopping existing containers..."
-        docker-compose down
-    fi
+    cp -r /root/certbot/conf/live/* /root/ssl_backup/
+fi
 ENDSSH
+
+# Stop existing containers
+log_info "Stopping existing containers..."
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker-compose down"
 
 # Copy configuration files
 log_info "Copying configuration files..."
-scp -o ConnectTimeout=60 docker-compose.yml nginx.conf .env $SERVER_USER@$SERVER_IP:/root/
+scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
 
 # Start containers and set up SSL
 log_info "Starting containers and setting up SSL..."
-USE_STAGING_VALUE=$USE_STAGING
-ssh $SERVER_USER@$SERVER_IP << ENDSSH
-    # Helper functions for remote execution
-    log_info() {
-        echo -e "\033[0;34m[INFO]\033[0m \$1"
+ssh "$SERVER_USER@$SERVER_IP" << 'ENDSSH'
+cd /root
+
+# Start nginx without SSL first
+cat > nginx.conf.http << 'EOF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.notablenomads.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
     }
 
-    log_warn() {
-        echo -e "\033[0;33m[WARN]\033[0m \$1"
+    location / {
+        return 301 https://$host$request_uri;
     }
+}
+EOF
 
-    # Create required directories
-    mkdir -p /root/certbot/conf
-    mkdir -p /root/certbot/www
+mv nginx.conf.http nginx.conf
+docker-compose up -d nginx
 
-    # Start nginx container
-    log_info "Starting containers..."
-    docker-compose up -d nginx
-
-    # Restore SSL certificates if they exist in backup
-    if [ -d "/root/ssl_backup" ] && [ "\$(ls -A /root/ssl_backup)" ]; then
-        log_info "Restoring SSL certificates from backup..."
-        mkdir -p /root/certbot/conf/live
-        cp -r /root/ssl_backup/* /root/certbot/conf/live/
-        docker-compose restart nginx
-    else
-        log_info "Generating new SSL certificates..."
-        # Add staging flag if not in production
-        STAGING_FLAG=""
-        if [ "$USE_STAGING_VALUE" = true ]; then
-            STAGING_FLAG="--test-cert"
-        fi
-
-        # Request SSL certificate
-        docker-compose run --rm certbot certonly \
-            \$STAGING_FLAG \
-            --webroot \
-            --webroot-path /var/www/certbot \
-            --email admin@notablenomads.com \
-            --agree-tos \
-            --no-eff-email \
-            -d api.notablenomads.com
+# Generate SSL certificates
+if [ -d "/root/ssl_backup" ] && [ "$(ls -A /root/ssl_backup)" ]; then
+    echo "Restoring SSL certificates from backup..."
+    cp -r /root/ssl_backup/* /root/certbot/conf/live/
+else
+    echo "Generating new SSL certificates..."
+    STAGING_FLAG=""
+    if [ "${USE_STAGING}" = true ]; then
+        STAGING_FLAG="--test-cert"
     fi
+    
+    docker-compose run --rm certbot certonly --webroot \
+        --webroot-path /var/www/certbot \
+        --email admin@notablenomads.com \
+        --agree-tos --no-eff-email \
+        -d api.notablenomads.com \
+        $STAGING_FLAG
+fi
 
-    # Start remaining services
-    log_info "Starting remaining services..."
-    docker-compose up -d
+# Restore full nginx configuration and restart
+mv nginx.conf.bak nginx.conf
+docker-compose restart nginx
+
+# Start remaining services
+docker-compose up -d
 ENDSSH
 
 log_info "Deployment completed successfully!"
-if [ "$USE_STAGING" = true ]; then
-    log_warn "SSL certificates are from staging environment and will show as untrusted"
-    log_warn "Once you verify everything works, run again with --production flag"
-fi
-
-echo -e "
-🌍 Your application should now be running at https://$DOMAIN
-
-📝 Next steps:
-1. Verify your domain's DNS A record points to: $SERVER_IP
-2. Test the API endpoint: curl https://$DOMAIN/v1/health
-3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'
-" 
+echo -e "\n🌍 Your application should now be running at https://api.notablenomads.com"
+echo -e "\n📝 Next steps:"
+echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
+echo "2. Test the API endpoint: curl https://api.notablenomads.com/v1/health"
+echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'" 
