@@ -96,7 +96,7 @@ jobs:
           # Stop existing containers and clean up
           ssh root@91.107.249.14 "cd /root && {
             echo '=== Cleaning up existing containers ==='
-            docker-compose down
+            docker-compose down || true
             docker system prune -f
             docker volume prune -f
           }"
@@ -105,16 +105,37 @@ jobs:
           ssh root@91.107.249.14 "cd /root && {
             echo '=== Setting up environment ==='
             mkdir -p /root/secrets && chmod 700 /root/secrets
-            ls -la /root/secrets
-          }"
-          echo "${{ secrets.GPG_PASSPHRASE }}" | ssh root@91.107.249.14 "gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-
-          # Verify environment file
-          ssh root@91.107.249.14 "cd /root && {
+            
+            # Decrypt and verify environment file
+            echo '=== Decrypting environment file ==='
+            echo '${{ secrets.GPG_PASSPHRASE }}' | gpg --batch --yes --passphrase-fd 0 -d /root/.env.gpg > /root/secrets/.env
+            chmod 600 /root/secrets/.env
+            
             echo '=== Verifying environment files ==='
-            ls -la /root/secrets/.env
-            echo 'Environment file exists:' && test -f /root/secrets/.env && echo 'Yes' || echo 'No'
-            echo 'Environment file size:' && stat -f %z /root/secrets/.env
+            if [ ! -f /root/secrets/.env ]; then
+              echo 'Error: Environment file not found!'
+              exit 1
+            fi
+            
+            if [ ! -s /root/secrets/.env ]; then
+              echo 'Error: Environment file is empty!'
+              exit 1
+            fi
+            
+            echo 'Environment file status:'
+            ls -l /root/secrets/.env
+            
+            echo 'Environment file contents check (showing only variable names):'
+            grep -v '^#' /root/secrets/.env | cut -d= -f1 || true
+            
+            echo '=== Verifying deployment environment ==='
+            if [ ! -f /root/.env.deploy ]; then
+              echo 'Error: Deployment environment file not found!'
+              exit 1
+            fi
+            
+            echo 'Deployment environment variables:'
+            cat /root/.env.deploy
           }"
 
           # Login to Docker Hub on server
@@ -124,11 +145,16 @@ jobs:
           # Start new containers with version and show logs immediately
           ssh root@91.107.249.14 "cd /root && {
             set -a 
-            source .env.deploy
+            source /root/.env.deploy
             
-            echo '=== Environment Variables ==='
-            echo 'DOCKERHUB_USERNAME:' \$DOCKERHUB_USERNAME
-            echo 'APP_VERSION:' \$APP_VERSION
+            echo '=== Deployment Environment Variables ==='
+            echo 'DOCKERHUB_USERNAME:' \${DOCKERHUB_USERNAME:-not set}
+            echo 'APP_VERSION:' \${APP_VERSION:-not set}
+            
+            if [ -z \"\$DOCKERHUB_USERNAME\" ] || [ -z \"\$APP_VERSION\" ]; then
+              echo 'Error: Required environment variables are not set!'
+              exit 1
+            fi
             
             echo '=== Pulling latest images ==='
             docker-compose pull
@@ -141,18 +167,6 @@ jobs:
             
             echo '\n=== Initial Container Status ==='
             docker-compose ps
-            
-            echo '\n=== Docker Network Info ==='
-            docker network inspect root_app-network
-            
-            echo '\n=== API Container Details ==='
-            docker inspect root-api-1
-            
-            echo '\n=== API Container Logs ==='
-            docker-compose logs api
-            
-            echo '\n=== Nginx Container Logs ==='
-            docker-compose logs nginx
             
             # Check if container is running and healthy
             if ! docker ps --filter "name=root-api-1" --filter "status=running" --format '{{.Names}}' | grep -q "root-api-1"; then
@@ -168,19 +182,6 @@ jobs:
               
               echo '\n--- Environment Variables in Container ---'
               docker exec root-api-1 printenv || true
-              
-              echo '\n--- File System Check ---'
-              docker exec root-api-1 ls -la /app || true
-              docker exec root-api-1 ls -la /run/secrets || true
-              
-              echo '\n--- Node Modules Check ---'
-              docker exec root-api-1 ls -la /app/node_modules || true
-              
-              echo '\n--- Process Tree ---'
-              docker exec root-api-1 ps auxf || true
-              
-              echo '\n--- Resource Usage ---'
-              docker stats --no-stream --all
               
               exit 1
             fi
