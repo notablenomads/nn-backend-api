@@ -8,6 +8,8 @@ SERVER_IP=""
 SERVER_USER="root"
 DOMAIN="api.platform.notablenomads.com"
 EMAIL="contact@notablenomads.com"
+CERTBOT_DIR="/root/certbot"
+USE_STAGING=true  # Set to false for production certificates
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,13 +22,73 @@ log_info() { echo -e "${GREEN}ℹ️ $1${NC}"; }
 log_warn() { echo -e "${YELLOW}⚠️ $1${NC}"; }
 log_error() { echo -e "${RED}❌ $1${NC}"; }
 
+# Function to check if a command exists
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        log_error "Required command '$1' is not installed"
+        exit 1
+    fi
+}
+
+# Function to check SSH connection
+check_ssh_connection() {
+    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new $SERVER_USER@$SERVER_IP "echo 2>&1"; then
+        log_error "Cannot establish SSH connection to $SERVER_USER@$SERVER_IP"
+        exit 1
+    fi
+}
+
+# Function to check domain DNS
+check_domain_dns() {
+    local domain=$1
+    local expected_ip=$2
+    local resolved_ip
+
+    log_info "Checking DNS for $domain..."
+    resolved_ip=$(dig +short $domain)
+
+    if [ -z "$resolved_ip" ]; then
+        log_error "Could not resolve domain $domain"
+        return 1
+    fi
+
+    if [ "$resolved_ip" != "$expected_ip" ]; then
+        log_error "Domain $domain resolves to $resolved_ip, expected $expected_ip"
+        return 1
+    fi
+
+    return 0
+}
+
 # Validation checks
 if [ -z "$1" ]; then
     log_error "Please provide the server IP address as an argument"
-    echo "Usage: ./setup-ssl.sh <server-ip>"
+    echo "Usage: ./setup-ssl.sh <server-ip> [--production]"
     exit 1
 else
     SERVER_IP=$1
+fi
+
+# Check if --production flag is provided
+if [ "$2" = "--production" ]; then
+    USE_STAGING=false
+    log_info "Using production Let's Encrypt environment"
+else
+    log_warn "Using staging Let's Encrypt environment (use --production flag for production certificates)"
+fi
+
+# Check required commands
+check_command ssh
+check_command scp
+check_command dig
+
+# Check SSH connection before proceeding
+log_info "Checking SSH connection..."
+check_ssh_connection
+
+# Check domain DNS configuration
+if ! check_domain_dns $DOMAIN $SERVER_IP; then
+    log_warn "Proceeding anyway, but SSL setup might fail if DNS is not properly configured"
 fi
 
 # First, create a temporary HTTP-only nginx config for certbot verification
@@ -104,7 +166,8 @@ services:
       - app-network
     depends_on:
       - api
-    command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
+    command: >
+      sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'
 
   certbot:
     image: certbot/certbot:latest
@@ -121,19 +184,30 @@ EOL
 
 # Copy files and set up SSL
 log_info "Setting up SSL on the server..."
-ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP "
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP /bin/bash << 'EOF'
     cd /root
+
+    # Backup existing configuration
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    backup_dir=/root/backups/$timestamp
+    mkdir -p $backup_dir
+    
+    if [ -f nginx.conf ]; then
+        cp nginx.conf $backup_dir/nginx.conf.bak
+    fi
+    if [ -f docker-compose.yml ]; then
+        cp docker-compose.yml $backup_dir/docker-compose.yml.bak
+    fi
+    if [ -d certbot ]; then
+        cp -r certbot $backup_dir/certbot.bak
+    fi
 
     echo 'Creating directories...'
     mkdir -p certbot/conf certbot/www
 
     echo 'Stopping existing containers...'
     docker-compose down || true
-
-    echo 'Backing up existing configs...'
-    mv nginx.conf nginx.conf.bak || true
-    mv docker-compose.yml docker-compose.yml.bak || true
-"
+EOF
 
 # Copy new configurations
 log_info "Copying SSL configurations..."
@@ -142,7 +216,7 @@ scp -o ConnectTimeout=60 docker-compose.ssl.yml $SERVER_USER@$SERVER_IP:/root/do
 
 # Continue SSL setup on server
 log_info "Obtaining SSL certificate..."
-ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP "
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP /bin/bash << EOF
     cd /root
 
     echo 'Starting nginx...'
@@ -150,21 +224,26 @@ ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP "
     sleep 5
 
     echo 'Obtaining SSL certificate...'
+    STAGING_FLAG=""
+    if [ "$USE_STAGING" = true ]; then
+        STAGING_FLAG="--test-cert"
+    fi
+
     docker-compose run --rm certbot certonly \
         --webroot --webroot-path /var/www/certbot \
         --email ${EMAIL} --agree-tos --no-eff-email \
-        --force-renewal \
+        --force-renewal \$STAGING_FLAG \
         -d ${DOMAIN}
 
     # Find the actual certificate directory
-    CERT_DIR=\$(find /root/certbot/conf/live -type d -name '${DOMAIN}*' | sort -r | head -n1)
-    if [ -z \"\$CERT_DIR\" ]; then
+    CERT_DIR=\$(find ${CERTBOT_DIR}/conf/live -type d -name '${DOMAIN}*' | sort -r | head -n1)
+    if [ -z "\$CERT_DIR" ]; then
         echo 'Error: Could not find SSL certificate directory'
         exit 1
     fi
-    CERT_NAME=\$(basename \"\$CERT_DIR\")
+    CERT_NAME=\$(basename "\$CERT_DIR")
 
-    echo \"Using certificate directory: \$CERT_NAME\"
+    echo "Using certificate directory: \$CERT_NAME"
 
     echo 'Creating final nginx configuration...'
     cat > nginx.conf << EONG
@@ -210,7 +289,7 @@ server {
     ssl_prefer_server_ciphers off;
 
     # HSTS Configuration
-    add_header Strict-Transport-Security \"max-age=63072000\" always;
+    add_header Strict-Transport-Security "max-age=63072000" always;
 
     # Proxy Configuration
     location / {
@@ -230,11 +309,11 @@ server {
     }
 
     # Security headers
-    add_header X-Frame-Options \"SAMEORIGIN\" always;
-    add_header X-XSS-Protection \"1; mode=block\" always;
-    add_header X-Content-Type-Options \"nosniff\" always;
-    add_header Referrer-Policy \"no-referrer-when-downgrade\" always;
-    add_header Content-Security-Policy \"default-src 'self' http: https: data: blob: 'unsafe-inline'\" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 }
 EONG
 
@@ -242,15 +321,27 @@ EONG
     docker-compose up -d
 
     echo 'Setting up SSL auto-renewal...'
-    (crontab -l 2>/dev/null | grep -v \"docker-compose.*certbot.*renew\"; echo \"0 12 * * * cd /root && docker-compose run --rm certbot renew --quiet && docker-compose exec nginx nginx -s reload\") | crontab -
+    (crontab -l 2>/dev/null | grep -v "docker-compose.*certbot.*renew"; echo "0 12 * * * cd /root && docker-compose run --rm certbot renew \$STAGING_FLAG --quiet && docker-compose exec nginx nginx -s reload") | crontab -
+
+    # Verify SSL certificate
+    if ! echo | openssl s_client -connect localhost:443 -servername ${DOMAIN} > /dev/null 2>&1; then
+        echo 'Warning: SSL certificate verification failed'
+    else
+        echo 'SSL certificate verified successfully'
+    fi
 
     echo 'SSL setup completed successfully!'
-"
+EOF
 
 # Clean up local temporary files
 rm -f nginx.ssl.conf docker-compose.ssl.yml
 
 log_info "SSL setup completed successfully!"
+if [ "$USE_STAGING" = true ]; then
+    log_warn "This is a staging certificate and will show as untrusted in browsers."
+    log_warn "Run './setup-ssl.sh $SERVER_IP --production' to get a trusted certificate."
+fi
+
 echo -e "
 🌍 Your application should now be running at https://$DOMAIN
 
@@ -258,4 +349,9 @@ echo -e "
 1. Test the HTTPS endpoint: curl https://$DOMAIN/v1/health
 2. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'
 3. SSL certificate will auto-renew every day at 12:00
+
+💡 SSL Certificate Details:
+- Location: ${CERTBOT_DIR}/conf/live/${DOMAIN}
+- Auto-renewal: Daily at 12:00
+- Renewal Script: Configured in root's crontab
 " 
