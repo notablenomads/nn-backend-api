@@ -168,7 +168,7 @@ yarn format
 
    ```bash
    # Check if the API is accessible
-   curl https://api.platform.notablenomads.com/v1/health
+   curl https://api.notablenomads.com/v1/health
 
    # View logs
    ssh root@your-server-ip "docker-compose logs -f"
