@@ -24,24 +24,12 @@ services:
     restart: always
     ports:
       - '80:80'
-      - '443:443'
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /root/certbot/conf:/etc/nginx/ssl:ro
-      - /root/certbot/www:/var/www/certbot:ro
     networks:
       - app-network
     depends_on:
       - api
-
-  certbot:
-    image: certbot/certbot:latest
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    volumes:
-      - /root/certbot/conf:/etc/letsencrypt
-      - /root/certbot/www:/var/www/certbot
-    depends_on:
-      - nginx
 
 networks:
   app-network:

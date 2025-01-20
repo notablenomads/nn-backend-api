@@ -1,24 +1,37 @@
 #!/bin/bash
 
+# Exit on any error
+set -e
+
 # Configuration
 SERVER_IP=""
 SERVER_USER="root"
 APP_NAME="nn-backend-api"
 DOMAIN="api.platform.notablenomads.com"
-DOCKER_HUB_USERNAME="mrdevx"  # Your Docker Hub username
+DOCKER_HUB_USERNAME="mrdevx"
 
-# Check if DOCKER_HUB_TOKEN is set
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Helper functions
+log_info() { echo -e "${GREEN}ℹ️ $1${NC}"; }
+log_warn() { echo -e "${YELLOW}⚠️ $1${NC}"; }
+log_error() { echo -e "${RED}❌ $1${NC}"; }
+
+# Validation checks
 if [ -z "$DOCKER_HUB_TOKEN" ]; then
-    echo "❌ Error: DOCKER_HUB_TOKEN environment variable is not set"
+    log_error "DOCKER_HUB_TOKEN environment variable is not set"
     echo "Please set it first:"
     echo "export DOCKER_HUB_TOKEN=your_token_here"
     echo "You can generate a token at https://hub.docker.com/settings/security"
     exit 1
 fi
 
-# Check if SERVER_IP is provided
 if [ -z "$1" ]; then
-    echo "Please provide the server IP address as an argument"
+    log_error "Please provide the server IP address as an argument"
     echo "Usage: ./deploy.sh <server-ip>"
     exit 1
 else
@@ -27,130 +40,126 @@ fi
 
 DOCKER_IMAGE_NAME="$DOCKER_HUB_USERNAME/$APP_NAME"
 
-echo "🚀 Starting deployment to Hetzner server at $SERVER_IP..."
+log_info "Starting deployment to Hetzner server at $SERVER_IP..."
 
-# Login to Docker Hub using token
-echo "🔑 Logging in to Docker Hub..."
-echo "$DOCKER_HUB_TOKEN" | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+# Local preparations
+log_info "Logging in to Docker Hub..."
+echo "$DOCKER_HUB_TOKEN" | docker login -u $DOCKER_HUB_USERNAME --password-stdin || {
+    log_error "Failed to login to Docker Hub"
+    exit 1
+}
 
-# Build Docker image with Docker Hub tag
-echo "📦 Building Docker image..."
-docker build -t $DOCKER_IMAGE_NAME:latest .
+log_info "Building Docker image..."
+docker build -t $DOCKER_IMAGE_NAME:latest . || {
+    log_error "Failed to build Docker image"
+    exit 1
+}
 
-# Push image to Docker Hub
-echo "📤 Pushing image to Docker Hub..."
-docker push $DOCKER_IMAGE_NAME:latest
+log_info "Pushing image to Docker Hub..."
+docker push $DOCKER_IMAGE_NAME:latest || {
+    log_error "Failed to push Docker image"
+    exit 1
+}
 
-# Create required directories and copy config files to the server
-echo "📁 Setting up server configuration..."
-ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP "
-    mkdir -p /root/certbot/conf /root/certbot/www /root/secrets
-"
+# Create Docker config file
+log_info "Creating Docker config..."
+DOCKER_CONFIG_CONTENT="{\"auths\": {\"https://index.docker.io/v1/\": {\"auth\": \"$(echo -n "$DOCKER_HUB_USERNAME:$DOCKER_HUB_TOKEN" | base64)\"}}}"
 
-# Copy configuration files
-echo "📤 Copying configuration files..."
-scp -o ConnectTimeout=60 .env docker-compose.yml nginx.conf $SERVER_USER@$SERVER_IP:/root/
+# Copy configuration files to server
+log_info "Copying configuration files to server..."
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP 'mkdir -p /root/.docker /root/secrets'
+echo "$DOCKER_CONFIG_CONTENT" | ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP 'cat > /root/.docker/config.json'
+ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP 'chmod 600 /root/.docker/config.json'
 
-# Execute remote commands
-echo "🔧 Setting up application on server..."
+scp -o ConnectTimeout=60 docker-compose.yml nginx.conf .env $SERVER_USER@$SERVER_IP:/root/ || {
+    log_error "Failed to copy configuration files to server"
+    exit 1
+}
+
+# Server setup and deployment
+log_info "Setting up server configuration..."
 ssh -o ConnectTimeout=60 $SERVER_USER@$SERVER_IP << ENDSSH
-    # Move .env to secrets directory
-    mv /root/.env /root/secrets/.env
+    set -e  # Exit on any error
+
+    # Helper functions for remote execution
+    log_info() { echo -e "\033[0;32mℹ️ \$1\033[0m"; }
+    log_warn() { echo -e "\033[1;33m⚠️ \$1\033[0m"; }
+    log_error() { echo -e "\033[0;31m❌ \$1\033[0m"; }
 
     # Install Docker if not present
     if ! command -v docker &> /dev/null; then
-        echo "Installing Docker for Ubuntu 22.04..."
-        # Remove any old versions
-        for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
-            apt-get remove -y $pkg || true
-        done
-
-        # Add Docker's official GPG key
+        log_info "Installing Docker..."
         apt-get update
         apt-get install -y ca-certificates curl gnupg
         install -m 0755 -d /etc/apt/keyrings
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
         chmod a+r /etc/apt/keyrings/docker.gpg
 
-        # Add the repository to Apt sources
-        echo \
-          "deb [arch="\$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-          "\$(. /etc/os-release && echo "\$VERSION_CODENAME")" stable" | \
-          tee /etc/apt/sources.list.d/docker.list > /dev/null
+        echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \$(. /etc/os-release && echo "\$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-        # Install Docker packages
         apt-get update
         apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-        # Start and enable Docker service
         systemctl start docker
         systemctl enable docker
-
-        # Add current user to docker group
         usermod -aG docker \$USER
-
-        echo "Docker installed successfully!"
     fi
 
-    # Install Docker Compose if not present
+    # Ensure Docker Compose is available
     if ! command -v docker-compose &> /dev/null; then
-        echo "Setting up Docker Compose..."
+        log_info "Setting up Docker Compose..."
         ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
-        echo "Docker Compose setup completed!"
     fi
 
-    # Login to Docker Hub using token
-    echo "🔑 Logging in to Docker Hub on server..."
-    echo "$DOCKER_HUB_TOKEN" | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+    # Stop and remove existing containers
+    log_info "Cleaning up existing containers..."
+    docker-compose down --remove-orphans || true
+    docker system prune -f || true
 
-    # Stop any running containers and remove old certificates
-    docker-compose down
-    rm -rf /root/certbot/conf/live /root/certbot/conf/archive
+    # Move .env to secrets directory
+    log_info "Setting up environment variables..."
+    mv -f /root/.env /root/secrets/.env 2>/dev/null || true
 
-    # Create dummy certificates
-    mkdir -p /root/certbot/conf/live/api.platform.notablenomads.com
-    mkdir -p /root/certbot/conf/archive/api.platform.notablenomads.com
-    
-    openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
-        -keyout /root/certbot/conf/live/api.platform.notablenomads.com/privkey.pem \
-        -out /root/certbot/conf/live/api.platform.notablenomads.com/fullchain.pem \
-        -subj "/CN=api.platform.notablenomads.com"
+    # Verify Docker login
+    log_info "Verifying Docker Hub access..."
+    if ! docker pull hello-world; then
+        log_error "Failed to verify Docker Hub access"
+        exit 1
+    fi
 
-    # Ensure proper permissions
-    chmod -R 755 /root/certbot/conf
-    chmod -R 755 /root/certbot/www
+    # Pre-pull required images
+    log_info "Pulling Docker images..."
+    docker pull ${DOCKER_IMAGE_NAME}:latest || {
+        log_error "Failed to pull API image"
+        exit 1
+    }
+    docker pull nginx:stable-alpine || {
+        log_error "Failed to pull nginx image"
+        exit 1
+    }
 
-    # Start Nginx with dummy certificates
-    docker-compose up -d nginx
-
-    # Wait for Nginx to start
-    echo "Waiting for Nginx to start..."
-    sleep 10
-
-    # Request the actual SSL certificate
-    docker-compose run --rm certbot certonly \
-        --webroot --webroot-path /var/www/certbot \
-        --email contact@notablenomads.com --agree-tos --no-eff-email \
-        --force-renewal \
-        -d api.platform.notablenomads.com
-
-    # Start all services
+    # Start services
+    log_info "Starting services..."
     docker-compose up -d
 
-    # Setup auto-renewal cron job
-    (crontab -l 2>/dev/null; echo "0 12 * * * cd \$(pwd) && docker-compose run --rm certbot renew --quiet && docker-compose exec nginx nginx -s reload") | crontab -
+    # Verify services are running
+    log_info "Verifying services..."
+    sleep 10  # Give services time to start
+    if ! docker-compose ps | grep -q "Up"; then
+        log_error "Services failed to start properly"
+        docker-compose logs
+        exit 1
+    fi
 
-    # Clean up old images
-    docker image prune -f
-
-    echo "✨ Server setup completed!"
+    log_info "Server setup completed successfully!"
 ENDSSH
 
-echo "✅ Deployment completed successfully!"
-echo "🌍 Your application should now be running at https://$DOMAIN"
-echo "
+log_info "Deployment completed successfully!"
+echo -e "
+🌍 Your application should now be running at http://$DOMAIN
+
 📝 Next steps:
-1. Make sure your domain's DNS A record points to: $SERVER_IP
-2. Test the API endpoint: curl https://$DOMAIN/v1/health
+1. Verify your domain's DNS A record points to: $SERVER_IP
+2. Test the API endpoint: curl http://$DOMAIN/v1/health
 3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'
+4. Once the application is running properly, you can set up SSL using a separate script
 " 
