@@ -5,6 +5,12 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
+      - APP_NAME=Notable Nomads Backend API
+      - APP_DESCRIPTION=Notable Nomads Backend API
+      - APP_VERSION=v0.0.30
+      - API_PREFIX=v1
+      - CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
+      - CORS_RESTRICT=false
     env_file:
       - .env
     networks:

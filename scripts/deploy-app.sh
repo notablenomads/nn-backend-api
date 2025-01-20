@@ -69,20 +69,48 @@ ssh $SERVER_USER@$SERVER_IP << EOF
         echo -e "\n${YELLOW}=============== Details for \${container_name} ===============${NC}"
         echo -e "${BLUE}Container Status:${NC}"
         docker compose ps \${container_name}
+        
         echo -e "\n${BLUE}Container Health Check Configuration:${NC}"
         docker inspect \$(docker compose ps -q \${container_name}) | grep -A 10 "Health"
+        
         echo -e "\n${BLUE}Container Logs:${NC}"
-        docker compose logs --tail=50 \${container_name}
-        echo -e "\n${BLUE}Network Connectivity Test:${NC}"
+        docker compose logs --tail=100 \${container_name}
+        
+        if [ "\${container_name}" = "nginx" ]; then
+            echo -e "\n${BLUE}Nginx Configuration Test:${NC}"
+            docker compose exec -T \${container_name} nginx -t || echo "Nginx config test failed"
+            
+            echo -e "\n${BLUE}Nginx Configuration:${NC}"
+            docker compose exec -T \${container_name} cat /etc/nginx/conf.d/default.conf
+            
+            echo -e "\n${BLUE}Testing Nginx Health Check Internally:${NC}"
+            docker compose exec -T \${container_name} wget -qO- http://localhost/nginx-health || echo "Failed to connect to Nginx health check"
+            
+            echo -e "\n${BLUE}Nginx Process:${NC}"
+            docker compose exec -T \${container_name} ps aux | grep nginx || echo "No Nginx process found"
+            
+            echo -e "\n${BLUE}Network Info:${NC}"
+            docker compose exec -T \${container_name} netstat -tlpn || echo "netstat not available"
+        fi
+        
         if [ "\${container_name}" = "api" ]; then
-            docker compose exec -T \${container_name} wget -qO- --timeout=5 http://localhost:3000/v1/health || echo "Failed to connect to API health check"
+            echo "Testing API health endpoint internally..."
+            docker compose exec -T \${container_name} wget -qO- --spider --timeout=5 http://localhost:3000/v1/health || echo "Failed to connect to API health check"
+            echo "Testing API health endpoint through curl..."
+            docker compose exec -T \${container_name} curl -v http://localhost:3000/v1/health || echo "Failed to connect to API health check with curl"
+            
             echo -e "\n${BLUE}Listening Ports:${NC}"
             docker compose exec -T \${container_name} netstat -tlpn || echo "netstat not available"
+            
             echo -e "\n${BLUE}Environment Variables:${NC}"
-            docker compose exec -T \${container_name} env | grep -E 'HOST|PORT|NODE_ENV'
-        else
-            docker compose exec -T \${container_name} wget -qO- --timeout=5 http://localhost/nginx-health || echo "Failed to connect to Nginx health check"
+            docker compose exec -T \${container_name} env | sort
+            
+            echo -e "\n${BLUE}Node.js Process:${NC}"
+            docker compose exec -T \${container_name} ps aux | grep node || echo "No Node.js process found"
         fi
+        
+        echo -e "\n${BLUE}Container Network Info:${NC}"
+        docker inspect \$(docker compose ps -q \${container_name}) | grep -A 20 "NetworkSettings"
     }
     
     # Wait for services to be healthy

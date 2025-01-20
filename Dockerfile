@@ -25,6 +25,9 @@ RUN yarn build
 # Stage 2: Run
 FROM node:lts-alpine AS production
 
+# Install wget and curl for health checks
+RUN apk add --no-cache wget curl
+
 # Set the working directory inside the container
 WORKDIR /app
 
