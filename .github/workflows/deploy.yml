@@ -19,6 +19,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create Yarn config
+        run: cp .yarnrc.yml-example .yarnrc.yml
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
