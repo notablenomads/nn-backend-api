@@ -2,8 +2,15 @@ name: Deploy to Production
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, chore/github-action]
+  workflow_dispatch:
+
+env:
+  APP_NAME: nn-backend-api
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+  SERVER_IP: 91.107.249.14
+  DOMAIN: api.notablenomads.com
+  SERVER_USER: root
 
 jobs:
   deploy:
@@ -12,6 +19,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create Yarn config
+        run: cp .yarnrc.yml-example .yarnrc.yml
+
+      - name: Create env file
+        run: |
+          cat << EOF > .env
+          ${{ secrets.ENV_FILE }}
+          EOF
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -29,12 +45,31 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.APP_NAME }}:latest
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
           if_key_exists: replace
+          config: |
+            Host ${{ env.SERVER_IP }}
+              HostName ${{ env.SERVER_IP }}
+              User ${{ env.SERVER_USER }}
+              StrictHostKeyChecking yes
+              UserKnownHostsFile=~/.ssh/known_hosts
+
+      - name: Verify SSH connection
+        run: |
+          echo "Testing SSH connection..."
+          ssh -v ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "echo 'SSH connection test successful'"
 
       - name: Make scripts executable
         run: |
@@ -42,14 +77,35 @@ jobs:
           chmod +x scripts/deploy.sh
           chmod +x scripts/ssl-cert.sh
 
+      - name: Verify scripts exist
+        run: |
+          if [ ! -f "scripts/cleanup.sh" ] || [ ! -f "scripts/deploy.sh" ] || [ ! -f "scripts/ssl-cert.sh" ]; then
+            echo "Error: Required scripts are missing"
+            exit 1
+          fi
+
       - name: Clean up server
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          ./scripts/cleanup.sh 91.107.249.14
+          ./scripts/cleanup.sh ${{ env.SERVER_IP }}
 
       - name: Deploy to production
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          ./scripts/deploy.sh 91.107.249.14 --production
+          ./scripts/deploy.sh ${{ env.SERVER_IP }} --production
+
+      - name: Verify deployment
+        run: |
+          # Wait for the service to be up
+          echo "Waiting for service to be available..."
+          for i in {1..30}; do
+            if curl -sk https://${{ env.DOMAIN }}/v1/health; then
+              echo "Service is up and running!"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Service failed to respond within timeout"
+          exit 1
