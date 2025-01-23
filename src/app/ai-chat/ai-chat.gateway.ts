@@ -27,6 +27,8 @@ import { CorsService } from '../core/services/cors.service';
     credentials: true,
   },
   namespace: 'chat',
+  transports: ['websocket'],
+  path: '/socket.io/',
 })
 export class AiChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(AiChatGateway.name);
