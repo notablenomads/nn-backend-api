@@ -40,13 +40,17 @@ fi
 echo "Current IP from DNS: ${CURRENT_IP}"
 echo "Expected IP: ${SERVER_IP}"
 
-if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
-    echo -e "${RED}Error: DNS is not pointing to the correct IP${NC}"
-    echo "Please update your DNS configuration to point ${DOMAIN} to ${SERVER_IP}"
-    exit 1
+# Check if the IP is a Cloudflare IP
+if [[ "$CURRENT_IP" =~ ^188\.114\.(96|97)\.[0-9]+$ ]]; then
+    echo -e "${GREEN}Detected Cloudflare proxy, DNS configuration is correct!${NC}"
+else
+    if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
+        echo -e "${RED}Error: DNS is not pointing to the correct IP${NC}"
+        echo "Please update your DNS configuration to point ${DOMAIN} to ${SERVER_IP}"
+        exit 1
+    fi
+    echo -e "${GREEN}DNS configuration is correct!${NC}"
 fi
-
-echo -e "${GREEN}DNS configuration is correct!${NC}"
 
 # Check DNS propagation
 echo -e "\n${YELLOW}Checking DNS propagation...${NC}"
@@ -66,7 +70,7 @@ fi
 echo -e "\n${YELLOW}Running optional connectivity checks...${NC}"
 
 echo "Checking HTTP (port 80) accessibility..."
-if nc -zv $DOMAIN 80; then
+if nc -zv $DOMAIN 80 2>/dev/null; then
     echo -e "${GREEN}Port 80 is accessible${NC}"
 else
     echo -e "${YELLOW}Warning: Port 80 is not accessible yet (this is normal if Nginx isn't running)${NC}"

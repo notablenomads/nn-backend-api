@@ -85,9 +85,14 @@ if [ -z "$CURRENT_IP" ]; then
     exit 1
 fi
 
-if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
-    log_error "DNS A record points to $CURRENT_IP, but server IP is $SERVER_IP"
-    exit 1
+# Check if the IP is a Cloudflare IP
+if echo "$CURRENT_IP" | grep -qE '^188\.114\.(96|97)\.[0-9]+$'; then
+    log_info "Detected Cloudflare proxy, proceeding with deployment"
+else
+    if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
+        log_error "DNS A record points to $CURRENT_IP, but server IP is $SERVER_IP"
+        exit 1
+    fi
 fi
 
 log_success "DNS configuration is correct!"
