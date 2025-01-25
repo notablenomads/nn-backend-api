@@ -25,15 +25,35 @@ async function bootstrap() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io'],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
           connectSrc: [
             "'self'",
             'wss://api.production.platform.notablenomads.com',
             'wss://api.staging.platform.notablenomads.com',
+            'https://*.notablenomads.com',
+            'https://*.amazonaws.com',
           ],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
+          imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
+          fontSrc: ["'self'", '*.notablenomads.com', 'data:', 'https:'],
+          objectSrc: ["'none'"],
+          frameSrc: ["'none'"],
+          upgradeInsecureRequests: [],
         },
       },
+      crossOriginEmbedderPolicy: { policy: 'credentialless' },
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      dnsPrefetchControl: { allow: false },
+      frameguard: { action: 'deny' },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      xssFilter: true,
+      noSniff: true,
     }),
   );
 
@@ -61,6 +81,9 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      forbidNonWhitelisted: true,
+      forbidUnknownValues: true,
+      disableErrorMessages: environment === 'production',
     }),
   );
 
