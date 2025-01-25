@@ -66,22 +66,27 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter(config));
 
-  const options = new DocumentBuilder()
-    .setTitle(process.env.npm_package_name)
-    .setVersion(process.env.npm_package_version)
-    .setDescription(process.env.npm_package_description)
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+  // Only enable Swagger documentation in non-production environments
+  if (environment !== 'production') {
+    const options = new DocumentBuilder()
+      .setTitle(process.env.npm_package_name)
+      .setVersion(process.env.npm_package_version)
+      .setDescription(process.env.npm_package_description)
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, options);
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+  }
 
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
-  const docsUrl = `${appUrl}/${apiPrefix}/docs`;
+  const docsUrl = environment !== 'production' ? `${appUrl}/${apiPrefix}/docs` : null;
   const chatUrl = `${appUrl}/public/ai-chat.html`;
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
-  logger.log(`API Documentation available at: ${docsUrl}`);
+  if (docsUrl) {
+    logger.log(`API Documentation available at: ${docsUrl}`);
+  }
   logger.log(`AI Chat client available at: ${chatUrl}`);
 }
 
