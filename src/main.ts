@@ -8,11 +8,13 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app/app.module';
 import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
 import { CorsService } from './app/core/services/cors.service';
+import { PackageInfoService } from './app/core/services/package-info.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
   const corsService = app.get(CorsService);
+  const packageInfoService = app.get(PackageInfoService);
 
   const environment = config.get('app.nodeEnv');
   const apiPrefix = config.get('app.apiPrefix');
@@ -91,10 +93,11 @@ async function bootstrap() {
 
   // Only enable Swagger documentation in non-production environments
   if (environment !== 'production') {
+    const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
-      .setTitle(process.env.npm_package_name)
-      .setVersion(process.env.npm_package_version)
-      .setDescription(process.env.npm_package_description)
+      .setTitle(packageInfo.name)
+      .setVersion(packageInfo.version)
+      .setDescription(packageInfo.description)
       .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, options);
@@ -104,13 +107,11 @@ async function bootstrap() {
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
   const docsUrl = environment !== 'production' ? `${appUrl}/${apiPrefix}/docs` : null;
-  const chatUrl = `${appUrl}/public/ai-chat.html`;
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
   if (docsUrl) {
     logger.log(`API Documentation available at: ${docsUrl}`);
   }
-  logger.log(`AI Chat client available at: ${chatUrl}`);
 }
 
 process.nextTick(bootstrap);
