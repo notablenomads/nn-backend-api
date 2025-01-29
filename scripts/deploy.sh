@@ -57,20 +57,11 @@ docker_login() {
 # Validate input parameters
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
-    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip> [--production]"
+    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
     exit 1
 fi
 
 SERVER_IP="$1"
-USE_STAGING=true
-
-# Check if --production flag is provided
-if [ "$2" = "--production" ]; then
-    USE_STAGING=false
-    log_info "Using production environment for SSL certificates"
-else
-    log_info "Using staging environment for SSL certificates"
-fi
 
 # Step 1: Verify DNS configuration
 log_info "Step 1: Verifying DNS configuration"
@@ -124,7 +115,7 @@ check_ssh_connection "$SERVER_USER@$SERVER_IP"
 
 # Create required directories
 log_info "Creating required directories..."
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs /root/ssl_backup"
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
 
 # Login to Docker Hub on remote server
 log_info "Setting up Docker Hub authentication on remote server..."
@@ -134,12 +125,8 @@ ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCK
 log_info "Copying configuration files..."
 scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
 
-# Step 4: Set up SSL and deploy application
-log_info "Step 4: Setting up SSL and deploying application"
-
-# Copy SSL management script
-log_info "Copying SSL management script..."
-scp scripts/ssl-cert.sh "$SERVER_USER@$SERVER_IP:/root/"
+# Step 4: Deploy application
+log_info "Step 4: Deploying application"
 
 # Execute deployment on remote server
 ssh "$SERVER_USER@$SERVER_IP" << 'DEPLOY'
@@ -164,28 +151,6 @@ cd /root
 log_info "Stopping all services..."
 docker-compose down
 docker rm -f $(docker ps -aq) 2>/dev/null || true
-
-# Install certbot standalone on the host
-log_info "Installing certbot..."
-apt-get update
-apt-get install -y certbot
-
-# Make SSL script executable
-chmod +x ssl-cert.sh
-
-# Handle SSL certificates
-log_info "Handling SSL certificates..."
-if [ -d "/etc/letsencrypt/live/api.notablenomads.com" ]; then
-    log_info "Found existing certificates..."
-    ./ssl-cert.sh --force-renew
-else
-    log_info "No existing certificates found, generating new ones..."
-    if [ "${USE_STAGING}" = "true" ]; then
-        ./ssl-cert.sh --new --staging
-    else
-        ./ssl-cert.sh --new
-    fi
-fi
 
 # Start services
 log_info "Starting services..."
@@ -230,7 +195,4 @@ echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
 echo "2. Test the API endpoint: curl -k https://$DOMAIN/v1/health"
 echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
-
-if [ "$USE_STAGING" = true ]; then
-    echo -e "\n${YELLOW}Note: SSL certificates are in staging mode. Run with --production for valid certificates.${NC}"
-fi
+echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
