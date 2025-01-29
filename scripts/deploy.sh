@@ -152,6 +152,10 @@ log_info "Stopping all services..."
 docker-compose down
 docker rm -f $(docker ps -aq) 2>/dev/null || true
 
+# Force pull latest images
+log_info "Pulling latest images..."
+docker-compose pull
+
 # Start services
 log_info "Starting services..."
 docker-compose up -d api
