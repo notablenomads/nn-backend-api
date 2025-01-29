@@ -1,6 +1,7 @@
 # Notable Nomads Backend API
 
 Backend API service for Notable Nomads platform.
+Backend API service for Notable Nomads platform.
 
 ## Features
 
@@ -20,7 +21,10 @@ Backend API service for Notable Nomads platform.
 ## Prerequisites
 
 - Node.js 18+
+- Node.js 18+
 - Docker
+- Docker Compose
+- SSH access to deployment server
 - Docker Compose
 - SSH access to deployment server
 
@@ -56,10 +60,15 @@ API_PREFIX=v1
 
 # CORS
 CORS_ENABLED_DOMAINS=*.notablenomads.com
+
+# CORS
+CORS_ENABLED_DOMAINS=*.notablenomads.com
 CORS_RESTRICT=false
 
 # AWS Configuration
 AWS_REGION=eu-central-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 
@@ -69,11 +78,13 @@ EMAIL_TO_ADDRESS=contact@notablenomads.com
 ```
 
 ## Development
+## Development
 
 ```bash
 # Install dependencies
 yarn install
 
+# Run in development mode
 # Run in development mode
 yarn start:dev
 

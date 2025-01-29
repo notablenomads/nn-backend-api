@@ -58,6 +58,7 @@ docker_login() {
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
     echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
+    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
     exit 1
 fi
 
@@ -116,6 +117,7 @@ check_ssh_connection "$SERVER_USER@$SERVER_IP"
 # Create required directories
 log_info "Creating required directories..."
 ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
 
 # Login to Docker Hub on remote server
 log_info "Setting up Docker Hub authentication on remote server..."
@@ -125,6 +127,8 @@ ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCK
 log_info "Copying configuration files..."
 scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
 
+# Step 4: Deploy application
+log_info "Step 4: Deploying application"
 # Step 4: Deploy application
 log_info "Step 4: Deploying application"
 
@@ -199,4 +203,5 @@ echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
 echo "2. Test the API endpoint: curl -k https://$DOMAIN/v1/health"
 echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
+echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
 echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
