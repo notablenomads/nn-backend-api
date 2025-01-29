@@ -1,6 +1,7 @@
 # Notable Nomads Backend API
 
 Backend API service for Notable Nomads platform.
+Backend API service for Notable Nomads platform.
 
 ## Features
 
@@ -20,13 +21,35 @@ Backend API service for Notable Nomads platform.
 ## Prerequisites
 
 - Node.js 18+
+- Node.js 18+
 - Docker
+- Docker Compose
+- SSH access to deployment server
 - Docker Compose
 - SSH access to deployment server
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and adjust the values:
+Copy `.env.example` to `.env` and adjust the values. You can manage environment variables using the provided script:
+
+```bash
+# Set or update a variable
+./scripts/manage-env.sh <server-ip> --set KEY=VALUE
+
+# Get a variable's value
+./scripts/manage-env.sh <server-ip> --get KEY
+
+# List all variables (local and server)
+./scripts/manage-env.sh <server-ip> --list
+
+# Backup current environment
+./scripts/manage-env.sh <server-ip> --backup
+
+# Restore from backup
+./scripts/manage-env.sh <server-ip> --restore env_backup_file.env
+```
+
+Required environment variables:
 
 ```bash
 # Application
@@ -37,18 +60,24 @@ API_PREFIX=v1
 
 # CORS
 CORS_ENABLED_DOMAINS=*.notablenomads.com
+
+# CORS
+CORS_ENABLED_DOMAINS=*.notablenomads.com
 CORS_RESTRICT=false
 
 # AWS Configuration
 ***REMOVED***=eu-central-1
 ***REMOVED***=your_access_key
 ***REMOVED***=your_secret_key
+***REMOVED***=your_access_key
+***REMOVED***=your_secret_key
 
 # Email Configuration
-EMAIL_FROM_ADDRESS=no-reply@mail.notablenomads.com
+EMAIL_FROM_ADDRESS=noreply@notablenomads.com
 EMAIL_TO_ADDRESS=contact@notablenomads.com
 ```
 
+## Development
 ## Development
 
 ```bash
@@ -56,17 +85,16 @@ EMAIL_TO_ADDRESS=contact@notablenomads.com
 yarn install
 
 # Run in development mode
+# Run in development mode
 yarn start:dev
 
 # Run tests
 yarn test
 ```
 
-## Deployment
+## Deployment Scripts
 
-The deployment process is handled by two main scripts:
-
-### 1. Deploy Application
+### 1. Main Deployment (`deploy.sh`)
 
 ```bash
 # Deploy the application
@@ -77,10 +105,10 @@ This script:
 
 - Verifies DNS configuration
 - Builds and pushes Docker image
+- Sets up server configuration
 - Deploys the application
-- Sets up basic infrastructure
 
-### 2. Manage SSL Certificates
+### 2. SSL Certificate Management (`manage-ssl.sh`)
 
 ```bash
 # Generate staging certificates (for testing)
@@ -93,7 +121,7 @@ This script:
 ./scripts/manage-ssl.sh <server-ip> --production --force-renew
 ```
 
-### Server Cleanup
+### 3. Server Cleanup (`cleanup.sh`)
 
 ```bash
 # Clean up server (preserves SSL certificates)
@@ -103,9 +131,34 @@ This script:
 ./scripts/cleanup.sh <server-ip> --force
 ```
 
+## GitHub Actions Deployment
+
+The repository includes a GitHub Actions workflow for automated deployments. Required secrets:
+
+- `DOCKER_HUB_USERNAME`: Your Docker Hub username
+- `DOCKER_HUB_TOKEN`: Docker Hub access token
+- `SSH_PRIVATE_KEY`: SSH key for server access
+- `SSH_KNOWN_HOSTS`: Server SSH fingerprint
+- `ENV_FILE`: Complete contents of your .env file
+
 ## API Documentation
 
 API documentation is available at `/v1/docs` in non-production environments.
+
+## Monitoring
+
+Monitor application logs:
+
+```bash
+# Follow all logs
+ssh root@<server-ip> 'docker compose logs -f'
+
+# Follow specific service logs
+ssh root@<server-ip> 'docker compose logs -f api'
+
+# View last N lines
+ssh root@<server-ip> 'docker compose logs --tail=100 api'
+```
 
 ## API Endpoints
 
@@ -458,7 +511,7 @@ Script for cleaning up the server environment.
 # Normal cleanup (preserves SSL certificates)
 ./scripts/cleanup.sh 91.107.249.14
 
-# Force cleanup (removes everything including SSL certificates)
+# Full cleanup (removes everything including SSL certificates)
 ./scripts/cleanup.sh 91.107.249.14 --force
 ```
 

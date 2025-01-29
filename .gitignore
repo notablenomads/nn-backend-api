@@ -16,6 +16,7 @@ dist/
 coverage/
 .env
 .env.*
+*.env
 !.env.example
 
 # IDE
