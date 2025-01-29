@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.6...v0.1.7) (2025-01-29)
+
+### [0.1.6](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.5...v0.1.6) (2025-01-25)
+
+
+### Features
+
+* add environment file creation step to GitHub Actions deployment workflow ([c476402](https://github.com/Notable-Nomads/nn-backend-api/commit/c47640268275b0d20555bf9a8dc349ef92a40d3a))
+* add GitHub Actions workflow for staging deployment ([656c20f](https://github.com/Notable-Nomads/nn-backend-api/commit/656c20ffb23fc94fee1e2345fb343b53ca3e2bd8))
+* add Yarn configuration step to GitHub Actions deployment workflow ([71ba637](https://github.com/Notable-Nomads/nn-backend-api/commit/71ba637bd53263a17f3f8c6b53f6ed4281e2d50a))
+* enhance DNS verification and deployment scripts ([a033f69](https://github.com/Notable-Nomads/nn-backend-api/commit/a033f69b80cb208c39afef3a66d8063ffd8fc0ed))
+* enhance GitHub Actions deployment workflow ([c260216](https://github.com/Notable-Nomads/nn-backend-api/commit/c260216d0a7108bb5a791272b86e9708cb4f3a20))
+* enhance security and performance configurations ([c673851](https://github.com/Notable-Nomads/nn-backend-api/commit/c6738514fa684b9f527ad9ebef08315af76974ad)), closes [#123](https://github.com/Notable-Nomads/nn-backend-api/issues/123)
+* enhance SSH configuration in GitHub Actions deployment workflow ([15da46e](https://github.com/Notable-Nomads/nn-backend-api/commit/15da46ead3022a955d1bfa4da94af8265116f276))
+* enhance WebSocket support and Nginx configuration ([db6b12c](https://github.com/Notable-Nomads/nn-backend-api/commit/db6b12c3ea32d83f98e63705417078d3995a1647))
+* improve Nginx configuration for WebSocket support ([d4ab297](https://github.com/Notable-Nomads/nn-backend-api/commit/d4ab297d1475d5d1337660635f234b9eb3f3bee1))
+* update Nginx configuration and Docker Compose for improved performance ([ad65807](https://github.com/Notable-Nomads/nn-backend-api/commit/ad65807d3c478d44b6313d074438af1e0be78fb6))
+
 ### [0.1.5](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.3...v0.1.5) (2025-01-20)
 
 

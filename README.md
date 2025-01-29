@@ -1,6 +1,6 @@
 # Notable Nomads Backend API
 
-The backend API service for Notable Nomads platform, built with NestJS.
+Backend API service for Notable Nomads platform.
 
 ## Features
 
@@ -19,15 +19,14 @@ The backend API service for Notable Nomads platform, built with NestJS.
 
 ## Prerequisites
 
-- Node.js ≥14.0.0
-- Yarn v4.6.0
-- AWS CLI v2
-- AWS Copilot CLI
+- Node.js 18+
 - Docker
+- Docker Compose
+- SSH access to deployment server
 
 ## Environment Variables
 
-Create a `.env` file in the root directory:
+Copy `.env.example` to `.env` and adjust the values:
 
 ```bash
 # Application
@@ -35,34 +34,78 @@ NODE_ENV=development
 PORT=3000
 HOST=localhost
 API_PREFIX=v1
-CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
-CORS_RESTRICT=false
 
-# AI Configuration
-GEMINI_API_KEY=your_gemini_api_key_here
+# CORS
+CORS_ENABLED_DOMAINS=*.notablenomads.com
+CORS_RESTRICT=false
 
 # AWS Configuration
 AWS_REGION=eu-central-1
-AWS_ACCESS_KEY_ID=your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
 
 # Email Configuration
 EMAIL_FROM_ADDRESS=no-reply@mail.notablenomads.com
 EMAIL_TO_ADDRESS=contact@notablenomads.com
 ```
 
-## Installation
+## Development
 
 ```bash
 # Install dependencies
 yarn install
 
-# Build the application
-yarn build
-
-# Start the development server
+# Run in development mode
 yarn start:dev
+
+# Run tests
+yarn test
 ```
+
+## Deployment
+
+The deployment process is handled by two main scripts:
+
+### 1. Deploy Application
+
+```bash
+# Deploy the application
+DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh <server-ip>
+```
+
+This script:
+
+- Verifies DNS configuration
+- Builds and pushes Docker image
+- Deploys the application
+- Sets up basic infrastructure
+
+### 2. Manage SSL Certificates
+
+```bash
+# Generate staging certificates (for testing)
+./scripts/manage-ssl.sh <server-ip> --staging
+
+# Generate production certificates
+./scripts/manage-ssl.sh <server-ip> --production
+
+# Force certificate renewal
+./scripts/manage-ssl.sh <server-ip> --production --force-renew
+```
+
+### Server Cleanup
+
+```bash
+# Clean up server (preserves SSL certificates)
+./scripts/cleanup.sh <server-ip>
+
+# Force cleanup (removes everything including SSL certificates)
+./scripts/cleanup.sh <server-ip> --force
+```
+
+## API Documentation
+
+API documentation is available at `/v1/docs` in non-production environments.
 
 ## API Endpoints
 
