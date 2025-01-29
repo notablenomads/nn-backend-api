@@ -2,7 +2,7 @@ name: Deploy to Production
 
 on:
   push:
-    branches: [main, chore/github-action]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -45,14 +45,6 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/arm64
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.APP_NAME }}:latest
-
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
@@ -73,39 +65,39 @@ jobs:
 
       - name: Make scripts executable
         run: |
-          chmod +x scripts/cleanup.sh
           chmod +x scripts/deploy.sh
+          chmod +x scripts/manage-ssl.sh
           chmod +x scripts/ssl-cert.sh
-
-      - name: Verify scripts exist
-        run: |
-          if [ ! -f "scripts/cleanup.sh" ] || [ ! -f "scripts/deploy.sh" ] || [ ! -f "scripts/ssl-cert.sh" ]; then
-            echo "Error: Required scripts are missing"
-            exit 1
-          fi
-
-      - name: Clean up server
-        env:
-          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-        run: |
-          ./scripts/cleanup.sh ${{ env.SERVER_IP }}
+          chmod +x scripts/cleanup.sh
 
       - name: Deploy to production
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          ./scripts/deploy.sh ${{ env.SERVER_IP }} --production
+          # Deploy application
+          ./scripts/deploy.sh ${{ env.SERVER_IP }}
 
-      - name: Verify deployment
-        run: |
-          # Wait for the service to be up
+          # Verify deployment
           echo "Waiting for service to be available..."
           for i in {1..30}; do
             if curl -sk https://${{ env.DOMAIN }}/v1/health; then
               echo "Service is up and running!"
               exit 0
             fi
+            echo "Attempt $i: Service not ready yet, waiting..."
             sleep 10
           done
           echo "Service failed to respond within timeout"
           exit 1
+
+      - name: Check SSL certificates
+        if: success()
+        run: |
+          # Check if SSL certificates need renewal
+          ./scripts/manage-ssl.sh ${{ env.SERVER_IP }} --production
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment failed. Checking logs..."
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker compose logs --tail=100"
