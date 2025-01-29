@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { CorsService } from './services/cors.service';
 import { validationSchema } from '../config/env.validation';
 import configuration from '../config/configuration';
+import { PackageInfoService } from './services/package-info.service';
+
 @Global()
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import configuration from '../config/configuration';
       },
     }),
   ],
-  providers: [CorsService],
-  exports: [CorsService],
+  providers: [CorsService, PackageInfoService],
+  exports: [CorsService, PackageInfoService],
 })
 export class CoreModule {}

@@ -58,6 +58,7 @@ docker_login() {
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
     echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
+    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
     exit 1
 fi
 
@@ -69,7 +70,7 @@ log_info "Verifying DNS configuration for $DOMAIN..."
 
 # Check DNS A record
 log_info "Checking DNS A record..."
-CURRENT_IP=$(dig +short $DOMAIN)
+CURRENT_IP=$(dig +short ${DOMAIN})
 
 if [ -z "$CURRENT_IP" ]; then
     log_error "No DNS A record found for $DOMAIN"
@@ -77,7 +78,7 @@ if [ -z "$CURRENT_IP" ]; then
 fi
 
 # Check if the IP is a Cloudflare IP
-if echo "$CURRENT_IP" | grep -qE '^188\.114\.(96|97)\.[0-9]+$'; then
+if echo "$CURRENT_IP" | grep -qE '^(172\.67\.|104\.21\.|104\.22\.|104\.23\.|104\.24\.|104\.25\.|104\.26\.|104\.27\.|104\.28\.|108\.162\.|162\.158\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.|141\.101\.|103\.21\.|103\.22\.|103\.23\.|103\.24\.|103\.25\.|131\.0\.|141\.101\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.)'; then
     log_info "Detected Cloudflare proxy, proceeding with deployment"
 else
     if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
@@ -116,6 +117,7 @@ check_ssh_connection "$SERVER_USER@$SERVER_IP"
 # Create required directories
 log_info "Creating required directories..."
 ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
 
 # Login to Docker Hub on remote server
 log_info "Setting up Docker Hub authentication on remote server..."
@@ -125,6 +127,8 @@ ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCK
 log_info "Copying configuration files..."
 scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
 
+# Step 4: Deploy application
+log_info "Step 4: Deploying application"
 # Step 4: Deploy application
 log_info "Step 4: Deploying application"
 
@@ -151,6 +155,10 @@ cd /root
 log_info "Stopping all services..."
 docker-compose down
 docker rm -f $(docker ps -aq) 2>/dev/null || true
+
+# Force pull latest images
+log_info "Pulling latest images..."
+docker-compose pull
 
 # Start services
 log_info "Starting services..."
@@ -195,4 +203,5 @@ echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
 echo "2. Test the API endpoint: curl -k https://$DOMAIN/v1/health"
 echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
+echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
 echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
