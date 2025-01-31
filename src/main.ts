@@ -1,142 +1,102 @@
 import helmet from 'helmet';
-import { NestFactory, Reflector } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { AppModule } from './app/app.module';
-import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { CorsService } from './app/core/services/cors.service';
+import { AppModule } from './app/app.module';
 import { PackageInfoService } from './app/core/services/package-info.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const config = app.get(ConfigService);
+  const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   const corsService = app.get(CorsService);
   const packageInfoService = app.get(PackageInfoService);
+  const logger = new Logger('Bootstrap');
 
-  const environment = config.get('app.nodeEnv');
-  const apiPrefix = config.get('app.apiPrefix');
-  const appName = config.get('app.name');
-  const logger = new Logger(appName);
+  const environment = configService.get('environment');
+  const apiPrefix = configService.get('apiPrefix');
 
-  app.enableShutdownHooks();
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
-          connectSrc: [
-            "'self'",
-            'wss://api.production.platform.notablenomads.com',
-            'wss://api.staging.platform.notablenomads.com',
-            'https://*.notablenomads.com',
-            'https://*.amazonaws.com',
-            'https://*.notablenomads.com',
-            'https://*.amazonaws.com',
-          ],
-          styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
-          imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
-          fontSrc: ["'self'", '*.notablenomads.com', 'data:', 'https:'],
-          objectSrc: ["'none'"],
-          frameSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-          styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
-          imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
-          fontSrc: ["'self'", '*.notablenomads.com', 'data:', 'https:'],
-          objectSrc: ["'none'"],
-          frameSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-      },
-      crossOriginEmbedderPolicy: { policy: 'credentialless' },
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      dnsPrefetchControl: { allow: false },
-      frameguard: { action: 'deny' },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      xssFilter: true,
-      noSniff: true,
-      crossOriginEmbedderPolicy: { policy: 'credentialless' },
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      dnsPrefetchControl: { allow: false },
-      frameguard: { action: 'deny' },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      xssFilter: true,
-      noSniff: true,
-    }),
-  );
+  // Set global prefix
+  app.setGlobalPrefix(apiPrefix);
 
-  // Configure CORS
+  // Enable CORS
   app.enableCors({
     origin: corsService.createOriginValidator(),
     credentials: true,
   });
 
-  // Log CORS configuration
-  const corsStatus = corsService.getStatus();
-  if (corsStatus.isRestricted) {
-    logger.log('CORS restrictions enabled with allowed domains:');
-    corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
-  } else {
-    logger.log('CORS restrictions disabled - allowing all origins');
+  // Security headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          connectSrc: ["'self'", 'wss:', 'https:', '*.notablenomads.com'],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
+          styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
+          imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
+          fontSrc: ["'self'", '*.notablenomads.com', 'data:', 'https:'],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+          sandbox: ['allow-same-origin', 'allow-scripts'],
+          childSrc: ["'none'"],
+          workerSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          formAction: ["'self'"],
+          upgradeInsecureRequests: [],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+      originAgentCluster: true,
+      dnsPrefetchControl: false,
+      frameguard: false,
+      hidePoweredBy: true,
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      ieNoOpen: true,
+      noSniff: true,
+      referrerPolicy: false,
+      xssFilter: false,
+    }),
+  );
+
+  // Enable API documentation in non-production environments
+  if (environment !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Notable Nomads API')
+      .setDescription('API documentation for Notable Nomads platform')
+      .setVersion(packageInfoService.getPackageInfo().version)
+      .addBearerAuth()
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
   }
 
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
-  app.enableVersioning({ type: VersioningType.URI });
-
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
-      forbidNonWhitelisted: true,
-      forbidUnknownValues: true,
-      disableErrorMessages: environment === 'production',
+      whitelist: true,
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
       disableErrorMessages: environment === 'production',
     }),
   );
 
-  app.useGlobalFilters(new AllExceptionsFilter(config));
+  const port = configService.get('port');
+  const host = configService.get('host');
 
-  // Only enable Swagger documentation in non-production environments
-  if (environment !== 'production') {
-    const packageInfo = packageInfoService.getPackageInfo();
-    const options = new DocumentBuilder()
-      .setTitle(packageInfo.name)
-      .setVersion(packageInfo.version)
-      .setDescription(packageInfo.description)
-      .addBearerAuth()
-      .build();
-    const document = SwaggerModule.createDocument(app, options);
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
-  }
-
-  await app.listen(config.get('app.port'), config.get('app.host'));
-  const appUrl = await app.getUrl();
-  const docsUrl = environment !== 'production' ? `${appUrl}/${apiPrefix}/docs` : null;
-  logger.log(`Application is running on: ${appUrl}`);
-  logger.log(`Environment: ${environment}`);
-  if (docsUrl) {
-    logger.log(`API Documentation available at: ${docsUrl}`);
-  }
+  await app.listen(port, host);
+  logger.log(`Application is running on: ${await app.getUrl()}`);
 }
 
-process.nextTick(bootstrap);
+bootstrap();
