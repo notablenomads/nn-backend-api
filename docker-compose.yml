@@ -2,25 +2,17 @@ services:
   api:
     image: mrdevx/nn-backend-api:latest
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=${PORT:-3000}
-      - HOST=${HOST:-0.0.0.0}
-      - APP_NAME=${APP_NAME}
-      - APP_DESCRIPTION=${APP_DESCRIPTION}
-      - APP_VERSION=${APP_VERSION}
-      - API_PREFIX=${API_PREFIX}
-      - CORS_ENABLED_DOMAINS=${CORS_ENABLED_DOMAINS}
-      - CORS_RESTRICT=${CORS_RESTRICT}
-      - DATABASE_HOST=${DATABASE_HOST:-postgres}
-      - DATABASE_PORT=${DATABASE_PORT:-5432}
-      - DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_NAME=${DATABASE_NAME:-notablenomads}
-      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-public}
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: 4Y.gLPreCX!@ZQXfzwAbMpHT
+      DATABASE_NAME: nn-backend-db
+      DATABASE_SCHEMA: public
     expose:
-      - '${PORT:-3000}'
-    env_file:
-      - .env.${NODE_ENV:-development}
+      - '3000'
     networks:
       - app-network
     restart: unless-stopped
@@ -28,7 +20,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-3000}/health']
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -42,21 +34,22 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=${DATABASE_USERNAME:-postgres}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRES_DB=${DATABASE_NAME:-notablenomads}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 4Y.gLPreCX!@ZQXfzwAbMpHT
+      POSTGRES_DB: nn-backend-db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - '${DATABASE_PORT:-5432}:5432'
+    expose:
+      - '5432'
     networks:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME:-postgres}']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -h localhost']
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     logging:
       driver: 'json-file'
       options:
@@ -81,7 +74,7 @@ services:
     restart: unless-stopped
     command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
     healthcheck:
-      test: ['CMD', 'nginx', '-t']
+      test: ['CMD-SHELL', 'nginx -t']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,12 +86,12 @@ services:
 
   certbot:
     image: certbot/certbot:latest
-    ports:
-      - '80:80'
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/logs:/var/log/letsencrypt
-    command: certonly --standalone --preferred-challenges http --email admin@notablenomads.com --agree-tos --no-eff-email -d api.notablenomads.com --staging
+    depends_on:
+      - nginx
+    command: certonly --webroot --webroot-path=/var/www/certbot --email admin@notablenomads.com --agree-tos --no-eff-email -d api.notablenomads.com --staging
 
 networks:
   app-network:

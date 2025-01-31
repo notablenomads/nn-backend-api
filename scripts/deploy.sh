@@ -10,6 +10,10 @@ APP_NAME="nn-backend-api"
 DOMAIN="api.notablenomads.com"
 DOCKER_HUB_USERNAME="mrdevx"
 
+# Environment configuration
+export NODE_ENV=production
+export ENV_FILE=.env.production
+
 # Docker Hub configuration
 # Create a token at https://hub.docker.com/settings/security
 DOCKER_HUB_TOKEN="${DOCKER_HUB_TOKEN:-}"  # Set this as environment variable or pass it when running the script
@@ -58,11 +62,16 @@ docker_login() {
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
     echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
-    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
     exit 1
 fi
 
 SERVER_IP="$1"
+
+# Check if .env.production exists
+if [ ! -f "$ENV_FILE" ]; then
+    log_error "Production environment file ($ENV_FILE) not found!"
+    exit 1
+fi
 
 # Step 1: Verify DNS configuration
 log_info "Step 1: Verifying DNS configuration"
@@ -117,7 +126,6 @@ check_ssh_connection "$SERVER_USER@$SERVER_IP"
 # Create required directories
 log_info "Creating required directories..."
 ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf /root/certbot/logs"
 
 # Login to Docker Hub on remote server
 log_info "Setting up Docker Hub authentication on remote server..."
@@ -125,15 +133,10 @@ ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCK
 
 # Copy configuration files
 log_info "Copying configuration files..."
-scp docker-compose.yml nginx.conf .env "$SERVER_USER@$SERVER_IP:/root/"
+scp docker-compose.yml nginx.conf "$SERVER_USER@$SERVER_IP:/root/"
 
-# Step 4: Deploy application
-log_info "Step 4: Deploying application"
-# Step 4: Deploy application
-log_info "Step 4: Deploying application"
-
-# Execute deployment on remote server
-ssh "$SERVER_USER@$SERVER_IP" << 'DEPLOY'
+# Create a temporary script for remote execution
+cat << 'EOF' > /tmp/remote_deploy.sh
 #!/bin/bash
 
 # Colors for output
@@ -143,7 +146,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Helper functions for remote execution
+# Helper functions
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
@@ -151,24 +154,53 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root
 
-# Stop all services
-log_info "Stopping all services..."
-docker-compose down
+# Ensure environment file exists and has correct permissions
+if [ ! -f ".env.production" ]; then
+    log_error "Production environment file not found!"
+    exit 1
+fi
+
+# Make sure the .env file is removed before copying
+rm -f .env
+cp .env.production .env
+chmod 600 .env
+
+# Export environment variables for use in script
+export $(cat .env | grep -v '^#' | xargs)
+
+# Verify environment file contents
+log_info "Verifying environment file..."
+required_vars=("DATABASE_USERNAME" "DATABASE_PASSWORD" "DATABASE_NAME" "DATABASE_HOST")
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var}" ]; then
+        log_error "Required variable $var is not set in environment file!"
+        exit 1
+    fi
+done
+
+# Stop and remove existing containers
+log_info "Cleaning up existing containers..."
+docker-compose down -v || true
 docker rm -f $(docker ps -aq) 2>/dev/null || true
 
-# Force pull latest images
+# Remove existing volumes to ensure clean state
+log_info "Cleaning up volumes..."
+docker volume rm $(docker volume ls -q) 2>/dev/null || true
+
+# Pull latest images
 log_info "Pulling latest images..."
 docker-compose pull
 
-# Start services
-log_info "Starting services..."
-docker-compose up -d api
+# After cleaning up containers and volumes
+log_info "Starting PostgreSQL..."
+docker-compose up -d postgres
 
-# Wait for API to be healthy
-log_info "Waiting for API to be healthy..."
+# Wait for PostgreSQL to be healthy
+log_info "Waiting for PostgreSQL to be healthy..."
 timeout=60
 while [ $timeout -gt 0 ]; do
-    if docker-compose ps api | grep -q "(healthy)"; then
+    if docker-compose exec postgres pg_isready -U postgres -h localhost > /dev/null 2>&1; then
+        log_success "PostgreSQL is healthy!"
         break
     fi
     sleep 1
@@ -176,26 +208,83 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ $timeout -eq 0 ]; then
-    log_error "API failed to become healthy"
+    log_error "PostgreSQL failed to become healthy"
+    docker-compose logs postgres
+    exit 1
+fi
+
+# Verify PostgreSQL connection with credentials
+log_info "Verifying PostgreSQL connection..."
+if ! docker-compose exec postgres psql -U postgres -d nn-backend-db -c '\conninfo' > /dev/null 2>&1; then
+    log_error "Failed to connect to PostgreSQL with configured credentials. Checking connection details..."
+    docker-compose exec postgres psql -U postgres -c '\l'
+    docker-compose logs postgres
+    exit 1
+fi
+
+# Verify database exists
+log_info "Verifying database exists..."
+if ! docker-compose exec postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw nn-backend-db; then
+    log_info "Database does not exist, creating..."
+    docker-compose exec postgres createdb -U postgres nn-backend-db
+fi
+
+# Start the API service separately
+log_info "Starting API service..."
+docker-compose up -d api
+
+# Wait for API to start
+log_info "Waiting for API to initialize..."
+sleep 10
+
+# Check API logs for database connection
+log_info "Checking API database connection..."
+if docker-compose logs api | grep -q "Unable to connect to the database"; then
+    log_error "API failed to connect to the database. Logs:"
     docker-compose logs api
     exit 1
 fi
 
-# Start nginx
-log_info "Starting nginx..."
-docker-compose up -d nginx
+# Start remaining services
+log_info "Starting remaining services..."
+docker-compose up -d
 
 # Verify deployment
 log_info "Verifying deployment..."
-sleep 5
-if ! curl -sk https://localhost/v1/health > /dev/null; then
-    log_error "Health check failed. Checking logs..."
-    docker-compose logs
+timeout=120
+while [ $timeout -gt 0 ]; do
+    if curl -sk http://localhost:3000/v1/health > /dev/null; then
+        log_success "API is healthy!"
+        break
+    fi
+    sleep 1
+    timeout=$((timeout-1))
+    
+    # Check if API container is marked as unhealthy
+    if docker-compose ps api | grep -q "(unhealthy)"; then
+        log_error "API container is unhealthy. Checking logs..."
+        docker-compose logs api
+        exit 1
+    fi
+done
+
+if [ $timeout -eq 0 ]; then
+    log_error "Health check failed. Full logs:"
+    echo "API Logs:"
+    docker-compose logs api
+    echo "PostgreSQL Logs:"
+    docker-compose logs postgres
     exit 1
 fi
+EOF
 
-log_success "Deployment verified successfully!"
-DEPLOY
+# Copy and execute the remote script
+log_info "Executing deployment on remote server..."
+scp /tmp/remote_deploy.sh "$SERVER_USER@$SERVER_IP:/root/remote_deploy.sh"
+ssh "$SERVER_USER@$SERVER_IP" "chmod +x /root/remote_deploy.sh && /root/remote_deploy.sh"
+
+# Clean up
+rm /tmp/remote_deploy.sh
 
 log_success "Deployment completed successfully!"
 echo -e "\n🌍 Your application should now be running at https://$DOMAIN"
@@ -203,5 +292,4 @@ echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
 echo "2. Test the API endpoint: curl -k https://$DOMAIN/v1/health"
 echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
-echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
 echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
