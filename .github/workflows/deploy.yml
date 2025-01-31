@@ -13,24 +13,36 @@ env:
   SERVER_USER: root
 
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify required files
+      - name: Verify repository files
+        id: verify-files
         run: |
-          required_files=("Dockerfile" "docker-compose.yml" "nginx.conf" ".yarnrc.yml-example")
-          for file in "${required_files[@]}"; do
+          echo "Checking required files..."
+          missing_files=()
+
+          for file in Dockerfile docker-compose.yml nginx.conf .yarnrc.yml-example; do
             if [ ! -f "$file" ]; then
-              echo "❌ Required file not found: $file"
-              exit 1
+              missing_files+=($file)
             fi
           done
+
+          if [ ${#missing_files[@]} -ne 0 ]; then
+            echo "❌ Missing required files: ${missing_files[*]}"
+            exit 1
+          fi
           echo "✅ All required files present"
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Create Yarn config
         run: cp .yarnrc.yml-example .yarnrc.yml
@@ -48,11 +60,31 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: Dockerfile
           push: true
           tags: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.APP_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify secrets
+        run: |
+          if [ -z "${{ secrets.ENV_PRODUCTION }}" ]; then
+            echo "❌ ENV_PRODUCTION secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DOCKER_HUB_TOKEN }}" ]; then
+            echo "❌ DOCKER_HUB_TOKEN secret is not set"
+            exit 1
+          fi
+          echo "✅ All required secrets are set"
 
       - name: Setup SSH
         uses: shimataro/ssh-key-action@v2
@@ -61,54 +93,56 @@ jobs:
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
           if_key_exists: replace
 
-      - name: Prepare and deploy
+      - name: Deploy to server
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          # Verify required secrets
-          if [ -z "${{ secrets.ENV_PRODUCTION }}" ]; then
-            echo "❌ ENV_PRODUCTION secret is not set"
-            exit 1
-          fi
+          # Create deployment directory
+          echo "Creating deployment files..."
+          mkdir -p deploy
+          cd deploy
 
           # Create env file
           echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
           chmod 600 .env.production
 
-          # Verify required files for deployment
-          deploy_files=("docker-compose.yml" "nginx.conf" ".env.production" "scripts/deploy.sh")
-          for file in "${deploy_files[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "❌ Deployment file not found: $file"
-              exit 1
-            fi
-          done
+          # Copy required files
+          cp ../docker-compose.yml ../nginx.conf .
+          cp -r ../scripts .
 
-          # Package and copy files
-          tar czf deploy.tar.gz docker-compose.yml nginx.conf .env.production scripts/
+          # Package and deploy
+          echo "Packaging files for deployment..."
+          tar czf deploy.tar.gz .env.production docker-compose.yml nginx.conf scripts/
+
+          echo "Copying files to server..."
           scp deploy.tar.gz ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/root/
 
-          # Deploy
+          echo "Starting deployment..."
           ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "
             cd /root && \
             tar xzf deploy.tar.gz && \
             rm deploy.tar.gz && \
-            DOCKER_HUB_TOKEN=$DOCKER_HUB_TOKEN ./scripts/deploy.sh ${{ env.SERVER_IP }}
+            chmod +x scripts/deploy.sh && \
+            DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' ./scripts/deploy.sh ${{ env.SERVER_IP }}
           "
 
-      - name: Health check
+      - name: Verify deployment
         run: |
-          echo "Checking service health..."
-          for i in {1..6}; do
+          echo "Verifying deployment..."
+          max_attempts=6
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Health check attempt $attempt/$max_attempts..."
             if curl -sk https://${{ env.DOMAIN }}/v1/health > /dev/null; then
               echo "✅ Service is healthy"
               exit 0
             fi
-            echo "Attempt $i: Waiting for service..."
-            sleep 10
+            attempt=$((attempt + 1))
+            [ $attempt -le $max_attempts ] && sleep 10
           done
 
-          echo "❌ Service health check failed. Fetching logs..."
+          echo "❌ Service health check failed. Collecting logs..."
           ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "
             echo '📊 Container Status' && docker compose ps && \
             echo '📝 API Logs' && docker compose logs --tail 50 api && \
