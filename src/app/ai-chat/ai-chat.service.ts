@@ -18,12 +18,10 @@ export class AiChatService {
   };
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey =
-      this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey') ||
-      'AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo';
+    const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'tunedModels/notablenomadv11-294deykbjwwt',
     });
   }
 
