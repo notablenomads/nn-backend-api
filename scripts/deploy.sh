@@ -125,7 +125,7 @@ check_ssh_connection "$SERVER_USER@$SERVER_IP"
 
 # Create required directories
 log_info "Creating required directories..."
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf && mkdir -p /root/nginx/conf.d"
+ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf"
 
 # Login to Docker Hub on remote server
 log_info "Setting up Docker Hub authentication on remote server..."
