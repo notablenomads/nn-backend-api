@@ -12,6 +12,12 @@ services:
       - API_PREFIX=v1
       - CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
       - CORS_RESTRICT=false
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=notablenomads
+      - DATABASE_SCHEMA=public
     expose:
       - '3000'
     env_file:
@@ -19,12 +25,39 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/v1/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=notablenomads
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     logging:
       driver: 'json-file'
       options:
@@ -75,3 +108,4 @@ networks:
 volumes:
   nginx_temp:
   nginx_run:
+  postgres_data:
