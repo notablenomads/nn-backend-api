@@ -2,29 +2,71 @@ services:
   api:
     image: mrdevx/nn-backend-api:latest
     environment:
-      - NODE_ENV=production
-      - HOST=0.0.0.0
-      - PORT=3000
-      - BIND_ADDRESS=0.0.0.0
-      - APP_NAME=Notable Nomads Backend API
-      - APP_DESCRIPTION=Notable Nomads Backend API
-      - APP_VERSION=v0.0.30
-      - API_PREFIX=v1
-      - CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
-      - CORS_RESTRICT=false
+      # Application
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      HOST: ${HOST:-0.0.0.0}
+      APP_NAME: ${APP_NAME:-Notable Nomads Backend API}
+      APP_DESCRIPTION: ${APP_DESCRIPTION:-Notable Nomads Backend API}
+      APP_VERSION: ${APP_VERSION:-v0.0.30}
+      API_PREFIX: ${API_PREFIX:-v1}
+      CORS_ENABLED_DOMAINS: ${CORS_ENABLED_DOMAINS:-*.notablenomads.com,notablenomads.com}
+      CORS_RESTRICT: ${CORS_RESTRICT:-true}
+      # Database
+      DATABASE_HOST: ${DATABASE_HOST:-postgres}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME:-nn-backend-db}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
+      # AWS SES
+      AWS_REGION: ${AWS_REGION:-eu-central-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # Email
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-no-reply@mail.notablenomads.com}
+      EMAIL_TO_ADDRESS: ${EMAIL_TO_ADDRESS:-contact@notablenomads.com}
+      # AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     expose:
       - '3000'
-    env_file:
-      - .env
     networks:
       - app-network
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/v1/health']
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/v1/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME:-nn-backend-db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - '5432'
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME:-postgres} -h localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     logging:
       driver: 'json-file'
       options:
@@ -37,19 +79,16 @@ services:
       - '80:80'
       - '443:443'
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./certbot/conf:/etc/letsencrypt:ro
-      - nginx_temp:/tmp
-      - nginx_run:/var/run
     depends_on:
       api:
         condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
-    command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
     healthcheck:
-      test: ['CMD', 'nginx', '-t']
+      test: ['CMD-SHELL', 'nginx -t']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,15 +98,6 @@ services:
         max-size: '10m'
         max-file: '3'
 
-  certbot:
-    image: certbot/certbot:latest
-    ports:
-      - '80:80'
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/logs:/var/log/letsencrypt
-    command: certonly --standalone --preferred-challenges http --email admin@notablenomads.com --agree-tos --no-eff-email -d api.notablenomads.com --staging
-
 networks:
   app-network:
     driver: bridge
@@ -75,3 +105,5 @@ networks:
 volumes:
   nginx_temp:
   nginx_run:
+  postgres_data:
+  nginx_conf:

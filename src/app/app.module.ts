@@ -5,8 +5,9 @@ import { HealthModule } from './health/health.module';
 import { AiChatModule } from './ai-chat/ai-chat.module';
 import { EmailModule } from './email/email.module';
 import { BlogModule } from './blog/blog.module';
+import { LeadModule } from './lead/lead.module';
 
-const modules = [AiChatModule, EmailModule, BlogModule];
+const modules = [AiChatModule, EmailModule, BlogModule, LeadModule];
 
 @Module({
   imports: [CoreModule, HealthModule, ...modules],

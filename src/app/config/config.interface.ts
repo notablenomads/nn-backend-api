@@ -22,9 +22,19 @@ export interface IEmailConfig {
   toAddress: string;
 }
 
+export interface IDatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  schema: string;
+}
+
 export interface IConfig {
   app: IAppConfig;
   ai: IAiConfig;
   aws: IAwsConfig;
   email: IEmailConfig;
+  database: IDatabaseConfig;
 }
