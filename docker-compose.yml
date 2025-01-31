@@ -3,14 +3,14 @@ services:
     image: mrdevx/nn-backend-api:latest
     environment:
       NODE_ENV: production
-      PORT: 3000
-      HOST: 0.0.0.0
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: 4Y.gLPreCX!@ZQXfzwAbMpHT
-      DATABASE_NAME: nn-backend-db
-      DATABASE_SCHEMA: public
+      PORT: ${PORT:-3000}
+      HOST: ${HOST:-0.0.0.0}
+      DATABASE_HOST: ${DATABASE_HOST:-postgres}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME:-nn-backend-db}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
     expose:
       - '3000'
     networks:
@@ -20,7 +20,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health || exit 1']
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/v1/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,9 +34,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 4Y.gLPreCX!@ZQXfzwAbMpHT
-      POSTGRES_DB: nn-backend-db
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME:-nn-backend-db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:
@@ -45,7 +45,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -h localhost']
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME:-postgres} -h localhost']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,7 +91,7 @@ services:
       - ./certbot/logs:/var/log/letsencrypt
     depends_on:
       - nginx
-    command: certonly --webroot --webroot-path=/var/www/certbot --email admin@notablenomads.com --agree-tos --no-eff-email -d api.notablenomads.com --staging
+    command: certonly --webroot --webroot-path=/var/www/certbot --email ${ADMIN_EMAIL:-admin@notablenomads.com} --agree-tos --no-eff-email -d ${DOMAIN:-api.notablenomads.com} --staging
 
 networks:
   app-network:
