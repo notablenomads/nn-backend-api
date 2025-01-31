@@ -14,9 +14,9 @@ services:
       - CORS_RESTRICT=false
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_USERNAME=postgres
-      - DATABASE_PASSWORD=postgres
-      - DATABASE_NAME=notablenomads
+      - DATABASE_USERNAME=${POSTGRES_USER:-postgres}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_NAME=${POSTGRES_DB:-notablenomads}
       - DATABASE_SCHEMA=public
     expose:
       - '3000'
@@ -43,18 +43,18 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=notablenomads
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-notablenomads}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     networks:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
