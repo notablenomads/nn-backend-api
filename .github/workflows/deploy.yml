@@ -21,6 +21,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify required files
+        run: |
+          required_files=("Dockerfile" "docker-compose.yml" "nginx.conf" ".yarnrc.yml-example")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Required file not found: $file"
+              exit 1
+            fi
+          done
+          echo "✅ All required files present"
+
       - name: Create Yarn config
         run: cp .yarnrc.yml-example .yarnrc.yml
 
@@ -37,6 +48,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.APP_NAME }}:latest
           cache-from: type=gha
@@ -53,9 +65,24 @@ jobs:
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
+          # Verify required secrets
+          if [ -z "${{ secrets.ENV_PRODUCTION }}" ]; then
+            echo "❌ ENV_PRODUCTION secret is not set"
+            exit 1
+          fi
+
           # Create env file
           echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
           chmod 600 .env.production
+
+          # Verify required files for deployment
+          deploy_files=("docker-compose.yml" "nginx.conf" ".env.production" "scripts/deploy.sh")
+          for file in "${deploy_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Deployment file not found: $file"
+              exit 1
+            fi
+          done
 
           # Package and copy files
           tar czf deploy.tar.gz docker-compose.yml nginx.conf .env.production scripts/
