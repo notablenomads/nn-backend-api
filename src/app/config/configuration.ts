@@ -4,23 +4,29 @@ export default (): IConfig => ({
   app: {
     nodeEnv: process.env.NODE_ENV || 'development',
     port: parseInt(process.env.PORT || '3000', 10),
-    host: process.env.HOST || 'localhost',
-    apiPrefix: process.env.API_PREFIX || 'v1',
-    corsEnabledDomains: (process.env.CORS_ENABLED_DOMAINS || '*.notablenomads.com')
-      .split(',')
-      .map((domain) => domain.trim()),
+    host: process.env.HOST || '0.0.0.0',
+    apiPrefix: process.env.API_PREFIX || 'api',
+    corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',') || [],
     corsRestrict: process.env.CORS_RESTRICT === 'true',
   },
   ai: {
     geminiApiKey: process.env.***REMOVED*** || '',
   },
   aws: {
-    region: process.env.***REMOVED*** || 'eu-central-1',
+    region: process.env.***REMOVED*** || 'us-east-1',
     accessKeyId: process.env.***REMOVED*** || '',
     secretAccessKey: process.env.***REMOVED*** || '',
   },
   email: {
-    fromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@notablenomads.com',
-    toAddress: process.env.EMAIL_TO_ADDRESS || 'contact@notablenomads.com',
+    fromAddress: process.env.EMAIL_FROM_ADDRESS || 'no-reply@mail.notablenomads.com',
+    toAddress: process.env.EMAIL_TO_ADDRESS || '',
+  },
+  database: {
+    host: process.env.DATABASE_HOST || 'localhost',
+    port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+    username: process.env.DATABASE_USERNAME || 'postgres',
+    password: process.env.DATABASE_PASSWORD || '',
+    database: process.env.DATABASE_NAME || 'notablenomads',
+    schema: process.env.DATABASE_SCHEMA || 'public',
   },
 });

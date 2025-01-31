@@ -1,10 +1,11 @@
-import { Controller, Post, Body, HttpStatus, HttpException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Param, Body, HttpStatus, HttpException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { LeadService } from './lead.service';
 import { LeadDto } from './interfaces/lead.interface';
+import { LeadResponseDto } from './interfaces/lead-response.dto';
 
 @ApiTags('Lead')
-@Controller('lead')
+@Controller('leads')
 export class LeadController {
   constructor(private readonly leadService: LeadService) {}
 
@@ -33,5 +34,39 @@ export class LeadController {
       message: 'Lead submitted successfully',
       success: true,
     };
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all leads' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Retrieved all leads successfully',
+    type: [LeadResponseDto],
+  })
+  async getAllLeads(): Promise<LeadResponseDto[]> {
+    return this.leadService.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a lead by ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'The UUID of the lead',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Retrieved lead successfully',
+    type: LeadResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Lead not found',
+  })
+  async getLeadById(@Param('id') id: string): Promise<LeadResponseDto> {
+    try {
+      return await this.leadService.findOne(id);
+    } catch {
+      throw new HttpException('Lead not found', HttpStatus.NOT_FOUND);
+    }
   }
 }

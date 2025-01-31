@@ -1,19 +1,29 @@
+import { Repository } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { EmailService } from '../email/email.service';
 import { LeadDto } from './interfaces/lead.interface';
+import { LeadResponseDto } from './interfaces/lead-response.dto';
+import { Lead } from './entities/lead.entity';
 
 @Injectable()
 export class LeadService {
   private readonly logger = new Logger(LeadService.name);
 
   constructor(
+    @InjectRepository(Lead)
+    private readonly leadRepository: Repository<Lead>,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {}
 
   async submitLead(leadData: LeadDto): Promise<boolean> {
     try {
+      // Create and save the lead
+      const lead = this.leadRepository.create(leadData);
+      await this.leadRepository.save(lead);
+
       // Send notification emails
       const adminEmailSuccess = await this.sendAdminNotification(leadData);
       const userEmailSuccess = await this.sendUserConfirmation(leadData);
@@ -23,6 +33,28 @@ export class LeadService {
       this.logger.error(`Failed to process lead submission: ${error.message}`, error.stack);
       return false;
     }
+  }
+
+  async findAll(): Promise<LeadResponseDto[]> {
+    const leads = await this.leadRepository.find({
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+    return leads.map(this.mapToResponseDto);
+  }
+
+  async findOne(id: string): Promise<LeadResponseDto> {
+    const lead = await this.leadRepository.findOneOrFail({
+      where: { id },
+    });
+    return this.mapToResponseDto(lead);
+  }
+
+  private mapToResponseDto(lead: Lead): LeadResponseDto {
+    const response = new LeadResponseDto();
+    Object.assign(response, lead);
+    return response;
   }
 
   private async sendAdminNotification(leadData: LeadDto): Promise<boolean> {
