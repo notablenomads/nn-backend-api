@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.13...v0.1.9) (2025-01-31)
+
+
+### Features
+
+* **certbot:** add configuration files for ACME staging environment ([b92cc3e](https://github.com/Notable-Nomads/nn-backend-api/commit/b92cc3ea3e2865469a68cd9ce18ccbabd305d757))
+* **dev:** add development script and update docker-compose for environment configuration ([a3dbc75](https://github.com/Notable-Nomads/nn-backend-api/commit/a3dbc7576fe1b52420b0ed666d6ca28c4ec2c21d))
+* **docker:** enhance docker-compose with additional environment variables for configuration ([e782f78](https://github.com/Notable-Nomads/nn-backend-api/commit/e782f78799662ddd7cc9c7d26c2f1a15eb9ed0c1))
+* **docker:** simplify nginx service configuration and update deployment script for directory creation ([559bedd](https://github.com/Notable-Nomads/nn-backend-api/commit/559beddbb0549749cd1b545886ac90562730b6dd))
+* **docker:** update docker-compose and deployment script for improved nginx configuration and health checks ([95b3ecd](https://github.com/Notable-Nomads/nn-backend-api/commit/95b3ecd95985e8e841cfc8c376cb88ad2508333c))
+* **docker:** update docker-compose for environment variable support ([895a667](https://github.com/Notable-Nomads/nn-backend-api/commit/895a6670b5bede54eb46b29084c757baccc260f9))
+* **env:** add example environment configuration and update docker-compose for dynamic variables ([abd9a78](https://github.com/Notable-Nomads/nn-backend-api/commit/abd9a78f60115f86495cbe99825e00e7b558bb56))
+* **lead:** add lead module with controller, service, and DTO for project submissions ([aeb4741](https://github.com/Notable-Nomads/nn-backend-api/commit/aeb4741c41ea99e00218d2decf47e231a3bb3fe3))
+* **lead:** add LeadEmailTemplateHelper for generating email templates ([5ae4fe7](https://github.com/Notable-Nomads/nn-backend-api/commit/5ae4fe7dbc6ea7199fdeee7d98cc5a5b20b3277e))
+* **lead:** implement database configuration and add lead retrieval endpoints ([c2036f6](https://github.com/Notable-Nomads/nn-backend-api/commit/c2036f61cd97c816d2d20f13ab09e3cfc6d60377))
+
+
+### Bug Fixes
+
+* **ai-chat:** update API key retrieval and model configuration ([69707a5](https://github.com/Notable-Nomads/nn-backend-api/commit/69707a52915d662fe40566e10402598ed2cec217))
+
 ### [0.1.8](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.7...v0.1.8) (2025-01-29)
 
 ### [0.1.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.6...v0.1.7) (2025-01-29)
