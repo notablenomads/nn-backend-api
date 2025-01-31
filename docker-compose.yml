@@ -2,15 +2,32 @@ services:
   api:
     image: mrdevx/nn-backend-api:latest
     environment:
-      NODE_ENV: production
+      # Application
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
       HOST: ${HOST:-0.0.0.0}
+      APP_NAME: ${APP_NAME:-Notable Nomads Backend API}
+      APP_DESCRIPTION: ${APP_DESCRIPTION:-Notable Nomads Backend API}
+      APP_VERSION: ${APP_VERSION:-v0.0.30}
+      API_PREFIX: ${API_PREFIX:-v1}
+      CORS_ENABLED_DOMAINS: ${CORS_ENABLED_DOMAINS:-*.notablenomads.com,notablenomads.com}
+      CORS_RESTRICT: ${CORS_RESTRICT:-true}
+      # Database
       DATABASE_HOST: ${DATABASE_HOST:-postgres}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
       DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME:-nn-backend-db}
       DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
+      # AWS SES
+      AWS_REGION: ${AWS_REGION:-eu-central-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # Email
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-no-reply@mail.notablenomads.com}
+      EMAIL_TO_ADDRESS: ${EMAIL_TO_ADDRESS:-contact@notablenomads.com}
+      # AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     expose:
       - '3000'
     networks:
