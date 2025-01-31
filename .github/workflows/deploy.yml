@@ -23,11 +23,10 @@ jobs:
       - name: Create Yarn config
         run: cp .yarnrc.yml-example .yarnrc.yml
 
-      - name: Create env file
+      - name: Create production env file
         run: |
-          cat << EOF > .env
-          ${{ secrets.ENV_FILE }}
-          EOF
+          echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
+          chmod 600 .env.production
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -45,6 +44,16 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.APP_NAME }}:latest
+          build-args: |
+            NODE_ENV=production
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
@@ -59,27 +68,34 @@ jobs:
               UserKnownHostsFile=~/.ssh/known_hosts
 
       - name: Verify SSH connection
-        run: |
-          echo "Testing SSH connection..."
-          ssh -v ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "echo 'SSH connection test successful'"
+        run: ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "echo 'SSH connection test successful'"
 
-      - name: Make scripts executable
+      - name: Copy deployment files
         run: |
-          chmod +x scripts/deploy.sh
-          chmod +x scripts/manage-ssl.sh
-          chmod +x scripts/ssl-cert.sh
-          chmod +x scripts/cleanup.sh
+          # Create deployment package
+          tar czf deploy.tar.gz \
+            docker-compose.yml \
+            nginx.conf \
+            .env.production \
+            scripts/deploy.sh \
+            scripts/manage-ssl.sh \
+            scripts/ssl-cert.sh \
+            .yarnrc.yml
+
+          # Copy to server
+          scp deploy.tar.gz ${{ env.SERVER_USER }}@${{ env.SERVER_IP }}:/root/
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd /root && tar xzf deploy.tar.gz && rm deploy.tar.gz"
 
       - name: Deploy to production
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          # Deploy application
-          ./scripts/deploy.sh ${{ env.SERVER_IP }}
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "cd /root && DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN }} ./scripts/deploy.sh ${{ env.SERVER_IP }}"
 
-          # Verify deployment
-          echo "Waiting for service to be available..."
-          for i in {1..30}; do
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+          for i in {1..12}; do
             if curl -sk https://${{ env.DOMAIN }}/v1/health; then
               echo "Service is up and running!"
               exit 0
@@ -87,17 +103,18 @@ jobs:
             echo "Attempt $i: Service not ready yet, waiting..."
             sleep 10
           done
-          echo "Service failed to respond within timeout"
+
+          echo "Service failed to respond, checking logs..."
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker compose logs --tail 100"
           exit 1
 
-      - name: Check SSL certificates
-        if: success()
-        run: |
-          # Check if SSL certificates need renewal
-          ./scripts/manage-ssl.sh ${{ env.SERVER_IP }} --production
-
-      - name: Notify on failure
+      - name: Cleanup on failure
         if: failure()
         run: |
-          echo "Deployment failed. Checking logs..."
-          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "docker compose logs --tail=100"
+          echo "Deployment failed. Collecting diagnostic information..."
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "
+            echo 'Container Status:' && docker compose ps
+            echo '\nAPI Logs:' && docker compose logs api
+            echo '\nPostgres Logs:' && docker compose logs postgres
+            echo '\nNginx Logs:' && docker compose logs nginx
+          "
