@@ -2,26 +2,25 @@ services:
   api:
     image: mrdevx/nn-backend-api:latest
     environment:
-      - NODE_ENV=production
-      - HOST=0.0.0.0
-      - PORT=3000
-      - BIND_ADDRESS=0.0.0.0
-      - APP_NAME=Notable Nomads Backend API
-      - APP_DESCRIPTION=Notable Nomads Backend API
-      - APP_VERSION=v0.0.30
-      - API_PREFIX=v1
-      - CORS_ENABLED_DOMAINS=*.notablenomads.com,notablenomads.com
-      - CORS_RESTRICT=false
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5432
-      - DATABASE_USERNAME=${POSTGRES_USER:-postgres}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
-      - DATABASE_NAME=${POSTGRES_DB:-notablenomads}
-      - DATABASE_SCHEMA=public
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-3000}
+      - HOST=${HOST:-0.0.0.0}
+      - APP_NAME=${APP_NAME}
+      - APP_DESCRIPTION=${APP_DESCRIPTION}
+      - APP_VERSION=${APP_VERSION}
+      - API_PREFIX=${API_PREFIX}
+      - CORS_ENABLED_DOMAINS=${CORS_ENABLED_DOMAINS}
+      - CORS_RESTRICT=${CORS_RESTRICT}
+      - DATABASE_HOST=${DATABASE_HOST:-postgres}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-postgres}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME:-notablenomads}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-public}
     expose:
-      - '3000'
+      - '${PORT:-3000}'
     env_file:
-      - .env
+      - .env.${NODE_ENV:-development}
     networks:
       - app-network
     restart: unless-stopped
@@ -29,7 +28,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/v1/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-3000}/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,18 +42,18 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB:-notablenomads}
+      - POSTGRES_USER=${DATABASE_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME:-notablenomads}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '${DATABASE_PORT:-5432}:5432'
     networks:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
