@@ -4,6 +4,7 @@ import { CorsService } from './services/cors.service';
 import { validationSchema } from '../config/env.validation';
 import configuration from '../config/configuration';
 import { PackageInfoService } from './services/package-info.service';
+import { DatabaseModule } from '../database/database.module';
 
 @Global()
 @Module({
@@ -17,6 +18,7 @@ import { PackageInfoService } from './services/package-info.service';
         abortEarly: true,
       },
     }),
+    DatabaseModule,
   ],
   providers: [CorsService, PackageInfoService],
   exports: [CorsService, PackageInfoService],
