@@ -258,9 +258,19 @@ done
 
 # Fix certificate permissions
 log_info "Fixing SSL certificate permissions..."
+# Set directory permissions
+chmod 755 /etc/letsencrypt/live /etc/letsencrypt/archive
+chmod 755 /etc/letsencrypt/live/*/
+chmod 755 /etc/letsencrypt/archive/*/
+
+# Set file permissions
+chmod 644 /etc/letsencrypt/archive/*/cert*.pem
+chmod 644 /etc/letsencrypt/archive/*/chain*.pem
+chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem
+chmod 600 /etc/letsencrypt/archive/*/privkey*.pem
+
+# Set ownership
 chown -R root:root /etc/letsencrypt
-chmod -R 644 /etc/letsencrypt/archive/*/privkey*.pem
-chmod -R 600 /etc/letsencrypt/live/*/privkey*.pem
 
 # Final verification
 log_info "Performing final verification..."
