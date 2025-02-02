@@ -6,6 +6,8 @@ set -e
 # Configuration
 SERVER_IP=""
 SERVER_USER="root"
+REMOTE_ENV_PATH="/root/secrets/.env"
+DOCKER_COMPOSE_CMD="docker compose"
 
 # Colors for output
 RED='\033[0;31m'
@@ -33,6 +35,72 @@ usage() {
     exit 1
 }
 
+# Check if command exists on remote server
+check_remote_command() {
+    if ! ssh "$SERVER_USER@$SERVER_IP" "command -v $1" &>/dev/null; then
+        log_error "Command '$1' not found on remote server"
+        return 1
+    fi
+    return 0
+}
+
+# Ensure remote directory exists
+ensure_remote_dir() {
+    local dir="$1"
+    ssh "$SERVER_USER@$SERVER_IP" "mkdir -p $dir && chmod 700 $dir"
+}
+
+# Restart services safely
+restart_services() {
+    log_info "Restarting services..."
+    
+    # Check if docker compose is available
+    if ! check_remote_command "docker"; then
+        log_error "Docker is not installed on the remote server"
+        return 1
+    fi
+
+    # Try docker compose v2 first, fall back to v1 if needed
+    if ssh "$SERVER_USER@$SERVER_IP" "docker compose version" &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    elif ssh "$SERVER_USER@$SERVER_IP" "docker-compose version" &>/dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    else
+        log_error "Neither docker compose v2 nor docker-compose v1 is available"
+        return 1
+    fi
+
+    # Stop services gracefully
+    log_info "Stopping services..."
+    if ! ssh "$SERVER_USER@$SERVER_IP" "cd /root && $DOCKER_COMPOSE_CMD stop"; then
+        log_error "Failed to stop services"
+        return 1
+    fi
+
+    # Start services
+    log_info "Starting services..."
+    if ! ssh "$SERVER_USER@$SERVER_IP" "cd /root && $DOCKER_COMPOSE_CMD up -d"; then
+        log_error "Failed to start services"
+        return 1
+    }
+
+    # Check service health
+    log_info "Checking service health..."
+    local timeout=30
+    while [ $timeout -gt 0 ]; do
+        if ssh "$SERVER_USER@$SERVER_IP" "cd /root && $DOCKER_COMPOSE_CMD ps --format json" | grep -q "running"; then
+            log_success "Services are running"
+            return 0
+        fi
+        sleep 1
+        timeout=$((timeout-1))
+    done
+
+    log_error "Services failed to start properly"
+    ssh "$SERVER_USER@$SERVER_IP" "cd /root && $DOCKER_COMPOSE_CMD logs"
+    return 1
+}
+
 # Validate input parameters
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
@@ -48,6 +116,9 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# Ensure remote secrets directory exists
+ensure_remote_dir "/root/secrets"
+
 case "$1" in
     --set)
         if [ -z "$2" ]; then
@@ -57,6 +128,11 @@ case "$1" in
         KEY=$(echo $2 | cut -d= -f1)
         VALUE=$(echo $2 | cut -d= -f2)
         
+        # Create backup before modification
+        log_info "Creating backup before modification..."
+        BACKUP_FILE="env_backup_$(date +%Y%m%d_%H%M%S).env"
+        scp "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH" "$BACKUP_FILE" || true
+        
         # Update local .env
         if grep -q "^${KEY}=" .env; then
             sed -i "" "s|^${KEY}=.*|${KEY}=${VALUE}|" .env
@@ -65,10 +141,20 @@ case "$1" in
         fi
         
         # Copy to server
-        scp .env "$SERVER_USER@$SERVER_IP:/root/"
+        log_info "Copying environment file to server..."
+        scp .env "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
+        ssh "$SERVER_USER@$SERVER_IP" "chmod 600 $REMOTE_ENV_PATH"
+        
+        # Create symlink for compatibility
+        ssh "$SERVER_USER@$SERVER_IP" "ln -sf $REMOTE_ENV_PATH /root/.env"
         
         # Restart services
-        ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose restart"
+        if ! restart_services; then
+            log_error "Failed to restart services. Rolling back changes..."
+            [ -f "$BACKUP_FILE" ] && scp "$BACKUP_FILE" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
+            restart_services
+            exit 1
+        fi
         
         log_success "Environment variable ${KEY} updated and services restarted"
         ;;
@@ -78,7 +164,7 @@ case "$1" in
             log_error "No KEY provided"
             usage
         fi
-        VALUE=$(grep "^$2=" .env | cut -d= -f2)
+        VALUE=$(ssh "$SERVER_USER@$SERVER_IP" "grep '^$2=' $REMOTE_ENV_PATH" | cut -d= -f2)
         if [ -z "$VALUE" ]; then
             log_error "Variable $2 not found"
             exit 1
@@ -91,12 +177,12 @@ case "$1" in
         cat .env
         
         log_info "\nServer environment variables:"
-        ssh "$SERVER_USER@$SERVER_IP" "cat /root/.env"
+        ssh "$SERVER_USER@$SERVER_IP" "cat $REMOTE_ENV_PATH"
         ;;
         
     --backup)
         BACKUP_FILE="env_backup_$(date +%Y%m%d_%H%M%S).env"
-        cp .env "$BACKUP_FILE"
+        scp "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH" "$BACKUP_FILE"
         log_success "Environment backup created: $BACKUP_FILE"
         ;;
         
@@ -105,9 +191,26 @@ case "$1" in
             log_error "Backup file not found: $2"
             usage
         fi
-        cp "$2" .env
-        scp .env "$SERVER_USER@$SERVER_IP:/root/"
-        ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose restart"
+        
+        # Create backup before restore
+        BACKUP_FILE="env_backup_before_restore_$(date +%Y%m%d_%H%M%S).env"
+        scp "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH" "$BACKUP_FILE" || true
+        
+        # Copy backup to server
+        scp "$2" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
+        ssh "$SERVER_USER@$SERVER_IP" "chmod 600 $REMOTE_ENV_PATH"
+        
+        # Create symlink for compatibility
+        ssh "$SERVER_USER@$SERVER_IP" "ln -sf $REMOTE_ENV_PATH /root/.env"
+        
+        # Restart services
+        if ! restart_services; then
+            log_error "Failed to restart services. Rolling back changes..."
+            [ -f "$BACKUP_FILE" ] && scp "$BACKUP_FILE" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
+            restart_services
+            exit 1
+        fi
+        
         log_success "Environment restored from $2 and services restarted"
         ;;
         

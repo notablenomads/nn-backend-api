@@ -11,6 +11,8 @@ FRONTEND_APP_NAME="nn-landing"
 API_DOMAIN="api.notablenomads.com"
 FRONTEND_DOMAIN="notablenomads.com"
 DOCKER_HUB_USERNAME="mrdevx"
+REMOTE_ENV_PATH="/root/secrets/.env"
+DOCKER_COMPOSE_CMD="docker compose"
 
 # Environment configuration
 export NODE_ENV=production
@@ -44,12 +46,29 @@ check_command() {
     fi
 }
 
+# Check if command exists on remote server
+check_remote_command() {
+    if ! ssh "$SERVER_USER@$SERVER_IP" "command -v $1" &>/dev/null; then
+        log_error "Command '$1' not found on remote server"
+        return 1
+    fi
+    return 0
+}
+
+# Ensure remote directory exists
+ensure_remote_dir() {
+    local dir="$1"
+    ssh "$SERVER_USER@$SERVER_IP" "mkdir -p $dir && chmod 700 $dir"
+}
+
 # Check if SSH connection can be established
 check_ssh_connection() {
-    if ! ssh -o ConnectTimeout=10 "$1" "echo 'SSH connection successful'" &> /dev/null; then
+    log_info "Checking SSH connection to $1..."
+    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$1" "echo 'SSH connection successful'" &> /dev/null; then
         log_error "Could not establish SSH connection to $1"
         exit 1
     fi
+    log_success "SSH connection successful"
 }
 
 # Docker Hub login function
@@ -107,9 +126,15 @@ if [ -z "$DOCKER_HUB_TOKEN" ]; then
     exit 1
 fi
 
-# Check if .env.production exists
+# Check if .env.production exists and is valid
 if [ ! -f "$ENV_FILE" ]; then
     log_error "Production environment file ($ENV_FILE) not found!"
+    exit 1
+fi
+
+# Validate environment file
+if ! grep -q "^NODE_ENV=" "$ENV_FILE"; then
+    log_error "Invalid environment file: NODE_ENV not found in $ENV_FILE"
     exit 1
 fi
 
@@ -181,6 +206,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Host $host;
+        
+        # Increase timeouts for long-running requests
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
     }
 
     location /socket.io/ {
@@ -194,6 +224,11 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Host $host;
+        
+        # WebSocket specific settings
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+        proxy_connect_timeout 86400;
     }
 }
 
@@ -222,12 +257,17 @@ else
     scp nginx.conf "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
 fi
 
-# Step 5: Deploy to server
-log_info "Step 5: Deploying to server"
-scp docker-compose.yml "$SERVER_USER@$SERVER_IP:/root/"
-scp .env.production "$SERVER_USER@$SERVER_IP:/root/.env"
+# Step 5: Prepare server environment
+log_info "Step 5: Preparing server environment"
+ensure_remote_dir "/root/secrets"
 
-# Step 6: Execute deployment on server
+# Step 6: Deploy to server
+log_info "Step 6: Deploying to server"
+scp docker-compose.yml "$SERVER_USER@$SERVER_IP:/root/"
+scp "$ENV_FILE" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
+ssh "$SERVER_USER@$SERVER_IP" "chmod 600 $REMOTE_ENV_PATH && ln -sf $REMOTE_ENV_PATH /root/.env"
+
+# Step 7: Execute deployment on server
 ssh "$SERVER_USER@$SERVER_IP" DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" DOCKER_HUB_USERNAME="$DOCKER_HUB_USERNAME" << 'DEPLOY'
 #!/bin/bash
 
@@ -246,6 +286,16 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root
 
+# Determine docker compose command
+if docker compose version &>/dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+elif docker-compose version &>/dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+else
+    log_error "Neither docker compose v2 nor docker-compose v1 is available"
+    exit 1
+fi
+
 # Login to Docker Hub with passed credentials
 log_info "Logging in to Docker Hub..."
 if [ -z "$DOCKER_HUB_TOKEN" ] || [ -z "$DOCKER_HUB_USERNAME" ]; then
@@ -258,23 +308,27 @@ echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-std
     exit 1
 }
 
-# Stop existing services
+# Stop existing services gracefully
 log_info "Stopping existing services..."
-docker-compose down
+$DOCKER_COMPOSE_CMD down --remove-orphans
+
+# Clean up unused images and volumes
+log_info "Cleaning up unused resources..."
+docker system prune -f
 
 # Pull latest images
 log_info "Pulling latest images..."
-docker-compose pull
+$DOCKER_COMPOSE_CMD pull
 
 # Start all services
 log_info "Starting all services..."
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 # Wait for PostgreSQL
 log_info "Waiting for PostgreSQL to be healthy..."
-timeout=60
+timeout=120
 while [ $timeout -gt 0 ]; do
-    if docker-compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
+    if $DOCKER_COMPOSE_CMD exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
         log_success "PostgreSQL is healthy!"
         break
     fi
@@ -284,13 +338,13 @@ done
 
 if [ $timeout -eq 0 ]; then
     log_error "PostgreSQL failed to become healthy"
-    docker-compose logs postgres
+    $DOCKER_COMPOSE_CMD logs postgres
     exit 1
 fi
 
 # Wait for API
 log_info "Waiting for API to be healthy..."
-timeout=60
+timeout=120
 while [ $timeout -gt 0 ]; do
     if curl -s http://localhost:3000/v1/health > /dev/null 2>&1; then
         log_success "API is healthy!"
@@ -302,13 +356,13 @@ done
 
 if [ $timeout -eq 0 ]; then
     log_error "API health check failed. Checking logs..."
-    docker-compose logs api
+    $DOCKER_COMPOSE_CMD logs api
     exit 1
 fi
 
 # Wait for Frontend
 log_info "Waiting for Frontend to start..."
-timeout=30
+timeout=60
 while [ $timeout -gt 0 ]; do
     if curl -s http://localhost:3030 > /dev/null 2>&1; then
         log_success "Frontend is responding!"
@@ -320,19 +374,19 @@ done
 
 if [ $timeout -eq 0 ]; then
     log_warn "Frontend health check timed out. Checking logs..."
-    docker-compose logs frontend
+    $DOCKER_COMPOSE_CMD logs frontend
 fi
 
 # Final verification
 log_info "Verifying all services..."
-docker-compose ps
+$DOCKER_COMPOSE_CMD ps
 
 # Check for any containers in unhealthy or exit state
-if docker-compose ps | grep -E "(unhealthy|Exit)"; then
+if $DOCKER_COMPOSE_CMD ps | grep -E "(unhealthy|Exit)"; then
     log_error "Some services are not healthy or have exited:"
-    docker-compose ps
+    $DOCKER_COMPOSE_CMD ps
     log_info "Checking logs for failed services..."
-    docker-compose logs
+    $DOCKER_COMPOSE_CMD logs
     exit 1
 fi
 
@@ -354,5 +408,5 @@ if [ "$DEPLOY_MODE" = "http-only" ]; then
     echo "3. Deploy with HTTPS: DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --production"
 else
     echo "1. Test the deployment: curl -k https://$API_DOMAIN/v1/health"
-    echo "2. Monitor the logs: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
+    echo "2. Monitor the logs: ssh $SERVER_USER@$SERVER_IP '$DOCKER_COMPOSE_CMD logs -f'"
 fi
