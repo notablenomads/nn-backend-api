@@ -4,10 +4,19 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
+    "builder": "swc",
+    "typeCheck": true,
     "assets": [
       {
         "include": "resources/**/*",
-        "outDir": "dist",
+        "watchAssets": true
+      },
+      {
+        "include": "**/*.proto",
+        "watchAssets": true
+      },
+      {
+        "include": "**/*.hbs",
         "watchAssets": true
       }
     ]

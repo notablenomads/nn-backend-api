@@ -8,6 +8,9 @@ import { IDatabaseConfig } from '../config/config.interface';
     TypeOrmModule.forRootAsync({
       useFactory: (configService: ConfigService) => {
         const dbConfig = configService.get<IDatabaseConfig>('database');
+        const nodeEnv = configService.get('app.nodeEnv');
+        const isProd = nodeEnv === 'production';
+
         return {
           type: 'postgres',
           host: dbConfig.host,
@@ -17,8 +20,18 @@ import { IDatabaseConfig } from '../config/config.interface';
           database: dbConfig.database,
           schema: dbConfig.schema,
           entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-          synchronize: configService.get('app.nodeEnv') !== 'production',
-          logging: configService.get('app.nodeEnv') !== 'production',
+          // Disable synchronization in production
+          synchronize: false,
+          // Enable migrations
+          migrationsRun: true,
+          migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+          // Enable logging only in non-production environments
+          logging: !isProd,
+          // Add retry configuration
+          retryAttempts: 3,
+          retryDelay: 3000,
+          // Add timeout configuration
+          connectTimeoutMS: 10000,
         };
       },
       inject: [ConfigService],
