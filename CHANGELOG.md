@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+# [0.6.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.5.0...v0.6.0) (2025-02-02)
+
+
+### Features
+
+* simplify release workflow by removing unnecessary steps and enhancing GitHub release creation ([86f0180](https://github.com/Notable-Nomads/nn-backend-api/commit/86f01807a44d8fc4ecbee40b7ba2bba1b50a9992))
+
+
+
 # [0.5.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.4.0...v0.5.0) (2025-02-02)
 
 
