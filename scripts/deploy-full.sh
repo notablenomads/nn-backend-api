@@ -28,25 +28,17 @@ fix_ssl_permissions() {
         # Create ssl-cert group if it doesn't exist
         groupadd -f ssl-cert &&
 
-        # Set base directory permissions
-        chmod 755 /etc/letsencrypt &&
-
-        # Set directory permissions
-        chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live &&
-        chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/ &&
-
-        # Set file permissions
+        # Set proper ownership and permissions
+        chown -R root:ssl-cert /etc/letsencrypt &&
+        chmod -R 755 /etc/letsencrypt &&
         chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
         chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
         chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
         chmod 640 /etc/letsencrypt/archive/*/privkey*.pem &&
 
-        # Set ownership
-        chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live &&
-
-        # Verify permissions
+        # Verify the changes
         echo 'Verifying permissions:' &&
-        ls -lR /etc/letsencrypt/{live,archive} | cat"
+        ls -lR /etc/letsencrypt/{live,archive}"
 }
 
 # Function to verify SSL permissions
