@@ -10,6 +10,18 @@ import { LeadResponseDto } from './interfaces/lead-response.dto';
 import { Lead } from './entities/lead.entity';
 import { LeadEmailTemplateHelper } from './helpers/lead-email-template.helper';
 import { ERRORS } from '../core/errors/errors';
+import { EnumOptionDto, LeadOptionsDto } from './interfaces/lead-options.dto';
+import {
+  ServiceType,
+  ProjectType,
+  ExistingProjectChallenge,
+  TargetAudience,
+  Industry,
+  DesignStyle,
+  Timeline,
+  Budget,
+  ContactMethod,
+} from './interfaces/lead.interface';
 
 @Injectable()
 export class LeadService {
@@ -416,5 +428,147 @@ export class LeadService {
       default:
         return method;
     }
+  }
+
+  getFormOptions(): LeadOptionsDto {
+    return {
+      services: this.getServiceOptions(),
+      projectTypes: this.getProjectTypeOptions(),
+      existingProjectChallenges: this.getExistingProjectChallengeOptions(),
+      targetAudiences: this.getTargetAudienceOptions(),
+      industries: this.getIndustryOptions(),
+      designStyles: this.getDesignStyleOptions(),
+      timelines: this.getTimelineOptions(),
+      budgets: this.getBudgetOptions(),
+      contactMethods: this.getContactMethodOptions(),
+    };
+  }
+
+  private getServiceOptions(): EnumOptionDto[] {
+    return [
+      {
+        value: ServiceType.WEB_APP,
+        label: 'Web Application',
+        description: 'Full-stack web applications and platforms',
+      },
+      {
+        value: ServiceType.MOBILE_APP,
+        label: 'Mobile Application',
+        description: 'Native and cross-platform mobile apps',
+      },
+      {
+        value: ServiceType.AI_ML,
+        label: 'AI/ML Development',
+        description: 'Artificial Intelligence and Machine Learning solutions',
+      },
+      {
+        value: ServiceType.DEVOPS,
+        label: 'DevOps & Infrastructure',
+        description: 'Cloud infrastructure and deployment automation',
+      },
+      {
+        value: ServiceType.ARCHITECTURE,
+        label: 'System Architecture',
+        description: 'Technical architecture and system design',
+      },
+      { value: ServiceType.OTHER, label: 'Other', description: 'Custom development needs' },
+    ];
+  }
+
+  private getProjectTypeOptions(): EnumOptionDto[] {
+    return [
+      { value: ProjectType.NEW, label: 'New Project', description: 'Starting a new project from scratch' },
+      {
+        value: ProjectType.EXISTING,
+        label: 'Existing Project',
+        description: 'Enhancing or fixing an existing project',
+      },
+    ];
+  }
+
+  private getExistingProjectChallengeOptions(): EnumOptionDto[] {
+    return [
+      {
+        value: ExistingProjectChallenge.PERFORMANCE,
+        label: 'Performance Issues',
+        description: 'Slow loading times or resource usage problems',
+      },
+      {
+        value: ExistingProjectChallenge.SCALABILITY,
+        label: 'Scalability Challenges',
+        description: 'Difficulty handling growth or increased load',
+      },
+      { value: ExistingProjectChallenge.BUGS, label: 'Bug Fixes', description: 'Existing bugs or technical issues' },
+      { value: ExistingProjectChallenge.UX, label: 'User Experience', description: 'Usability or interface problems' },
+      { value: ExistingProjectChallenge.OTHER, label: 'Other', description: 'Other technical challenges' },
+    ];
+  }
+
+  private getTargetAudienceOptions(): EnumOptionDto[] {
+    return [
+      {
+        value: TargetAudience.CONSUMERS,
+        label: 'Consumers (B2C)',
+        description: 'Direct to consumer products/services',
+      },
+      { value: TargetAudience.BUSINESSES, label: 'Businesses (B2B)', description: 'Business to business solutions' },
+      { value: TargetAudience.BOTH, label: 'Both B2B and B2C', description: 'Mixed audience products/services' },
+    ];
+  }
+
+  private getIndustryOptions(): EnumOptionDto[] {
+    return [
+      { value: Industry.ECOMMERCE, label: 'E-commerce', description: 'Online retail and shopping platforms' },
+      { value: Industry.HEALTHCARE, label: 'Healthcare', description: 'Medical and healthcare solutions' },
+      { value: Industry.EDUCATION, label: 'Education', description: 'Educational technology and learning platforms' },
+      { value: Industry.SAAS, label: 'SaaS', description: 'Software as a Service products' },
+      { value: Industry.FINANCE, label: 'Finance', description: 'Financial technology and services' },
+      { value: Industry.ENTERTAINMENT, label: 'Entertainment', description: 'Media and entertainment platforms' },
+      { value: Industry.OTHER, label: 'Other', description: 'Other industry sectors' },
+    ];
+  }
+
+  private getDesignStyleOptions(): EnumOptionDto[] {
+    return [
+      {
+        value: DesignStyle.MODERN,
+        label: 'Modern & Minimalist',
+        description: 'Clean, simple, and contemporary design',
+      },
+      { value: DesignStyle.BOLD, label: 'Bold & Playful', description: 'Vibrant, energetic, and creative design' },
+      {
+        value: DesignStyle.PROFESSIONAL,
+        label: 'Professional & Corporate',
+        description: 'Traditional business-oriented design',
+      },
+      { value: DesignStyle.UNDECIDED, label: 'To be discussed', description: 'Open to design recommendations' },
+    ];
+  }
+
+  private getTimelineOptions(): EnumOptionDto[] {
+    return [
+      { value: Timeline.LESS_THAN_3_MONTHS, label: 'Less than 3 months', description: 'Quick turnaround projects' },
+      { value: Timeline.THREE_TO_SIX_MONTHS, label: '3-6 months', description: 'Medium-term projects' },
+      { value: Timeline.MORE_THAN_6_MONTHS, label: 'More than 6 months', description: 'Long-term projects' },
+      { value: Timeline.FLEXIBLE, label: 'Flexible', description: 'Open to timeline discussion' },
+    ];
+  }
+
+  private getBudgetOptions(): EnumOptionDto[] {
+    return [
+      { value: Budget.LESS_THAN_10K, label: 'Less than $10,000', description: 'Small-scale projects' },
+      { value: Budget.TEN_TO_FIFTY_K, label: '$10,000 - $50,000', description: 'Medium-scale projects' },
+      { value: Budget.FIFTY_TO_HUNDRED_K, label: '$50,000 - $100,000', description: 'Large-scale projects' },
+      { value: Budget.MORE_THAN_100K, label: 'More than $100,000', description: 'Enterprise-level projects' },
+      { value: Budget.NOT_SURE, label: 'To be discussed', description: 'Open to budget discussion' },
+    ];
+  }
+
+  private getContactMethodOptions(): EnumOptionDto[] {
+    return [
+      { value: ContactMethod.EMAIL, label: 'Email', description: 'Communicate via email' },
+      { value: ContactMethod.PHONE, label: 'Phone', description: 'Communicate via phone call' },
+      { value: ContactMethod.WHATSAPP, label: 'WhatsApp', description: 'Communicate via WhatsApp' },
+    ];
   }
 }
