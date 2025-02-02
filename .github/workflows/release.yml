@@ -4,15 +4,26 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.env.example'
+      - 'LICENSE'
 
 permissions:
   contents: write
   pull-requests: write
+  issues: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -35,25 +46,59 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Verify package.json version
+        id: package_version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Verify version format
+          if ! [[ $CURRENT_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Invalid version format in package.json"
+            exit 1
+          fi
+
       - name: Create Release
+        id: create_release
         run: |
           # Run standard-version to update version and generate changelog
           yarn release
 
           # Get the new version number
           NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
           # Get the latest changes from CHANGELOG.md
           CHANGELOG=$(awk '/^## \[/ { if (p) { exit }; p=1; next } p' CHANGELOG.md | sed '/^$/d')
+
+          if [ "$NEW_VERSION" == "${{ steps.package_version.outputs.current_version }}" ]; then
+            echo "No version change detected. Skipping release creation."
+            exit 0
+          fi
 
           # Create GitHub Release
           gh release create "v$NEW_VERSION" \
             --title "v$NEW_VERSION" \
             --notes "$CHANGELOG" \
-            --target main
+            --target main \
+            --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push changes
+        if: steps.create_release.outputs.new_version != steps.package_version.outputs.current_version
         run: |
           git push --follow-tags origin main
+
+      - name: Publish Release
+        if: steps.create_release.outputs.new_version != steps.package_version.outputs.current_version
+        run: |
+          gh release edit "v${{ steps.create_release.outputs.new_version }}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::error::Release creation failed. Please check the logs for details."
