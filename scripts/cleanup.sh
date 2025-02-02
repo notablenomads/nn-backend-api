@@ -45,8 +45,8 @@ fi
 
 log_info "Starting cleanup process on $SERVER_IP..."
 
-# Execute cleanup on remote server
-ssh "$SERVER_USER@$SERVER_IP" << CLEANUP
+# Create remote cleanup script
+cat > /tmp/remote_cleanup.sh << 'EOF'
 #!/bin/bash
 
 # Colors for output
@@ -57,48 +57,54 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Helper functions
-log_info() { echo -e "\${BLUE}[INFO]\${NC} \$1"; }
-log_warn() { echo -e "\${YELLOW}[WARN]\${NC} \$1"; }
-log_success() { echo -e "\${GREEN}[SUCCESS]\${NC} \$1"; }
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root
 
-# Stop and remove all containers
+# Stop all running containers
 log_info "Stopping all containers..."
 docker-compose down -v || true
-docker rm -f \$(docker ps -aq) 2>/dev/null || true
+
+# Remove all containers
+log_info "Removing all containers..."
+docker rm -f $(docker ps -aq) 2>/dev/null || true
 
 # Remove all docker networks
 log_info "Removing docker networks..."
 docker network prune -f
 
-# Remove docker volumes
+# Remove all docker volumes
 log_info "Removing docker volumes..."
-docker volume rm \$(docker volume ls -q) 2>/dev/null || true
+docker volume rm $(docker volume ls -q) 2>/dev/null || true
+
+# Remove all unused images
+log_info "Removing unused images..."
+docker image prune -af
 
 # Clean up SSL certificates and related files
-if [ "$FORCE" = true ]; then
+if [ "$1" = "true" ]; then
     log_warn "Removing all SSL certificates and related files..."
-    rm -rf /etc/letsencrypt/live/$DOMAIN
-    rm -rf /etc/letsencrypt/archive/$DOMAIN
-    rm -rf /etc/letsencrypt/renewal/$DOMAIN.conf
+    rm -rf /etc/letsencrypt/live/*
+    rm -rf /etc/letsencrypt/archive/*
+    rm -rf /etc/letsencrypt/renewal/*
     rm -rf certbot/conf/*
     rm -rf certbot/www/*
     rm -rf certbot/logs/*
     rm -rf ssl_backup/*
 else
     log_info "Backing up existing certificates..."
-    if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-        mkdir -p ssl_backup
-        cp -rL /etc/letsencrypt/live/$DOMAIN ssl_backup/
-        cp -r /etc/letsencrypt/archive/$DOMAIN ssl_backup/
-        cp -r /etc/letsencrypt/renewal/$DOMAIN.conf ssl_backup/
+    mkdir -p ssl_backup
+    if [ -d "/etc/letsencrypt/live" ]; then
+        cp -rL /etc/letsencrypt/live/* ssl_backup/ 2>/dev/null || true
     fi
 fi
 
 # Clean up nginx configuration
 log_info "Cleaning up nginx configuration..."
-rm -f nginx.conf.http nginx.conf.orig nginx.conf.bak
+rm -f nginx.conf.http nginx.conf.orig nginx.conf.bak nginx.conf
 
 # Clean up docker login credentials
 log_info "Removing Docker Hub credentials..."
@@ -112,8 +118,26 @@ rm -rf /tmp/* /var/tmp/*
 log_info "Cleaning up logs..."
 find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
 
+# Verify cleanup
+log_info "Verifying cleanup..."
+echo "Containers:"
+docker ps -a
+echo "Volumes:"
+docker volume ls
+echo "Networks:"
+docker network ls
+
 log_success "Cleanup completed successfully!"
-CLEANUP
+EOF
+
+# Copy cleanup script to remote server
+scp /tmp/remote_cleanup.sh "$SERVER_USER@$SERVER_IP:/tmp/cleanup.sh"
+
+# Execute cleanup script on remote server
+ssh "$SERVER_USER@$SERVER_IP" "chmod +x /tmp/cleanup.sh && /tmp/cleanup.sh $FORCE"
+
+# Clean up local temporary file
+rm /tmp/remote_cleanup.sh
 
 log_success "Server cleanup completed successfully!"
 if [ "$FORCE" = true ]; then
@@ -123,5 +147,9 @@ else
 fi
 
 echo -e "\n📝 Next steps:"
-echo "1. Run the deployment script to redeploy the application:"
-echo "   DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP [--production]"
+echo "1. Run the deployment script with HTTP-only configuration first:"
+echo "   DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --http-only"
+echo "2. Then set up SSL certificates:"
+echo "   ./scripts/manage-ssl.sh $SERVER_IP --production"
+echo "3. Finally, deploy with HTTPS:"
+echo "   DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --production"
