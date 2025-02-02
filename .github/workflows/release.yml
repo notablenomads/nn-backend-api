@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'yarn'
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Create Release
+        run: |
+          # Run standard-version to update version and generate changelog
+          yarn release
+
+          # Get the new version number
+          NEW_VERSION=$(node -p "require('./package.json').version")
+
+          # Get the latest changes from CHANGELOG.md
+          CHANGELOG=$(awk '/^## \[/ { if (p) { exit }; p=1; next } p' CHANGELOG.md | sed '/^$/d')
+
+          # Create GitHub Release
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --notes "$CHANGELOG" \
+            --target main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push changes
+        run: |
+          git push --follow-tags origin main
