@@ -49,7 +49,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          yarn install --immutable
+          yarn install 
           yarn --version
 
       - name: Verify package.json version
