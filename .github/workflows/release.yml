@@ -49,9 +49,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo "nodeLinker: node-modules" >> .yarnrc.yml
-          yarn config set enableGlobalCache false
-          yarn install --immutable --inline-builds
+          cp .yarnrc.yml-example .yarnrc.yml
+          yarn install --immutable
           yarn --version
 
       - name: Verify package.json version
