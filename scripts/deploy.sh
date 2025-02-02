@@ -9,7 +9,7 @@ SERVER_USER="root"
 APP_NAME="nn-backend-api"
 FRONTEND_APP_NAME="nn-landing"
 API_DOMAIN="api.notablenomads.com"
-FRONTEND_DOMAIN="landing.notablenomads.com"
+FRONTEND_DOMAIN="notablenomads.com"
 DOCKER_HUB_USERNAME="mrdevx"
 
 # Environment configuration

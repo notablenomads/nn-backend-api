@@ -7,7 +7,7 @@ set -e
 SERVER_IP=""
 SERVER_USER="root"
 API_DOMAIN="api.notablenomads.com"
-FRONTEND_DOMAIN="landing.notablenomads.com"
+FRONTEND_DOMAIN="notablenomads.com"
 DOMAINS=("$API_DOMAIN" "$FRONTEND_DOMAIN")
 
 # Colors for output
