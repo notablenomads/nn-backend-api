@@ -6,7 +6,7 @@ export default (): IConfig => ({
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     apiPrefix: process.env.API_PREFIX || 'api',
-    enableSwagger: process.env.ENABLE_SWAGGER === 'true',
+    enableSwagger: process.env.ENABLE_SWAGGER !== 'false',
     corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',') || [],
     corsRestrict: process.env.CORS_RESTRICT === 'true',
   },
