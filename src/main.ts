@@ -93,8 +93,8 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter(config));
 
-  // Only enable Swagger documentation in non-production environments
-  if (environment !== 'production') {
+  // Enable Swagger documentation based on configuration
+  if (config.get('app.enableSwagger')) {
     const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
       .setTitle(packageInfo.name)
@@ -108,7 +108,7 @@ async function bootstrap() {
 
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
-  const docsUrl = environment !== 'production' ? `${appUrl}/${apiPrefix}/docs` : null;
+  const docsUrl = config.get('app.enableSwagger') ? `${appUrl}/${apiPrefix}/docs` : null;
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
   if (docsUrl) {
