@@ -48,6 +48,17 @@ export class LeadController {
     return this.leadService.findAll();
   }
 
+  @Get('options')
+  @ApiOperation({ summary: 'Get all available options for the lead form' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Retrieved form options successfully',
+    type: LeadOptionsDto,
+  })
+  getFormOptions(): LeadOptionsDto {
+    return this.leadService.getFormOptions();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a lead by ID' })
   @ApiParam({
@@ -69,16 +80,5 @@ export class LeadController {
     } catch {
       throw new HttpException('Lead not found', HttpStatus.NOT_FOUND);
     }
-  }
-
-  @Get('options')
-  @ApiOperation({ summary: 'Get all available options for the lead form' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Retrieved form options successfully',
-    type: LeadOptionsDto,
-  })
-  getFormOptions(): LeadOptionsDto {
-    return this.leadService.getFormOptions();
   }
 }
