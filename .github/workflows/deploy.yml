@@ -1,0 +1,60 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: mrdevx
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Run deployment script
+        env:
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          AUTO_CONFIRM: true
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          chmod +x ./scripts/deploy-full.sh
+          ./scripts/deploy-full.sh "$SERVER_IP"
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to stabilize..."
+          sleep 30
+
+          # Check API health
+          if curl -sk "https://api.notablenomads.com/v1/health" | grep -q "status.*ok"; then
+            echo "✅ API is healthy"
+          else
+            echo "❌ API health check failed"
+            exit 1
+          fi
+
+          # Check frontend
+          if curl -sk -o /dev/null -w "%{http_code}" "https://notablenomads.com" | grep -q "200"; then
+            echo "✅ Frontend is accessible"
+          else
+            echo "❌ Frontend check failed"
+            exit 1
+          fi
