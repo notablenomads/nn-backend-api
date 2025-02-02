@@ -233,6 +233,10 @@ fi
 log_info "Starting API service..."
 docker-compose up -d api
 
+# Run database migrations
+log_info "Running database migrations..."
+docker-compose exec api yarn migration:run
+
 # Wait for API to start
 log_info "Waiting for API to initialize..."
 sleep 10
