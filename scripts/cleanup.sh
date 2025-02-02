@@ -84,6 +84,11 @@ docker volume rm $(docker volume ls -q) 2>/dev/null || true
 log_info "Removing unused images..."
 docker image prune -af
 
+# Clean up Docker authentication
+log_info "Cleaning up Docker authentication..."
+rm -rf ~/.docker/config.json || true
+docker logout
+
 # Clean up SSL certificates and related files
 if [ "$1" = "true" ]; then
     log_warn "Removing all SSL certificates and related files..."
@@ -106,10 +111,6 @@ fi
 log_info "Cleaning up nginx configuration..."
 rm -f nginx.conf.http nginx.conf.orig nginx.conf.bak nginx.conf
 
-# Clean up docker login credentials
-log_info "Removing Docker Hub credentials..."
-docker logout
-
 # Clean up temporary files
 log_info "Cleaning up temporary files..."
 rm -rf /tmp/* /var/tmp/*
@@ -117,6 +118,10 @@ rm -rf /tmp/* /var/tmp/*
 # Clean up logs
 log_info "Cleaning up logs..."
 find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
+
+# Clean up any remaining Docker resources
+log_info "Final Docker cleanup..."
+docker system prune -af --volumes
 
 # Verify cleanup
 log_info "Verifying cleanup..."
@@ -126,6 +131,8 @@ echo "Volumes:"
 docker volume ls
 echo "Networks:"
 docker network ls
+echo "Images:"
+docker images
 
 log_success "Cleanup completed successfully!"
 EOF
