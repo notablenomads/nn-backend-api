@@ -51,7 +51,7 @@ COPY --from=build /app/typeorm.config.ts ./
 COPY --from=build /app/tsconfig.json ./
 
 # Install only necessary production dependencies
-RUN yarn workspaces focus --production
+RUN yarn workspaces focus 
 
 # Create a directory for migrations
 RUN mkdir -p dist/app/database/migrations
