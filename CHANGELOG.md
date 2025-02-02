@@ -1,6 +1,32 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
+
+# [0.2.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.9...v0.2.0) (2025-02-02)
+
+
+### Features
+
+* **ci:** add release workflow and update deployment triggers ([2c150d5](https://github.com/Notable-Nomads/nn-backend-api/commit/2c150d5aef4f789202f482a72ffd8025e26bcbd0))
+* **ci:** add verification for required files and secrets in deployment workflow ([3a8b81c](https://github.com/Notable-Nomads/nn-backend-api/commit/3a8b81c5e48aa45801e1abeb67f2d14e4856e709))
+* **ci:** enhance deployment workflow with production env file and Docker image build ([fa0466b](https://github.com/Notable-Nomads/nn-backend-api/commit/fa0466b349b0d1c74b432a714a6d0b8f5c4fd1ad))
+* **ci:** enhance release workflow with version verification and failure notifications ([cf87227](https://github.com/Notable-Nomads/nn-backend-api/commit/cf87227ea4826eaa3d76c9922cbab12bab0efc63))
+* **ci:** improve deployment workflow with timeout, health checks, and enhanced logging ([607c966](https://github.com/Notable-Nomads/nn-backend-api/commit/607c9667b5a5d7de25e9856c16b5fdf97be046e2))
+* **ci:** modify dependency installation command in release workflow ([54d1e2b](https://github.com/Notable-Nomads/nn-backend-api/commit/54d1e2bf0e4455bd8192e30c89422a9ce62ad586))
+* **ci:** restructure deployment workflow with verification steps for files and secrets ([e35565c](https://github.com/Notable-Nomads/nn-backend-api/commit/e35565c84d2291139a7bcd13a8b9dbbc78c58bb9))
+* **ci:** simplify dependency installation in release workflow ([35e80ef](https://github.com/Notable-Nomads/nn-backend-api/commit/35e80ef37611f48dfde3b0b2cdc5352e45b3be6a))
+* **ci:** specify Yarn version and enhance dependency installation process ([d424334](https://github.com/Notable-Nomads/nn-backend-api/commit/d42433468c37d76d2ac131b28f5e2d01bc110cd6))
+* **ci:** update release workflow to enable Corepack and improve dependency installation ([ab4b8e1](https://github.com/Notable-Nomads/nn-backend-api/commit/ab4b8e1c16abfe79931c1685730be1abcadbdf9d))
+* **config:** add support for enabling Swagger documentation via environment variable ([570b604](https://github.com/Notable-Nomads/nn-backend-api/commit/570b604eeff951bf86593baa4247f9a92826ce9d))
+* **config:** improve Swagger documentation logging and setup ([c0365d0](https://github.com/Notable-Nomads/nn-backend-api/commit/c0365d030628c6a58134ad1b2a6fe061e72e422b))
+* **config:** update Swagger documentation enablement logic and default value ([a6d7278](https://github.com/Notable-Nomads/nn-backend-api/commit/a6d72781b1caa88a0e1f040d04c0b87349528049))
+* **database:** update TypeORM configuration and add initial migration for leads table ([133607a](https://github.com/Notable-Nomads/nn-backend-api/commit/133607a47f19f27a7686bd2f046185c105f40024))
+* **docker:** enhance Docker setup with migration execution and build verification ([ce766d8](https://github.com/Notable-Nomads/nn-backend-api/commit/ce766d8b84d4587fae5227aadd23312d52268ab6))
+* **docker:** simplify production dependency installation in Dockerfile ([d0a5a39](https://github.com/Notable-Nomads/nn-backend-api/commit/d0a5a392fba15233d2e2c0756166242a254cfbd4))
+* **lead:** add lead options DTO and endpoint for retrieving form options ([0a97f4e](https://github.com/Notable-Nomads/nn-backend-api/commit/0a97f4eaee066ca1470ecf8484a725abdfc398f2))
+* **lead:** implement endpoint to retrieve available options for the lead form ([c40ab36](https://github.com/Notable-Nomads/nn-backend-api/commit/c40ab369fb155b6edc19f840bb9095c3e8191b3e))
+
+
 
 ### [0.1.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.0.13...v0.1.9) (2025-01-31)
 
