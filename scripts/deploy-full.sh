@@ -28,14 +28,24 @@ fix_ssl_permissions() {
         # Create ssl-cert group if it doesn't exist
         groupadd -f ssl-cert &&
 
-        # Set proper ownership and permissions
-        chown -R root:ssl-cert /etc/letsencrypt &&
-        chmod -R 755 /etc/letsencrypt &&
-        chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
-        chmod 640 /etc/letsencrypt/archive/*/privkey*.pem &&
+        # Set base directory permissions
+        chown root:ssl-cert /etc/letsencrypt &&
+        chmod 755 /etc/letsencrypt &&
 
+        # Set directory permissions
+        find /etc/letsencrypt/archive -type d -exec chmod 755 {} \; &&
+        find /etc/letsencrypt/live -type d -exec chmod 755 {} \; &&
+
+        # Set file permissions
+        find /etc/letsencrypt/archive -type f -name 'privkey*.pem' -exec chmod 640 {} \; &&
+        find /etc/letsencrypt/archive -type f ! -name 'privkey*.pem' -exec chmod 644 {} \; &&
+        
+        # Set ownership
+        chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live &&
+        
+        # Fix symlinks
+        find /etc/letsencrypt/live -type l -exec chown -h root:ssl-cert {} \; &&
+        
         # Verify the changes
         echo 'Verifying permissions:' &&
         ls -lR /etc/letsencrypt/{live,archive}"
@@ -46,19 +56,46 @@ verify_ssl_permissions() {
     local domain="$1"
     log_info "Verifying SSL permissions for $domain..."
     
-    # Check if certificates exist and have correct permissions
     if ! ssh "$SERVER_USER@$SERVER_IP" "
-        [ -d /etc/letsencrypt/live/$domain ] &&
+        # Check if directory exists
+        if [ ! -d /etc/letsencrypt/live/$domain ]; then
+            echo 'Directory does not exist'
+            exit 1
+        fi
+        
+        # Check directory permissions
         [ \$(stat -c '%a' /etc/letsencrypt/live/$domain) = '755' ] &&
         [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain) = '755' ] &&
+        
+        # Check group ownership
         [ \$(stat -c '%G' /etc/letsencrypt/live/$domain) = 'ssl-cert' ] &&
-        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/privkey1.pem) = '640' ]"; then
+        [ \$(stat -c '%G' /etc/letsencrypt/archive/$domain) = 'ssl-cert' ] &&
+        
+        # Check file permissions
+        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/privkey1.pem) = '640' ] &&
+        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/fullchain1.pem) = '644' ]"; then
         log_warn "SSL permissions need to be fixed for $domain"
         return 1
     fi
     
     log_success "SSL permissions are correct for $domain"
     return 0
+}
+
+# Function to ensure nginx has proper permissions
+ensure_nginx_permissions() {
+    log_info "Ensuring nginx has proper permissions..."
+    ssh "$SERVER_USER@$SERVER_IP" "
+        # Ensure nginx user exists in ssl-cert group
+        if ! getent group ssl-cert | grep -q nginx; then
+            usermod -a -G ssl-cert nginx || true
+        fi
+        
+        # Verify nginx can read the certificates
+        if ! su -s /bin/sh nginx -c 'test -r /etc/letsencrypt/live/*/fullchain.pem'; then
+            log_warn 'Nginx might have issues reading certificates'
+            return 1
+        fi"
 }
 
 # Print usage
@@ -252,8 +289,9 @@ if [ "$NEED_SSL" = true ]; then
     log_info "Setting up SSL certificates..."
     ./scripts/manage-ssl.sh "$SERVER_IP" --production
 
-    # Always fix permissions after SSL setup
+    # Fix permissions and verify after SSL setup
     fix_ssl_permissions
+    ensure_nginx_permissions
 else
     log_info "Skipping SSL certificate generation as valid certificates exist"
     
@@ -262,6 +300,7 @@ else
         log_info "Fixing SSL permissions..."
         fix_ssl_permissions
     fi
+    ensure_nginx_permissions
 fi
 
 wait_for_confirmation "Step 4: HTTPS deployment"
@@ -275,7 +314,16 @@ log_info "Starting containers in HTTPS mode..."
 ensure_docker_hub_login
 
 # Fix SSL permissions one last time before starting containers
-fix_ssl_permissions
+if [ -d "/etc/letsencrypt" ]; then
+    # Verify permissions for both domains
+    if ! verify_ssl_permissions "$API_DOMAIN" || ! verify_ssl_permissions "$FRONTEND_DOMAIN"; then
+        log_info "Fixing SSL permissions..."
+        fix_ssl_permissions
+    fi
+    
+    # Ensure nginx has proper access
+    ensure_nginx_permissions
+fi
 
 ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
 
