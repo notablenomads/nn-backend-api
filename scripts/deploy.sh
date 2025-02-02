@@ -454,3 +454,32 @@ else
     echo "1. Test the deployment: curl -k https://$API_DOMAIN/v1/health"
     echo "2. Monitor the logs: ssh $SERVER_USER@$SERVER_IP '$DOCKER_COMPOSE_CMD logs -f'"
 fi
+
+# Function to fix SSL permissions
+fix_ssl_permissions() {
+    log_info "Fixing SSL certificate permissions..."
+    ssh "$SERVER_USER@$SERVER_IP" "
+        # Create ssl-cert group if it doesn't exist
+        groupadd -f ssl-cert &&
+
+        # Set proper ownership and permissions
+        chown -R root:ssl-cert /etc/letsencrypt &&
+        chmod -R 755 /etc/letsencrypt &&
+        chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
+        chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
+        chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
+        chmod 640 /etc/letsencrypt/archive/*/privkey*.pem"
+}
+
+# Ensure SSL permissions are correct before starting containers
+if [ -d "/etc/letsencrypt" ]; then
+    fix_ssl_permissions
+fi
+
+# Start containers
+log_info "Starting containers..."
+ssh "$SERVER_USER@$SERVER_IP" "$DOCKER_COMPOSE_CMD up -d"
+
+# Monitor container logs
+log_info "Monitoring container logs (press Ctrl+C to stop)..."
+ssh "$SERVER_USER@$SERVER_IP" "$DOCKER_COMPOSE_CMD logs -f"
