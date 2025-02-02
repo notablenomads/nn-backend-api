@@ -76,20 +76,37 @@ jobs:
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-          # Get the latest changes from CHANGELOG.md
-          CHANGELOG=$(awk '/^## \[/ { if (p) { exit }; p=1; next } p' CHANGELOG.md | sed '/^$/d')
+          # Extract the latest changes from CHANGELOG.md (everything between the first and second ## headers)
+          CHANGELOG=$(awk '
+            BEGIN { first_header=0; printing=0; }
+            /^## \[/ {
+              if (first_header == 0) {
+                first_header=1;
+                printing=1;
+                print;
+                next;
+              }
+              if (first_header == 1) {
+                exit;
+              }
+            }
+            printing { print }
+          ' CHANGELOG.md)
 
           if [ "$NEW_VERSION" == "${{ steps.package_version.outputs.current_version }}" ]; then
             echo "No version change detected. Skipping release creation."
             exit 0
           fi
 
-          # Create GitHub Release
+          # Create GitHub Release with proper formatting
           gh release create "v$NEW_VERSION" \
-            --title "v$NEW_VERSION" \
+            --title "Release v$NEW_VERSION" \
             --notes "$CHANGELOG" \
             --target main \
             --draft
+
+          echo "Release notes:"
+          echo "$CHANGELOG"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
