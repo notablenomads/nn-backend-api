@@ -137,5 +137,57 @@
     "dist",
     "src"
   ],
-  "packageManager": "yarn@4.6.0"
+  "packageManager": "yarn@4.6.0",
+  "standard-version": {
+    "types": [
+      {
+        "type": "feat",
+        "section": "Features"
+      },
+      {
+        "type": "fix",
+        "section": "Bug Fixes"
+      },
+      {
+        "type": "chore",
+        "hidden": true
+      },
+      {
+        "type": "docs",
+        "hidden": true
+      },
+      {
+        "type": "style",
+        "hidden": true
+      },
+      {
+        "type": "refactor",
+        "section": "Code Refactoring"
+      },
+      {
+        "type": "perf",
+        "section": "Performance Improvements"
+      },
+      {
+        "type": "test",
+        "hidden": true
+      }
+    ],
+    "commitUrlFormat": "{{host}}/{{owner}}/{{repository}}/commit/{{hash}}",
+    "compareUrlFormat": "{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
+    "issueUrlFormat": "{{host}}/{{owner}}/{{repository}}/issues/{{id}}",
+    "releaseCommitMessageFormat": "chore(release): {{currentTag}} [skip ci]",
+    "skip": {
+      "tag": false
+    },
+    "bumpFiles": [
+      {
+        "filename": "package.json",
+        "type": "json"
+      }
+    ],
+    "infile": "CHANGELOG.md",
+    "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n",
+    "preset": "angular"
+  }
 }
