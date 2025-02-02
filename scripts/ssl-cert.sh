@@ -4,7 +4,7 @@
 set -e
 
 # Configuration
-DOMAIN="api.notablenomads.com"
+DOMAIN="${DOMAIN:-api.notablenomads.com}"
 EMAIL="admin@notablenomads.com"
 
 # Colors for output
@@ -52,10 +52,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Stop services that might use port 80
-log_info "Stopping services that might use port 80..."
-docker-compose down 2>/dev/null || true
-killall nginx 2>/dev/null || true
+# Function to stop nginx container
+stop_nginx() {
+    log_info "Stopping nginx container..."
+    docker-compose stop nginx || true
+}
+
+# Function to start nginx container
+start_nginx() {
+    log_info "Starting nginx container..."
+    docker-compose up -d nginx
+}
 
 # Function to copy certificates to docker volume
 copy_certs_to_volume() {
@@ -79,8 +86,10 @@ case $ACTION in
     "renew")
         if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
             log_info "Attempting to renew existing certificates..."
+            stop_nginx
             certbot renew --force-renewal --non-interactive
             copy_certs_to_volume
+            start_nginx
         else
             log_warn "No existing certificates found to renew"
             exit 1
@@ -95,6 +104,7 @@ case $ACTION in
             log_warn "Using staging environment"
         fi
         
+        stop_nginx
         certbot certonly --standalone \
             --preferred-challenges http \
             --email "$EMAIL" \
@@ -106,8 +116,10 @@ case $ACTION in
             
         if [ $? -eq 0 ]; then
             copy_certs_to_volume
+            start_nginx
             log_success "Successfully generated new certificates"
         else
+            start_nginx
             log_error "Failed to generate certificates"
             exit 1
         fi
