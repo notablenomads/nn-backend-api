@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+# [0.5.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.4.0...v0.5.0) (2025-02-02)
+
+
+### Features
+
+* add frontend service and update SSL management for multiple domains ([5caabfc](https://github.com/Notable-Nomads/nn-backend-api/commit/5caabfcb58c96cfc94f346760c2860f080beb3a9))
+* enhance CORS service with improved logging and domain matching logic ([ca49160](https://github.com/Notable-Nomads/nn-backend-api/commit/ca49160138e659d7c27b32e5e403ff3443309a2c))
+* update Content Security Policy for enhanced security and API access ([560e094](https://github.com/Notable-Nomads/nn-backend-api/commit/560e0947b69bb59c71b7038b5e20608cbef46d3f))
+* update CORS restriction logic in configuration ([feff3f2](https://github.com/Notable-Nomads/nn-backend-api/commit/feff3f23137bcc459c8da331023da1d205a354b8))
+* update frontend domain in deployment and SSL management scripts ([db0c1f9](https://github.com/Notable-Nomads/nn-backend-api/commit/db0c1f97991fea5b410070d796589200b66e07e2))
+* update Nginx configuration for improved security and Cloudflare integration ([aa3fd6b](https://github.com/Notable-Nomads/nn-backend-api/commit/aa3fd6b00366525be4357f87d27a17e6d7c950d8))
+* update Nginx configuration for SSL management and server name adjustments ([49af718](https://github.com/Notable-Nomads/nn-backend-api/commit/49af71827b48e4ebe89a865659a102b81edb2f38))
+
+
+
 # [0.4.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.3.0...v0.4.0) (2025-02-02)
 
 
