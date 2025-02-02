@@ -161,13 +161,31 @@ log_info "Checking HTTPS endpoints..."
 # Function to check HTTPS endpoint
 check_https_endpoint() {
     local domain="$1"
+    local is_api="$2"
     local max_retries=5
     local retry_count=0
+    local endpoint
     
+    if [ "$is_api" = true ]; then
+        endpoint="https://$domain/v1/health"
+        success_pattern="status.*ok"
+    else
+        endpoint="https://$domain"
+        success_pattern="200"
+    fi
+    
+    log_info "Checking HTTPS endpoint: $endpoint"
     while [ $retry_count -lt $max_retries ]; do
-        if curl -sk "https://$domain/v1/health" | grep -q "status.*ok"; then
-            log_success "HTTPS endpoint for $domain is working"
-            return 0
+        if [ "$is_api" = true ]; then
+            if curl -sk "$endpoint" | grep -q "$success_pattern"; then
+                log_success "HTTPS endpoint for $domain is working"
+                return 0
+            fi
+        else
+            if curl -sk -o /dev/null -w "%{http_code}" "$endpoint" | grep -q "$success_pattern"; then
+                log_success "HTTPS endpoint for $domain is working"
+                return 0
+            fi
         fi
         retry_count=$((retry_count + 1))
         log_warn "HTTPS check failed for $domain, retrying in 10 seconds... ($retry_count/$max_retries)"
@@ -179,8 +197,8 @@ check_https_endpoint() {
 }
 
 # Check both domains
-check_https_endpoint "$API_DOMAIN"
-check_https_endpoint "$FRONTEND_DOMAIN"
+check_https_endpoint "$API_DOMAIN" true
+check_https_endpoint "$FRONTEND_DOMAIN" false
 
 log_success "Full deployment completed successfully!"
 echo -e "\n📝 Next steps:"
