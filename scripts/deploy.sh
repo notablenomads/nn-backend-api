@@ -303,6 +303,10 @@ if [ -z "$DOCKER_HUB_TOKEN" ] || [ -z "$DOCKER_HUB_USERNAME" ]; then
     exit 1
 fi
 
+# Ensure we're logged out first to prevent stale credentials
+docker logout
+
+# Login with fresh credentials
 echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin || {
     log_error "Failed to log in to Docker Hub"
     exit 1
@@ -316,13 +320,20 @@ $DOCKER_COMPOSE_CMD down --remove-orphans
 log_info "Cleaning up unused resources..."
 docker system prune -f
 
+# Remove existing containers to ensure clean state
+log_info "Removing existing containers..."
+docker rm -f $(docker ps -aq) 2>/dev/null || true
+
 # Pull latest images
 log_info "Pulling latest images..."
 $DOCKER_COMPOSE_CMD pull
 
-# Start all services
-log_info "Starting all services..."
-$DOCKER_COMPOSE_CMD up -d
+# Start services in order
+log_info "Starting services in order..."
+
+# 1. Start PostgreSQL first
+log_info "Starting PostgreSQL..."
+$DOCKER_COMPOSE_CMD up -d postgres
 
 # Wait for PostgreSQL
 log_info "Waiting for PostgreSQL to be healthy..."
@@ -342,6 +353,10 @@ if [ $timeout -eq 0 ]; then
     exit 1
 fi
 
+# 2. Start API service
+log_info "Starting API service..."
+$DOCKER_COMPOSE_CMD up -d api
+
 # Wait for API
 log_info "Waiting for API to be healthy..."
 timeout=120
@@ -360,6 +375,10 @@ if [ $timeout -eq 0 ]; then
     exit 1
 fi
 
+# 3. Start Frontend
+log_info "Starting Frontend..."
+$DOCKER_COMPOSE_CMD up -d frontend
+
 # Wait for Frontend
 log_info "Waiting for Frontend to start..."
 timeout=60
@@ -377,6 +396,28 @@ if [ $timeout -eq 0 ]; then
     $DOCKER_COMPOSE_CMD logs frontend
 fi
 
+# 4. Finally, start Nginx
+log_info "Starting Nginx..."
+$DOCKER_COMPOSE_CMD up -d nginx
+
+# Wait for Nginx
+log_info "Waiting for Nginx to start..."
+timeout=30
+while [ $timeout -gt 0 ]; do
+    if $DOCKER_COMPOSE_CMD exec -T nginx nginx -t > /dev/null 2>&1; then
+        log_success "Nginx configuration is valid!"
+        break
+    fi
+    sleep 1
+    timeout=$((timeout-1))
+done
+
+if [ $timeout -eq 0 ]; then
+    log_error "Nginx failed to start properly. Checking logs..."
+    $DOCKER_COMPOSE_CMD logs nginx
+    exit 1
+fi
+
 # Final verification
 log_info "Verifying all services..."
 $DOCKER_COMPOSE_CMD ps
@@ -389,6 +430,9 @@ if $DOCKER_COMPOSE_CMD ps | grep -E "(unhealthy|Exit)"; then
     $DOCKER_COMPOSE_CMD logs
     exit 1
 fi
+
+# Clean up Docker Hub credentials for security
+docker logout
 
 log_success "All services have been deployed successfully!"
 
