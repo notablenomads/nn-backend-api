@@ -21,37 +21,80 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
-# Function to fix SSL permissions
+# Function to check parent directory permissions
+check_parent_directory_permissions() {
+    log_info "Checking parent directory permissions..."
+    ssh "$SERVER_USER@$SERVER_IP" "
+        # Check /etc permissions
+        if [ \$(stat -c '%a' /etc) -lt 755 ]; then
+            chmod 755 /etc
+        fi
+        
+        # Ensure /etc/letsencrypt parent exists with correct permissions
+        mkdir -p /etc/letsencrypt
+        chmod 755 /etc/letsencrypt
+        
+        # Check selinux context if selinux is enabled
+        if command -v getenforce >/dev/null && [ \$(getenforce) != 'Disabled' ]; then
+            chcon -Rt etc_t /etc/letsencrypt || true
+        fi"
+}
+
+# Enhanced SSL permission fix function
 fix_ssl_permissions() {
     log_info "Fixing SSL certificate permissions..."
     ssh "$SERVER_USER@$SERVER_IP" "
         # Create ssl-cert group if it doesn't exist
         groupadd -f ssl-cert &&
 
+        # Backup existing certificates
+        if [ -d /etc/letsencrypt/archive ]; then
+            timestamp=\$(date +%Y%m%d_%H%M%S)
+            backup_dir=/root/letsencrypt_backup_\$timestamp
+            mkdir -p \$backup_dir
+            cp -rp /etc/letsencrypt/archive \$backup_dir/
+            cp -rp /etc/letsencrypt/live \$backup_dir/
+            log_info 'Created backup at \$backup_dir'
+        fi
+
         # Set base directory permissions
         chown root:ssl-cert /etc/letsencrypt &&
         chmod 755 /etc/letsencrypt &&
 
-        # Set directory permissions
-        find /etc/letsencrypt/archive -type d -exec chmod 755 {} \; &&
-        find /etc/letsencrypt/live -type d -exec chmod 755 {} \; &&
+        # Create and set permissions for renewal hooks directory
+        mkdir -p /etc/letsencrypt/renewal-hooks/{pre,post,deploy}
+        chmod 755 /etc/letsencrypt/renewal-hooks
+        chmod 755 /etc/letsencrypt/renewal-hooks/{pre,post,deploy}
+        chown -R root:ssl-cert /etc/letsencrypt/renewal-hooks
 
-        # Set file permissions
-        find /etc/letsencrypt/archive -type f -name 'privkey*.pem' -exec chmod 640 {} \; &&
-        find /etc/letsencrypt/archive -type f ! -name 'privkey*.pem' -exec chmod 644 {} \; &&
+        # Set directory permissions with error handling
+        find /etc/letsencrypt/archive -type d -exec chmod 755 {} \; || log_warn 'Some archive directories could not be chmod'
+        find /etc/letsencrypt/live -type d -exec chmod 755 {} \; || log_warn 'Some live directories could not be chmod'
+
+        # Set file permissions with error handling
+        find /etc/letsencrypt/archive -type f -name 'privkey*.pem' -exec chmod 640 {} \; || log_warn 'Some private keys could not be chmod'
+        find /etc/letsencrypt/archive -type f ! -name 'privkey*.pem' -exec chmod 644 {} \; || log_warn 'Some public certificates could not be chmod'
         
-        # Set ownership
-        chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live &&
+        # Set ownership with error handling
+        chown -R root:ssl-cert /etc/letsencrypt/archive || log_warn 'Archive ownership could not be set completely'
+        chown -R root:ssl-cert /etc/letsencrypt/live || log_warn 'Live ownership could not be set completely'
         
-        # Fix symlinks
-        find /etc/letsencrypt/live -type l -exec chown -h root:ssl-cert {} \; &&
+        # Fix symlinks with error handling
+        find /etc/letsencrypt/live -type l -exec chown -h root:ssl-cert {} \; || log_warn 'Some symlinks could not be fixed'
+        
+        # Set SELinux context if enabled
+        if command -v selinuxenabled >/dev/null && selinuxenabled; then
+            semanage fcontext -a -t cert_t '/etc/letsencrypt/archive(/.*)?'
+            semanage fcontext -a -t cert_t '/etc/letsencrypt/live(/.*)?'
+            restorecon -R /etc/letsencrypt
+        fi
         
         # Verify the changes
         echo 'Verifying permissions:' &&
-        ls -lR /etc/letsencrypt/{live,archive}"
+        ls -lZ /etc/letsencrypt/{live,archive} 2>/dev/null || ls -l /etc/letsencrypt/{live,archive}"
 }
 
-# Function to verify SSL permissions
+# Enhanced verify SSL permissions function
 verify_ssl_permissions() {
     local domain="$1"
     log_info "Verifying SSL permissions for $domain..."
@@ -63,6 +106,9 @@ verify_ssl_permissions() {
             exit 1
         fi
         
+        # Check parent directory permissions
+        [ \$(stat -c '%a' /etc/letsencrypt) = '755' ] &&
+        
         # Check directory permissions
         [ \$(stat -c '%a' /etc/letsencrypt/live/$domain) = '755' ] &&
         [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain) = '755' ] &&
@@ -73,7 +119,10 @@ verify_ssl_permissions() {
         
         # Check file permissions
         [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/privkey1.pem) = '640' ] &&
-        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/fullchain1.pem) = '644' ]"; then
+        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/fullchain1.pem) = '644' ] &&
+        
+        # Check renewal hooks permissions if they exist
+        { [ ! -d /etc/letsencrypt/renewal-hooks ] || [ \$(stat -c '%a' /etc/letsencrypt/renewal-hooks) = '755' ]; }"; then
         log_warn "SSL permissions need to be fixed for $domain"
         return 1
     fi
@@ -82,20 +131,42 @@ verify_ssl_permissions() {
     return 0
 }
 
-# Function to ensure nginx has proper permissions
+# Enhanced nginx permissions function
 ensure_nginx_permissions() {
     log_info "Ensuring nginx has proper permissions..."
     ssh "$SERVER_USER@$SERVER_IP" "
-        # Ensure nginx user exists in ssl-cert group
-        if ! getent group ssl-cert | grep -q nginx; then
+        # Ensure ssl-cert group exists
+        groupadd -f ssl-cert
+
+        # Ensure nginx user exists and is in ssl-cert group
+        if ! getent passwd nginx >/dev/null; then
+            log_warn 'nginx user does not exist, it should be created by the nginx container'
+        else
             usermod -a -G ssl-cert nginx || true
         fi
         
         # Verify nginx can read the certificates
-        if ! su -s /bin/sh nginx -c 'test -r /etc/letsencrypt/live/*/fullchain.pem'; then
+        if ! su -s /bin/sh nginx -c 'test -r /etc/letsencrypt/live/*/fullchain.pem' 2>/dev/null; then
             log_warn 'Nginx might have issues reading certificates'
+            
+            # Additional debugging information
+            echo 'Current permissions:'
+            ls -la /etc/letsencrypt/live/
+            echo 'Groups for nginx user:'
+            groups nginx || true
+            echo 'SELinux context:'
+            ls -Z /etc/letsencrypt/live/ 2>/dev/null || true
+            
             return 1
-        fi"
+        fi
+        
+        # Verify nginx can traverse the directory structure
+        for dir in /etc /etc/letsencrypt /etc/letsencrypt/live /etc/letsencrypt/archive; do
+            if [ ! -x \"\$dir\" ]; then
+                log_warn \"nginx cannot traverse \$dir\"
+                return 1
+            fi
+        done"
 }
 
 # Print usage
@@ -289,11 +360,22 @@ if [ "$NEED_SSL" = true ]; then
     log_info "Setting up SSL certificates..."
     ./scripts/manage-ssl.sh "$SERVER_IP" --production
 
+    # Check parent directory permissions first
+    check_parent_directory_permissions
+    
     # Fix permissions and verify after SSL setup
     fix_ssl_permissions
     ensure_nginx_permissions
+    
+    # Double-check permissions after fixes
+    if ! verify_ssl_permissions "$API_DOMAIN" || ! verify_ssl_permissions "$FRONTEND_DOMAIN"; then
+        log_warn "SSL permissions could not be fixed completely. Manual intervention may be required."
+    fi
 else
     log_info "Skipping SSL certificate generation as valid certificates exist"
+    
+    # Check parent directory permissions first
+    check_parent_directory_permissions
     
     # Verify and fix permissions if needed
     if ! verify_ssl_permissions "$API_DOMAIN" || ! verify_ssl_permissions "$FRONTEND_DOMAIN"; then
@@ -301,6 +383,11 @@ else
         fix_ssl_permissions
     fi
     ensure_nginx_permissions
+    
+    # Double-check permissions after fixes
+    if ! verify_ssl_permissions "$API_DOMAIN" || ! verify_ssl_permissions "$FRONTEND_DOMAIN"; then
+        log_warn "SSL permissions could not be fixed completely. Manual intervention may be required."
+    fi
 fi
 
 wait_for_confirmation "Step 4: HTTPS deployment"
