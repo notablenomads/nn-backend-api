@@ -93,8 +93,9 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter(config));
 
-  // Enable Swagger documentation based on configuration
-  if (config.get('app.enableSwagger')) {
+  // Swagger documentation setup
+  const isSwaggerEnabled = config.get('app.enableSwagger');
+  if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
       .setTitle(packageInfo.name)
@@ -108,11 +109,11 @@ async function bootstrap() {
 
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
-  const docsUrl = config.get('app.enableSwagger') ? `${appUrl}/${apiPrefix}/docs` : null;
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
-  if (docsUrl) {
-    logger.log(`API Documentation available at: ${docsUrl}`);
+  logger.log(`Swagger documentation is ${isSwaggerEnabled ? 'enabled' : 'disabled'}`);
+  if (isSwaggerEnabled) {
+    logger.log(`API Documentation available at: ${appUrl}/${apiPrefix}/docs`);
   }
 }
 
