@@ -5,6 +5,7 @@ export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
   HOST: Joi.string().default('localhost'),
   API_PREFIX: Joi.string().default('v1'),
+  ENABLE_SWAGGER: Joi.boolean().default(false).description('Whether to enable Swagger documentation'),
   CORS_ENABLED_DOMAINS: Joi.string()
     .default('*.notablenomads.com')
     .description('Comma-separated list of allowed domains'),
