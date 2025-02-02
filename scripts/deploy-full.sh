@@ -79,6 +79,15 @@ check_ssl_certificates() {
     return 1
 }
 
+# Function to ensure Docker Hub login on remote server
+ensure_docker_hub_login() {
+    log_info "Ensuring Docker Hub authentication on remote server..."
+    ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u mrdevx --password-stdin" || {
+        log_error "Failed to authenticate with Docker Hub on remote server"
+        return 1
+    }
+}
+
 # Validate input parameters
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
@@ -171,6 +180,11 @@ wait_for_confirmation "Step 2: HTTP-only deployment"
 log_info "Step 2: Deploying with HTTP-only configuration..."
 DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP" --http-only
 
+# Ensure containers are running after HTTP deployment
+log_info "Starting containers in HTTP mode..."
+ensure_docker_hub_login
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
+
 # Verify HTTP deployment
 if ! check_deployment_health "http"; then
     log_error "HTTP deployment verification failed"
@@ -206,6 +220,11 @@ wait_for_confirmation "Step 4: HTTPS deployment"
 # Step 4: Deploy with HTTPS
 log_info "Step 4: Deploying with HTTPS configuration..."
 DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP" --production
+
+# Ensure containers are running after HTTPS deployment
+log_info "Starting containers in HTTPS mode..."
+ensure_docker_hub_login
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
 
 # Verify HTTPS deployment
 if ! check_deployment_health "https"; then
