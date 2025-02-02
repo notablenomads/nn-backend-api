@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+# [0.3.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.2.0...v0.3.0) (2025-02-02)
+
+
+### Features
+
+* **release:** improve CHANGELOG extraction and format release title ([efcc94a](https://github.com/Notable-Nomads/nn-backend-api/commit/efcc94a62f1ab1df840b971590eaba9d3d2e9b70))
+
+
+
 # [0.2.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.1.9...v0.2.0) (2025-02-02)
 
 
