@@ -21,6 +21,54 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
+# Function to fix SSL permissions
+fix_ssl_permissions() {
+    log_info "Fixing SSL certificate permissions..."
+    ssh "$SERVER_USER@$SERVER_IP" "
+        # Create ssl-cert group if it doesn't exist
+        groupadd -f ssl-cert &&
+
+        # Set base directory permissions
+        chmod 755 /etc/letsencrypt &&
+
+        # Set directory permissions
+        chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live &&
+        chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/ &&
+
+        # Set file permissions
+        chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
+        chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
+        chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
+        chmod 640 /etc/letsencrypt/archive/*/privkey*.pem &&
+
+        # Set ownership
+        chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live &&
+
+        # Verify permissions
+        echo 'Verifying permissions:' &&
+        ls -lR /etc/letsencrypt/{live,archive} | cat"
+}
+
+# Function to verify SSL permissions
+verify_ssl_permissions() {
+    local domain="$1"
+    log_info "Verifying SSL permissions for $domain..."
+    
+    # Check if certificates exist and have correct permissions
+    if ! ssh "$SERVER_USER@$SERVER_IP" "
+        [ -d /etc/letsencrypt/live/$domain ] &&
+        [ \$(stat -c '%a' /etc/letsencrypt/live/$domain) = '755' ] &&
+        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain) = '755' ] &&
+        [ \$(stat -c '%G' /etc/letsencrypt/live/$domain) = 'ssl-cert' ] &&
+        [ \$(stat -c '%a' /etc/letsencrypt/archive/$domain/privkey1.pem) = '640' ]"; then
+        log_warn "SSL permissions need to be fixed for $domain"
+        return 1
+    fi
+    
+    log_success "SSL permissions are correct for $domain"
+    return 0
+}
+
 # Print usage
 usage() {
     echo "Usage: $0 <server-ip> [--force-cleanup] [--force-ssl]"
@@ -212,45 +260,16 @@ if [ "$NEED_SSL" = true ]; then
     log_info "Setting up SSL certificates..."
     ./scripts/manage-ssl.sh "$SERVER_IP" --production
 
-    # Fix certificate permissions
-    log_info "Fixing SSL certificate permissions..."
-    ssh "$SERVER_USER@$SERVER_IP" "
-        # Set base directory permissions
-        chmod 755 /etc/letsencrypt &&
-
-        # Set directory permissions
-        chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live &&
-        chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/ &&
-
-        # Set file permissions (more permissive for Nginx)
-        chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
-        chmod 640 /etc/letsencrypt/archive/*/privkey*.pem &&
-
-        # Set ownership
-        chown -R root:root /etc/letsencrypt"
+    # Always fix permissions after SSL setup
+    fix_ssl_permissions
 else
     log_info "Skipping SSL certificate generation as valid certificates exist"
     
-    # Fix certificate permissions anyway to ensure they are correct
-    log_info "Ensuring SSL certificate permissions are correct..."
-    ssh "$SERVER_USER@$SERVER_IP" "
-        # Set base directory permissions
-        chmod 755 /etc/letsencrypt &&
-
-        # Set directory permissions
-        chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live &&
-        chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/ &&
-
-        # Set file permissions (more permissive for Nginx)
-        chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/chain*.pem &&
-        chmod 644 /etc/letsencrypt/archive/*/cert*.pem &&
-        chmod 640 /etc/letsencrypt/archive/*/privkey*.pem &&
-
-        # Set ownership
-        chown -R root:root /etc/letsencrypt"
+    # Verify and fix permissions if needed
+    if ! verify_ssl_permissions "$API_DOMAIN" || ! verify_ssl_permissions "$FRONTEND_DOMAIN"; then
+        log_info "Fixing SSL permissions..."
+        fix_ssl_permissions
+    fi
 fi
 
 wait_for_confirmation "Step 4: HTTPS deployment"
@@ -262,6 +281,10 @@ DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP" --producti
 # Ensure containers are running after HTTPS deployment
 log_info "Starting containers in HTTPS mode..."
 ensure_docker_hub_login
+
+# Fix SSL permissions one last time before starting containers
+fix_ssl_permissions
+
 ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
 
 # Verify HTTPS deployment
