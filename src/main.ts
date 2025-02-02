@@ -26,16 +26,20 @@ async function bootstrap() {
     helmet({
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
+          defaultSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'http:', 'https:', 'data:', 'blob:'],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'cdn.socket.io', '*.notablenomads.com'],
           connectSrc: [
             "'self'",
+            'ws://api.notablenomads.com',
+            'wss://api.notablenomads.com',
+            'http://api.notablenomads.com',
+            'https://api.notablenomads.com',
             'wss://api.production.platform.notablenomads.com',
             'wss://api.staging.platform.notablenomads.com',
             'https://*.notablenomads.com',
             'https://*.amazonaws.com',
-            'https://*.notablenomads.com',
-            'https://*.amazonaws.com',
+            'ws://*.notablenomads.com',
+            'wss://*.notablenomads.com',
           ],
           styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],

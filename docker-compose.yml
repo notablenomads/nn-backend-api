@@ -98,6 +98,24 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  frontend:
+    image: mrdevx/nn-landing:latest
+    expose:
+      - '3030'
+    environment:
+      PORT: 3030
+      NEXT_PUBLIC_PORT: 3030
+      NEXT_PORT: 3030
+      HOSTNAME: '0.0.0.0'
+    networks:
+      - app-network
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
 networks:
   app-network:
     driver: bridge
