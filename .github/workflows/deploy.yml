@@ -14,6 +14,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Create .env.production file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env.production
+          echo "Created .env.production file"
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
