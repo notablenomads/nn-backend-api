@@ -27,10 +27,6 @@ import { IDatabaseConfig } from '../config/config.interface';
           migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
           // Enable logging only in non-production environments
           logging: !isProd,
-          // Add SSL configuration for production
-          ssl: isProd ? { rejectUnauthorized: false } : false,
-          // Add connection pool configuration
-          poolSize: isProd ? 20 : 10,
           // Add retry configuration
           retryAttempts: 3,
           retryDelay: 3000,
