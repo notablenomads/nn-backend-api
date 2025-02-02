@@ -211,8 +211,20 @@ if [ "$NEED_SSL" = true ]; then
     wait_for_confirmation "SSL certificate setup"
     log_info "Setting up SSL certificates..."
     ./scripts/manage-ssl.sh "$SERVER_IP" --production
+
+    # Fix certificate permissions
+    log_info "Fixing SSL certificate permissions..."
+    ssh "$SERVER_USER@$SERVER_IP" "chown -R root:root /etc/letsencrypt && \
+        chmod -R 644 /etc/letsencrypt/archive/*/privkey*.pem && \
+        chmod -R 600 /etc/letsencrypt/live/*/privkey*.pem"
 else
     log_info "Skipping SSL certificate generation as valid certificates exist"
+    
+    # Fix certificate permissions anyway to ensure they are correct
+    log_info "Ensuring SSL certificate permissions are correct..."
+    ssh "$SERVER_USER@$SERVER_IP" "chown -R root:root /etc/letsencrypt && \
+        chmod -R 644 /etc/letsencrypt/archive/*/privkey*.pem && \
+        chmod -R 600 /etc/letsencrypt/live/*/privkey*.pem"
 fi
 
 wait_for_confirmation "Step 4: HTTPS deployment"
