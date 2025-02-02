@@ -98,6 +98,30 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  frontend:
+    image: mrdevx/nn-landing:latest
+    expose:
+      - '3030'
+    environment:
+      PORT: 3030
+      NEXT_PUBLIC_PORT: 3030
+      NEXT_PORT: 3030
+      HOSTNAME: '0.0.0.0'
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3030/ || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
 networks:
   app-network:
     driver: bridge
