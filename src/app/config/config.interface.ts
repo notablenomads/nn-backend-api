@@ -3,6 +3,7 @@ export interface IAppConfig {
   port: number;
   host: string;
   apiPrefix: string;
+  enableSwagger: boolean;
   corsEnabledDomains: string[];
   corsRestrict: boolean;
 }
