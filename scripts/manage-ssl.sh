@@ -9,6 +9,7 @@ SERVER_USER="root"
 API_DOMAIN="api.notablenomads.com"
 FRONTEND_DOMAIN="notablenomads.com"
 DOMAINS=("$API_DOMAIN" "$FRONTEND_DOMAIN")
+DEBUG_LOG="/root/ssl_debug.log"
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,12 +32,37 @@ check_command() {
     fi
 }
 
+# Validate domain DNS
+validate_domain_dns() {
+    local domain="$1"
+    local server_ip="$2"
+    
+    log_info "Validating DNS for $domain..."
+    local resolved_ip
+    resolved_ip=$(dig +short "$domain" | tail -n1)
+    
+    if [ -z "$resolved_ip" ]; then
+        log_error "Could not resolve domain $domain"
+        return 1
+    fi
+    
+    if [ "$resolved_ip" != "$server_ip" ]; then
+        log_error "Domain $domain resolves to $resolved_ip, expected $server_ip"
+        return 1
+    fi
+    
+    log_success "DNS validation passed for $domain"
+    return 0
+}
+
 # Check if SSH connection can be established
 check_ssh_connection() {
+    log_info "Checking SSH connection to $1..."
     if ! ssh -o ConnectTimeout=10 "$1" "echo 'SSH connection successful'" &> /dev/null; then
         log_error "Could not establish SSH connection to $1"
         exit 1
     fi
+    log_success "SSH connection successful"
 }
 
 # Print usage
@@ -87,10 +113,15 @@ done
 # Check required commands
 check_command "ssh"
 check_command "scp"
+check_command "dig"
 
 # Verify SSH connection
-log_info "Verifying SSH connection..."
 check_ssh_connection "$SERVER_USER@$SERVER_IP"
+
+# Validate DNS for all domains
+for domain in "${DOMAINS[@]}"; do
+    validate_domain_dns "$domain" "$SERVER_IP" || exit 1
+done
 
 # Copy SSL management script
 log_info "Copying SSL certificate management script..."
@@ -118,10 +149,26 @@ cd /root
 # Create SSL backup directory
 mkdir -p /root/ssl_backup
 
+# Save debug information
+log_info "Saving debug information to $DEBUG_LOG..."
+{
+    echo "=== System Information ==="
+    uname -a
+    echo
+    echo "=== Docker Status ==="
+    docker ps -a
+    echo
+    echo "=== Docker Compose Status ==="
+    docker-compose ps
+    echo
+    echo "=== Certificate Status ==="
+    certbot certificates || true
+} > "$DEBUG_LOG" 2>&1
+
 # Install certbot standalone
 log_info "Installing certbot..."
 apt-get update
-apt-get install -y certbot
+apt-get install -y certbot openssl
 
 # Make SSL script executable
 chmod +x ssl-cert.sh
@@ -130,6 +177,7 @@ chmod +x ssl-cert.sh
 for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
     log_info "Managing SSL certificates for \$DOMAIN..."
     export DOMAIN
+    
     if [ -d "/etc/letsencrypt/live/\${DOMAIN}" ]; then
         if [ "${FORCE_RENEW}" = "true" ]; then
             log_info "Force renewing certificates for \$DOMAIN..."
@@ -148,9 +196,10 @@ for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
     fi
 done
 
-# Restart nginx to apply any certificate changes
-log_info "Restarting nginx..."
-docker-compose restart nginx
+# Final verification
+log_info "Performing final verification..."
+docker-compose ps >> "$DEBUG_LOG" 2>&1
+certbot certificates >> "$DEBUG_LOG" 2>&1
 
 log_success "SSL certificate management completed!"
 SSLSETUP
