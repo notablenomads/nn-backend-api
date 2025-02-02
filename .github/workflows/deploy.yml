@@ -24,14 +24,21 @@ jobs:
           cp .yarnrc.yml-example .yarnrc.yml
           echo "Created .yarnrc.yml file from example"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: 'arm64,arm'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/arm64,linux/arm/v7
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -44,6 +51,7 @@ jobs:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
           AUTO_CONFIRM: true
           SERVER_IP: ${{ secrets.SERVER_IP }}
+          DOCKER_DEFAULT_PLATFORM: linux/arm64
         run: |
           chmod +x ./scripts/deploy-full.sh
           ./scripts/deploy-full.sh "$SERVER_IP"
