@@ -1,7 +1,6 @@
 # Notable Nomads Backend API
 
 Backend API service for Notable Nomads platform.
-Backend API service for Notable Nomads platform.
 
 ## Features
 
@@ -13,43 +12,21 @@ Backend API service for Notable Nomads platform.
 ## Tech Stack
 
 - **Framework**: NestJS v10
-- **Runtime**: Node.js ≥14
+- **Runtime**: Node.js ≥18
 - **Package Manager**: Yarn v4.6.0
-- **Cloud Provider**: AWS (ECS Fargate)
-- **Infrastructure**: AWS Copilot
+- **Database**: PostgreSQL 16
+- **Container**: Docker & Docker Compose
 
 ## Prerequisites
 
 - Node.js 18+
-- Node.js 18+
-- Docker
-- Docker Compose
+- Docker & Docker Compose
 - SSH access to deployment server
-- Docker Compose
-- SSH access to deployment server
+- Domain with DNS configured
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and adjust the values. You can manage environment variables using the provided script:
-
-```bash
-# Set or update a variable
-./scripts/manage-env.sh <server-ip> --set KEY=VALUE
-
-# Get a variable's value
-./scripts/manage-env.sh <server-ip> --get KEY
-
-# List all variables (local and server)
-./scripts/manage-env.sh <server-ip> --list
-
-# Backup current environment
-./scripts/manage-env.sh <server-ip> --backup
-
-# Restore from backup
-./scripts/manage-env.sh <server-ip> --restore env_backup_file.env
-```
-
-Required environment variables:
+Copy `.env.example` to `.env` and adjust the values:
 
 ```bash
 # Application
@@ -60,24 +37,20 @@ API_PREFIX=v1
 
 # CORS
 CORS_ENABLED_DOMAINS=*.notablenomads.com
-
-# CORS
-CORS_ENABLED_DOMAINS=*.notablenomads.com
 CORS_RESTRICT=false
 
 # AWS Configuration
 AWS_REGION=eu-central-1
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
 
 # Email Configuration
 EMAIL_FROM_ADDRESS=noreply@notablenomads.com
 EMAIL_TO_ADDRESS=contact@notablenomads.com
-```
 
-## Development
+# AI Configuration
+GEMINI_API_KEY=your_gemini_api_key
+```
 
 ## Development
 
@@ -86,33 +59,38 @@ EMAIL_TO_ADDRESS=contact@notablenomads.com
 yarn install
 
 # Run in development mode
-# Run in development mode
 yarn start:dev
 
 # Run tests
 yarn test
+
+# Run e2e tests
+yarn test:e2e
+
+# Lint and format code
+yarn lint
+yarn format
 ```
 
-## Deployment Scripts
+## Deployment
 
-### 1. Main Deployment (`deploy.sh`)
+### 1. Main Deployment Script
 
 ```bash
 # Deploy the application
 DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh <server-ip>
 ```
 
-This script:
+### 2. SSL Certificate Management
 
-- Verifies DNS configuration
-- Builds and pushes Docker image
-- Sets up server configuration
-- Deploys the application
+The project includes two scripts for managing SSL certificates:
 
-### 2. SSL Certificate Management (`manage-ssl.sh`)
+#### `scripts/manage-ssl.sh`
+
+Main script for managing SSL certificates across all domains:
 
 ```bash
-# Generate staging certificates (for testing)
+# Test with staging certificates
 ./scripts/manage-ssl.sh <server-ip> --staging
 
 # Generate production certificates
@@ -120,35 +98,40 @@ This script:
 
 # Force certificate renewal
 ./scripts/manage-ssl.sh <server-ip> --production --force-renew
+
+# Clean up and regenerate certificates
+./scripts/manage-ssl.sh <server-ip> --production --cleanup
 ```
 
-### 3. Server Cleanup (`cleanup.sh`)
+#### `scripts/ssl-cert.sh`
+
+Server-side script for individual domain certificate operations:
+
+```bash
+# Check certificates
+./ssl-cert.sh --check
+
+# Force renew certificates
+./ssl-cert.sh --force-renew
+
+# Generate new certificates
+./ssl-cert.sh --new [--staging]
+
+# Clean up certificates
+./ssl-cert.sh --cleanup
+```
+
+### 3. Server Cleanup
 
 ```bash
 # Clean up server (preserves SSL certificates)
 ./scripts/cleanup.sh <server-ip>
 
-# Force cleanup (removes everything including SSL certificates)
+# Force cleanup (removes everything)
 ./scripts/cleanup.sh <server-ip> --force
 ```
 
-## GitHub Actions Deployment
-
-The repository includes a GitHub Actions workflow for automated deployments. Required secrets:
-
-- `DOCKER_HUB_USERNAME`: Your Docker Hub username
-- `DOCKER_HUB_TOKEN`: Docker Hub access token
-- `SSH_PRIVATE_KEY`: SSH key for server access
-- `SSH_KNOWN_HOSTS`: Server SSH fingerprint
-- `ENV_FILE`: Complete contents of your .env file
-
-## API Documentation
-
-API documentation is available at `/v1/docs` in non-production environments.
-
 ## Monitoring
-
-Monitor application logs:
 
 ```bash
 # Follow all logs
@@ -161,281 +144,54 @@ ssh root@<server-ip> 'docker compose logs -f api'
 ssh root@<server-ip> 'docker compose logs --tail=100 api'
 ```
 
-## API Endpoints
+## API Documentation
 
-### Health Check
+API documentation is available at `/v1/docs` in non-production environments.
 
-- `GET /v1/health`: System health status
+## Security Considerations
 
-### Email
+1. **Certificate Storage**:
 
-- `POST /v1/email/contact`: Submit contact form
-  ```typescript
-  {
-    name: string; // 2-100 characters
-    email: string; // Valid email address
-    message: string; // 10-5000 characters
-  }
-  ```
+   - Main storage: `/etc/letsencrypt/`
+   - Docker volume: `/root/certbot/conf/`
 
-### Blog
+2. **File Permissions**:
 
-- `GET /v1/blog/posts`: Get team blog posts
-  - Query Parameters:
-    - `page`: Page number (default: 1)
-    - `limit`: Posts per page (default: 10)
+   - Certificate files: 644
+   - Directories: 755
 
-### AI Chat
+3. **Backups**:
 
-- WebSocket endpoint: `/chat`
-- Events:
-  - `sendMessage`: Send a chat message
-  - `startStream`: Start streaming chat response
-  - `messageResponse`: Receive chat response
-  - `streamChunk`: Receive streaming response chunk
-  - `streamComplete`: Stream completion event
+   - Automatic backup before operations
+   - Location: `/root/ssl_backup/<domain>/<timestamp>/`
+   - Includes certificates and configurations
 
-## Development
+4. **SSL/TLS**:
+   - Automatic renewal every 90 days
+   - Modern cipher configuration
+   - HTTP/2 enabled
+   - Security headers configured
+
+## Troubleshooting
+
+1. **Certificate Issues**:
 
 ```bash
-# Run tests
-yarn test
+# Check certificate status
+ssh root@<server-ip> 'certbot certificates'
 
-# Run e2e tests
-yarn test:e2e
-
-# Run tests with coverage
-yarn test:cov
-
-# Lint code
-yarn lint
-
-# Format code
-yarn format
+# View debug logs
+ssh root@<server-ip> 'cat /root/ssl_debug.log'
 ```
 
-## Deployment
-
-### Prerequisites
-
-- Node.js ≥18.0.0
-- Yarn v4.6.0
-- Docker
-- GPG (for secure environment management)
-- A domain name pointing to your server
-
-### Initial Production Deployment
-
-1. Set up environment variables securely:
-
-   ```bash
-   # Encrypt your .env file locally
-   gpg --symmetric --cipher-algo AES256 .env
-   ```
-
-   You'll be prompted to create an encryption password. Save this password securely!
-
-2. Deploy the application:
-
-   ```bash
-   # Deploy the application
-   ./deploy.sh your-server-ip
-   ```
-
-3. Set up secure environment on the server:
-
-   ```bash
-   # Create secure directory
-   ssh root@your-server-ip "mkdir -p /root/secrets && chmod 700 /root/secrets"
-
-   # Copy encrypted file
-   scp .env.gpg root@your-server-ip:/root/
-
-   # Decrypt on server (you'll be prompted for the password)
-   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-   ```
-
-4. Generate SSL certificate:
-
-   ```bash
-   ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
-   ```
-
-5. Verify deployment:
-
-   ```bash
-   # Check if the API is accessible
-   curl https://api.notablenomads.com/v1/health
-
-   # View logs
-   ssh root@your-server-ip "docker-compose logs -f"
-   ```
-
-### Redeployment Process
-
-When redeploying with environment changes:
-
-1. Update and re-encrypt your local `.env` file:
-
-   ```bash
-   # Re-encrypt with any changes
-   gpg --symmetric --cipher-algo AES256 .env
-   ```
-
-2. Deploy and update environment:
-
-   ```bash
-   # Deploy code changes
-   ./deploy.sh your-server-ip
-
-   # Update encrypted environment
-   scp .env.gpg root@your-server-ip:/root/
-   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-
-   # Restart services to apply changes
-   ssh root@your-server-ip "cd /root && docker-compose restart"
-   ```
-
-When redeploying without environment changes:
+2. **Service Issues**:
 
 ```bash
-# Simply deploy code changes
-./deploy.sh your-server-ip
-```
+# Check service status
+ssh root@<server-ip> 'docker-compose ps'
 
-### Environment Security
-
-The deployment uses a secure environment setup:
-
-1. **Local Environment**:
-
-   - `.env`: Contains plain text environment variables (never committed)
-   - `.env.gpg`: Encrypted version of `.env` (safe to transfer)
-
-2. **Server Environment**:
-
-   - `/root/secrets/.env`: Decrypted environment file (restricted permissions)
-   - `/root/.env.gpg`: Encrypted backup (safe to keep)
-
-3. **Security Measures**:
-   - Environment variables are encrypted at rest
-   - Decrypted file is stored in a restricted directory
-   - Secrets directory is mounted read-only in containers
-   - Access requires GPG decryption password
-   - Regular rotation of encryption passwords recommended
-
-### Environment Management
-
-#### Viewing Variables
-
-```bash
-# View encrypted env file content (requires password)
-ssh root@your-server-ip "gpg -d /root/.env.gpg"
-
-# View variables in running container
-ssh root@your-server-ip "docker-compose exec api env"
-```
-
-#### Updating Variables
-
-1. Update your local `.env` file
-2. Re-encrypt and deploy:
-
-   ```bash
-   # Re-encrypt
-   gpg --symmetric --cipher-algo AES256 .env
-
-   # Copy and decrypt on server
-   scp .env.gpg root@your-server-ip:/root/
-   ssh root@your-server-ip "gpg -d /root/.env.gpg > /root/secrets/.env && chmod 600 /root/secrets/.env"
-
-   # Restart services
-   ssh root@your-server-ip "cd /root && docker-compose restart"
-   ```
-
-#### Security Best Practices
-
-- Never commit `.env` or `.env.gpg` files
-- Store GPG encryption password in a secure password manager
-- Rotate encryption passwords regularly (recommended every 90 days)
-- Monitor access logs for unauthorized attempts
-- Limit SSH access to authorized IPs only
-- Regularly audit environment variable access
-- Keep encrypted backups of environment files
-
-### Server Configuration
-
-The production server uses the following setup:
-
-- **Web Server**: Nginx (reverse proxy)
-- **SSL**: Let's Encrypt (auto-renewal every 12 hours)
-- **Container Orchestration**: Docker Compose
-- **Health Monitoring**: Built-in health checks
-- **Security**:
-  - HTTPS redirection
-  - HTTP/2 enabled
-  - Modern SSL configuration
-  - Security headers
-  - WebSocket support
-
-### Security Headers
-
-The following security headers are enabled:
-
-```nginx
-add_header Strict-Transport-Security "max-age=63072000" always;
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-XSS-Protection "1; mode=block" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header Referrer-Policy "no-referrer-when-downgrade" always;
-add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-```
-
-### Troubleshooting
-
-1. If the API is not accessible:
-
-```bash
-# Check if containers are running
-ssh root@your-server-ip "docker-compose ps"
-
-# Check logs for errors
-ssh root@your-server-ip "docker-compose logs"
-```
-
-2. If SSL certificate is not working:
-
-```bash
-# Verify certificate files exist
-ssh root@your-server-ip "ls -la /root/ssl/"
-
-# Check nginx configuration
-ssh root@your-server-ip "docker-compose exec nginx nginx -t"
-
-# Regenerate certificate
-ssh root@your-server-ip "cd /root && ./setup-ssl.sh"
-```
-
-3. If WebSocket connection fails:
-
-```bash
-# Check nginx logs for WebSocket errors
-ssh root@your-server-ip "docker-compose logs nginx | grep -i websocket"
-
-# Verify WebSocket configuration in nginx.conf
-ssh root@your-server-ip "cat /root/nginx.conf | grep -A 10 'proxy_set_header Upgrade'"
-```
-
-### Backup
-
-To backup the deployment configuration:
-
-```bash
-# Create a backup directory
-ssh root@your-server-ip "cd /root && tar -czf backup-\$(date +%Y%m%d).tar.gz docker-compose.yml nginx.conf ssl/"
-
-# Download the backup locally
-scp root@your-server-ip:/root/backup-*.tar.gz ./backups/
+# View service logs
+ssh root@<server-ip> 'docker-compose logs'
 ```
 
 ## Contributing
@@ -444,11 +200,7 @@ scp root@your-server-ip:/root/backup-*.tar.gz ./backups/
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Versioning
-
-We use [semantic-release](https://github.com/semantic-release/semantic-release) for versioning. For the versions available, see the [tags on this repository](https://github.com/Notable-Nomads/nn-backend-api/tags).
+5. Create a Pull Request
 
 ## License
 
@@ -457,388 +209,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Authors
 
 - **Mahdi Rashidi** - _Initial work_ - [mrdevx](https://github.com/mrdevx)
-
-# Notable Nomads Backend API Deployment
-
-This repository contains the backend API for Notable Nomads along with deployment scripts for managing the application deployment and SSL certificates.
-
-## Deployment Scripts
-
-The deployment process is managed through several scripts in the `scripts/` directory:
-
-### 1. Main Deployment Script (`scripts/deploy.sh`)
-
-The main script for deploying the application to the server.
-
-```bash
-# Deploy with staging SSL certificates (for testing)
-DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
-
-# Deploy with production SSL certificates
-DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
-```
-
-This script:
-
-- Verifies DNS configuration
-- Builds and pushes Docker image
-- Sets up server configuration
-- Manages SSL certificates
-- Deploys the application
-
-### 2. SSL Certificate Management (`scripts/ssl-cert.sh`)
-
-Dedicated script for managing SSL certificates.
-
-```bash
-# Check existing certificates
-./ssl-cert.sh
-
-# Force renew existing certificates
-./ssl-cert.sh --force-renew
-
-# Generate new staging certificates
-./ssl-cert.sh --new --staging
-
-# Generate new production certificates
-./ssl-cert.sh --new
-```
-
-### 3. Cleanup Script (`scripts/cleanup.sh`)
-
-Script for cleaning up the server environment.
-
-```bash
-# Normal cleanup (preserves SSL certificates)
-./scripts/cleanup.sh 91.107.249.14
-
-# Full cleanup (removes everything including SSL certificates)
-./scripts/cleanup.sh 91.107.249.14 --force
-```
-
-## Directory Structure
-
-```
-.
-├── scripts/
-│   ├── deploy.sh      # Main deployment script
-│   ├── ssl-cert.sh    # SSL certificate management
-│   └── cleanup.sh     # Server cleanup script
-├── docker-compose.yml # Docker services configuration
-├── nginx.conf        # Nginx reverse proxy configuration
-└── .env             # Environment variables
-```
-
-## Deployment Process
-
-1. **Prerequisites**:
-
-   - Docker Hub account and access token
-   - Domain name pointing to your server (A record)
-   - SSH access to the server
-
-2. **Initial Deployment**:
-
-   ```bash
-   # First deployment with staging certificates
-   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14
-
-   # Once verified, deploy with production certificates
-   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
-   ```
-
-3. **SSL Certificate Management**:
-
-   ```bash
-   # On the server, you can manage certificates
-   cd /root
-   ./ssl-cert.sh --force-renew  # Renew certificates
-   ./ssl-cert.sh --new          # Generate new certificates
-   ```
-
-4. **Cleanup If Needed**:
-
-   ```bash
-   # Clean up while preserving certificates
-   ./scripts/cleanup.sh 91.107.249.14
-
-   # Full cleanup including certificates
-   ./scripts/cleanup.sh 91.107.249.14 --force
-   ```
-
-## Configuration Files
-
-### docker-compose.yml
-
-Contains service definitions for:
-
-- API service (Node.js application)
-- Nginx reverse proxy
-- SSL certificate management
-
-### nginx.conf
-
-Nginx configuration including:
-
-- SSL/TLS settings
-- Proxy settings
-- Security headers
-- HTTP to HTTPS redirection
-
-### .env
-
-Environment variables for:
-
-- API configuration
-- Database settings
-- Other application settings
-
-## Troubleshooting
-
-1. **SSL Certificate Issues**:
-
-   ```bash
-   # Check certificate status
-   ./ssl-cert.sh
-
-   # Force certificate renewal
-   ./ssl-cert.sh --force-renew
-   ```
-
-2. **Deployment Issues**:
-
-   ```bash
-   # Check logs
-   ssh root@91.107.249.14 'docker-compose logs'
-
-   # Clean up and retry
-   ./scripts/cleanup.sh 91.107.249.14
-   DOCKER_HUB_TOKEN=your_token_here ./scripts/deploy.sh 91.107.249.14 --production
-   ```
-
-3. **Container Health Checks**:
-
-   ```bash
-   # Check container status
-   ssh root@91.107.249.14 'docker-compose ps'
-
-   # Check specific service logs
-   ssh root@91.107.249.14 'docker-compose logs api'
-   ```
-
-## Security Notes
-
-1. Always store sensitive information in `.env` files
-2. Use Docker Hub tokens instead of passwords
-3. Keep SSL certificates backed up
-4. Use production certificates only after staging is verified
-5. Regularly update dependencies and Docker images
-
-## Maintenance
-
-1. **Certificate Renewal**:
-
-   - SSL certificates auto-renew every 3 months
-   - Force renewal if needed: `./ssl-cert.sh --force-renew`
-
-2. **Updates**:
-
-   - Regular deployment updates the application
-   - Use cleanup script before major updates
-
-3. **Backups**:
-   - SSL certificates are automatically backed up
-   - Database backups should be configured separately
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## SSL Certificate Management
-
-The project includes two scripts for managing SSL certificates:
-
-### 1. `scripts/manage-ssl.sh`
-
-This is the main script for managing SSL certificates across all domains. It handles both the API and frontend domains.
-
-```bash
-Usage: ./scripts/manage-ssl.sh <server-ip> [--staging|--production] [--force-renew] [--cleanup]
-```
-
-#### Options:
-
-- `<server-ip>`: The IP address of your server (Required)
-- `--staging`: Use Let's Encrypt staging environment for testing (default)
-- `--production`: Use Let's Encrypt production environment for real certificates
-- `--force-renew`: Force renewal of existing certificates
-- `--cleanup`: Clean up all certificates and start fresh
-
-#### Examples:
-
-1. Initial setup with staging certificates (for testing):
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --staging
-```
-
-2. Generate production certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production
-```
-
-3. Force renewal of existing certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production --force-renew
-```
-
-4. Clean up and regenerate certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production --cleanup
-```
-
-### 2. `scripts/ssl-cert.sh`
-
-This script handles individual domain certificate operations. It's typically called by `manage-ssl.sh` but can be used directly on the server if needed.
-
-```bash
-Usage: ./ssl-cert.sh [--staging] [--force-renew] [--new] [--check] [--cleanup]
-```
-
-#### Options:
-
-- `--staging`: Use Let's Encrypt staging environment
-- `--force-renew`: Force renewal of existing certificate
-- `--new`: Generate new certificate
-- `--check`: Check existing certificate
-- `--cleanup`: Clean up certificates for the domain
-
-#### Environment Variables:
-
-- `DOMAIN`: The domain to manage certificates for (default: api.notablenomads.com)
-- `EMAIL`: Contact email for Let's Encrypt (default: admin@notablenomads.com)
-
-## Certificate Management Process
-
-### Initial Setup
-
-1. Ensure DNS is configured:
-
-   - `api.notablenomads.com` points to your server IP
-   - `notablenomads.com` points to your server IP
-
-2. Test with staging certificates first:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --staging
-```
-
-3. Once successful, generate production certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production
-```
-
-### Certificate Renewal
-
-Certificates will be automatically renewed by the certbot timer. However, you can force renewal:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production --force-renew
-```
-
-### Troubleshooting
-
-1. Check certificate status:
-
-```bash
-ssh root@91.107.249.14 'certbot certificates'
-```
-
-2. View debug logs:
-
-```bash
-ssh root@91.107.249.14 'cat /root/ssl_debug.log'
-```
-
-3. Check service status:
-
-```bash
-ssh root@91.107.249.14 'docker-compose ps'
-```
-
-4. View service logs:
-
-```bash
-ssh root@91.107.249.14 'docker-compose logs'
-```
-
-### Certificate Cleanup
-
-If you need to start fresh:
-
-1. Clean up all certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --cleanup
-```
-
-2. Generate new certificates:
-
-```bash
-./scripts/manage-ssl.sh 91.107.249.14 --production
-```
-
-## Important Notes
-
-1. **Staging vs Production**
-
-   - Always test with `--staging` first
-   - Staging certificates are not trusted but free to generate
-   - Production certificates have rate limits
-
-2. **DNS Requirements**
-
-   - Both domains must point to your server IP
-   - DNS changes may take time to propagate
-   - The script validates DNS before proceeding
-
-3. **Port Requirements**
-
-   - Port 80 must be available for certificate generation
-   - Port 443 must be available for HTTPS
-   - The script will attempt to free port 80 if needed
-
-4. **Backup Management**
-
-   - Certificates are automatically backed up before operations
-   - Backups are stored in `/root/ssl_backup/<domain>/<timestamp>/`
-   - Each backup includes certificates and renewal configurations
-
-5. **Service Management**
-   - Services are automatically stopped during certificate operations
-   - Services are restarted after successful certificate installation
-   - Health checks ensure services are properly running
-
-## Security Considerations
-
-1. Certificate files are stored in:
-
-   - `/etc/letsencrypt/` (main storage)
-   - `/root/certbot/conf/` (Docker volume)
-
-2. Permissions are automatically managed:
-
-   - Certificate files: 644
-   - Directories: 755
-
-3. Backups are created before any major operation
-
-4. All operations are logged for debugging
