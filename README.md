@@ -52,6 +52,43 @@ EMAIL_TO_ADDRESS=contact@notablenomads.com
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
+### Managing Environment Variables
+
+You can manage environment variables using the `manage-env.sh` script:
+
+```bash
+# Set or update a variable
+./scripts/manage-env.sh <server-ip> --set KEY=VALUE
+
+# Get a variable's value
+./scripts/manage-env.sh <server-ip> --get KEY
+
+# List all variables
+./scripts/manage-env.sh <server-ip> --list
+
+# Backup current environment
+./scripts/manage-env.sh <server-ip> --backup
+
+# Restore from backup
+./scripts/manage-env.sh <server-ip> --restore env_backup_file.env
+```
+
+Example: Disabling CORS and restarting services:
+
+```bash
+# Backup current environment first
+./scripts/manage-env.sh <server-ip> --backup
+
+# Disable CORS by setting CORS_RESTRICT to true
+./scripts/manage-env.sh <server-ip> --set CORS_RESTRICT=true
+
+# Restart services to apply changes
+ssh root@<server-ip> "cd /root && docker-compose restart"
+
+# Verify the change
+./scripts/manage-env.sh <server-ip> --get CORS_RESTRICT
+```
+
 ## Development
 
 ```bash
