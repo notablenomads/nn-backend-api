@@ -251,24 +251,16 @@ fi
 for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
     log_info "Managing SSL certificates for \$DOMAIN..."
     export DOMAIN
-    
-    if [ -d "/etc/letsencrypt/live/\${DOMAIN}" ]; then
-        if [ "${FORCE_RENEW}" = "true" ]; then
-            log_info "Force renewing certificates for \$DOMAIN..."
-            ./ssl-cert.sh --force-renew
-        else
-            log_info "Checking existing certificates for \$DOMAIN..."
-            ./ssl-cert.sh --check
-        fi
-    else
-        log_info "No existing certificates found for \$DOMAIN, generating new ones..."
-        if [ "${USE_STAGING}" = "true" ]; then
-            ./ssl-cert.sh --new --staging
-        else
-            ./ssl-cert.sh --new
-        fi
-    fi
+    export USE_STAGING
+    export FORCE_RENEW
+    ./ssl-cert.sh
 done
+
+# Fix certificate permissions
+log_info "Fixing SSL certificate permissions..."
+chown -R root:root /etc/letsencrypt
+chmod -R 644 /etc/letsencrypt/archive/*/privkey*.pem
+chmod -R 600 /etc/letsencrypt/live/*/privkey*.pem
 
 # Final verification
 log_info "Performing final verification..."
@@ -289,7 +281,7 @@ log_info "Performing final verification..."
 log_success "SSL certificate management completed!"
 SSLSETUP
 
-log_success "SSL management completed successfully!"
+log_success "SSL certificates have been configured on the remote server!"
 echo -e "\n📝 Next steps:"
 for DOMAIN in "${DOMAINS[@]}"; do
     echo "1. Verify SSL certificate for $DOMAIN:"
