@@ -71,15 +71,33 @@ check_ssh_connection() {
     log_success "SSH connection successful"
 }
 
-# Docker Hub login function
-docker_login() {
-    local host="$1"
-    if [ -z "$DOCKER_HUB_TOKEN" ]; then
-        log_error "DOCKER_HUB_TOKEN is not set. Please set it as an environment variable or pass it when running the script."
-        echo "You can create a token at https://hub.docker.com/settings/security"
-        exit 1
+# Function to ensure Docker Hub login
+ensure_docker_hub_login() {
+    local target="${1:-local}"  # 'local' or 'remote'
+    log_info "Ensuring Docker Hub authentication for $target..."
+    
+    if [ "$target" = "remote" ]; then
+        # Ensure remote server is logged out first to prevent stale credentials
+        ssh "$SERVER_USER@$SERVER_IP" "docker logout"
+        
+        # Login on remote server
+        ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCKER_HUB_USERNAME' --password-stdin" || {
+            log_error "Failed to authenticate with Docker Hub on remote server"
+            return 1
+        }
+    else
+        # Ensure local machine is logged out first
+        docker logout
+        
+        # Login on local machine
+        echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin || {
+            log_error "Failed to authenticate with Docker Hub on local machine"
+            return 1
+        }
     fi
-    echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin "$host"
+    
+    log_success "Docker Hub authentication successful for $target"
+    return 0
 }
 
 # Print usage
@@ -173,7 +191,7 @@ check_command "scp"
 
 # Step 2: Set up Docker Hub authentication
 log_info "Step 2: Setting up Docker Hub authentication"
-echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+ensure_docker_hub_login "local"
 
 # Step 3: Build and push required images
 log_info "Step 3: Building and pushing required images"
@@ -268,6 +286,9 @@ scp "$ENV_FILE" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
 ssh "$SERVER_USER@$SERVER_IP" "chmod 600 $REMOTE_ENV_PATH && ln -sf $REMOTE_ENV_PATH /root/.env"
 
 # Step 7: Execute deployment on server
+log_info "Step 7: Setting up Docker Hub authentication on remote server"
+ensure_docker_hub_login "remote"
+
 ssh "$SERVER_USER@$SERVER_IP" DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" DOCKER_HUB_USERNAME="$DOCKER_HUB_USERNAME" << 'DEPLOY'
 #!/bin/bash
 
@@ -625,8 +646,8 @@ fi
 
 # Start containers
 log_info "Starting containers..."
-ssh "$SERVER_USER@$SERVER_IP" "$DOCKER_COMPOSE_CMD up -d"
+$DOCKER_COMPOSE_CMD pull && $DOCKER_COMPOSE_CMD up -d
 
 # Monitor container logs
 log_info "Monitoring container logs (press Ctrl+C to stop)..."
-ssh "$SERVER_USER@$SERVER_IP" "$DOCKER_COMPOSE_CMD logs -f"
+$DOCKER_COMPOSE_CMD logs -f

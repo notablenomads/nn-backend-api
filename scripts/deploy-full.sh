@@ -227,13 +227,33 @@ check_ssl_certificates() {
     return 1
 }
 
-# Function to ensure Docker Hub login on remote server
+# Function to ensure Docker Hub login
 ensure_docker_hub_login() {
-    log_info "Ensuring Docker Hub authentication on remote server..."
-    ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u mrdevx --password-stdin" || {
-        log_error "Failed to authenticate with Docker Hub on remote server"
-        return 1
-    }
+    local target="${1:-local}"  # 'local' or 'remote'
+    log_info "Ensuring Docker Hub authentication for $target..."
+    
+    if [ "$target" = "remote" ]; then
+        # Ensure remote server is logged out first to prevent stale credentials
+        ssh "$SERVER_USER@$SERVER_IP" "docker logout"
+        
+        # Login on remote server
+        ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u mrdevx --password-stdin" || {
+            log_error "Failed to authenticate with Docker Hub on remote server"
+            return 1
+        }
+    else
+        # Ensure local machine is logged out first
+        docker logout
+        
+        # Login on local machine
+        echo "$DOCKER_HUB_TOKEN" | docker login -u mrdevx --password-stdin || {
+            log_error "Failed to authenticate with Docker Hub on local machine"
+            return 1
+        }
+    fi
+    
+    log_success "Docker Hub authentication successful for $target"
+    return 0
 }
 
 # Validate input parameters
@@ -330,8 +350,10 @@ DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP" --http-onl
 
 # Ensure containers are running after HTTP deployment
 log_info "Starting containers in HTTP mode..."
-ensure_docker_hub_login
-ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
+ensure_docker_hub_login "remote"
+
+# Pull and start containers
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose pull && docker compose up -d"
 
 # Verify HTTP deployment
 if ! check_deployment_health "http"; then
@@ -398,7 +420,7 @@ DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP" --producti
 
 # Ensure containers are running after HTTPS deployment
 log_info "Starting containers in HTTPS mode..."
-ensure_docker_hub_login
+ensure_docker_hub_login "remote"
 
 # Fix SSL permissions one last time before starting containers
 if [ -d "/etc/letsencrypt" ]; then
@@ -412,7 +434,8 @@ if [ -d "/etc/letsencrypt" ]; then
     ensure_nginx_permissions
 fi
 
-ssh "$SERVER_USER@$SERVER_IP" "cd /root && DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' docker compose pull && docker compose up -d"
+# Pull and start containers with proper authentication
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose pull && docker compose up -d"
 
 # Verify HTTPS deployment
 if ! check_deployment_health "https"; then
