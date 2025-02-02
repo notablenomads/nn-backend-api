@@ -36,7 +36,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
-          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@stable --activate
 
       - name: Configure Git
         run: |
@@ -44,7 +48,9 @@ jobs:
           git config --local user.name "github-actions[bot]"
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: |
+          yarn install --immutable
+          yarn --version
 
       - name: Verify package.json version
         id: package_version
