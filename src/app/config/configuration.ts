@@ -8,7 +8,7 @@ export default (): IConfig => ({
     apiPrefix: process.env.API_PREFIX || 'api',
     enableSwagger: process.env.ENABLE_SWAGGER !== 'false',
     corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',') || [],
-    corsRestrict: process.env.CORS_RESTRICT === 'true',
+    corsRestrict: process.env.CORS_RESTRICT === 'false',
   },
   ai: {
     geminiApiKey: process.env.***REMOVED*** || '',
