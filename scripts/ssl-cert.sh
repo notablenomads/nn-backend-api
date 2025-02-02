@@ -6,6 +6,8 @@ set -e
 # Configuration
 DOMAIN="${DOMAIN:-api.notablenomads.com}"
 EMAIL="admin@notablenomads.com"
+CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+BACKUP_DIR="/root/ssl_backup/$DOMAIN"
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,39 +46,93 @@ while [[ $# -gt 0 ]]; do
             ACTION="new"
             shift
             ;;
+        --check)
+            ACTION="check"
+            shift
+            ;;
         *)
             log_error "Unknown argument: $1"
-            echo "Usage: $0 [--staging] [--force-renew] [--new]"
+            echo "Usage: $0 [--staging] [--force-renew] [--new] [--check]"
             exit 1
             ;;
     esac
 done
 
-# Function to stop nginx container
-stop_nginx() {
-    log_info "Stopping nginx container..."
-    docker-compose stop nginx || true
+# Function to backup existing certificates
+backup_certs() {
+    if [ -d "$CERT_DIR" ]; then
+        log_info "Backing up existing certificates..."
+        mkdir -p "$BACKUP_DIR"
+        cp -rL "$CERT_DIR"/* "$BACKUP_DIR/"
+        log_success "Certificates backed up to $BACKUP_DIR"
+    fi
 }
 
-# Function to start nginx container
-start_nginx() {
-    log_info "Starting nginx container..."
-    docker-compose up -d nginx
+# Function to verify certificates
+verify_certs() {
+    if [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; then
+        log_error "Certificate files are missing"
+        return 1
+    fi
+
+    # Verify certificate validity
+    openssl x509 -in "$CERT_DIR/fullchain.pem" -noout -text > /dev/null 2>&1 || {
+        log_error "Invalid certificate"
+        return 1
+    }
+
+    log_success "Certificate verification passed"
+    return 0
+}
+
+# Function to stop services
+stop_services() {
+    log_info "Stopping services..."
+    docker-compose stop nginx frontend || true
+}
+
+# Function to start services
+start_services() {
+    log_info "Starting services..."
+    docker-compose up -d nginx frontend
+    
+    # Wait for services to be healthy
+    local retries=0
+    while [ $retries -lt 5 ]; do
+        if docker-compose ps | grep -q "healthy"; then
+            log_success "Services are healthy"
+            return 0
+        fi
+        log_info "Waiting for services to be healthy..."
+        sleep 5
+        ((retries++))
+    done
+    
+    log_warn "Services started but health check timed out"
 }
 
 # Function to copy certificates to docker volume
 copy_certs_to_volume() {
     log_info "Copying certificates to docker volume..."
-    mkdir -p /root/certbot/conf
-    cp -rL /etc/letsencrypt/* /root/certbot/conf/
+    local target_dir="/root/certbot/conf/live/$DOMAIN"
+    mkdir -p "$target_dir"
+    cp -rL "$CERT_DIR"/* "$target_dir/"
+    
+    # Verify copy
+    if ! diff -r "$CERT_DIR" "$target_dir" > /dev/null 2>&1; then
+        log_error "Certificate copy verification failed"
+        return 1
+    fi
+    
+    log_success "Certificates copied successfully"
 }
 
 case $ACTION in
     "check")
-        if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+        if [ -d "$CERT_DIR" ]; then
             log_info "Found existing certificates, checking expiry..."
             certbot certificates
-            copy_certs_to_volume
+            verify_certs && copy_certs_to_volume
         else
             log_warn "No existing certificates found"
             exit 1
@@ -84,12 +140,13 @@ case $ACTION in
         ;;
         
     "renew")
-        if [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+        if [ -d "$CERT_DIR" ]; then
             log_info "Attempting to renew existing certificates..."
-            stop_nginx
+            backup_certs
+            stop_services
             certbot renew --force-renewal --non-interactive
-            copy_certs_to_volume
-            start_nginx
+            verify_certs && copy_certs_to_volume
+            start_services
         else
             log_warn "No existing certificates found to renew"
             exit 1
@@ -104,7 +161,9 @@ case $ACTION in
             log_warn "Using staging environment"
         fi
         
-        stop_nginx
+        backup_certs
+        stop_services
+        
         certbot certonly --standalone \
             --preferred-challenges http \
             --email "$EMAIL" \
@@ -114,13 +173,12 @@ case $ACTION in
             $STAGING_FLAG \
             --non-interactive
             
-        if [ $? -eq 0 ]; then
-            copy_certs_to_volume
-            start_nginx
+        if verify_certs && copy_certs_to_volume; then
+            start_services
             log_success "Successfully generated new certificates"
         else
-            start_nginx
-            log_error "Failed to generate certificates"
+            start_services
+            log_error "Failed to generate or copy certificates"
             exit 1
         fi
         ;;
