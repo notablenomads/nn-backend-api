@@ -78,6 +78,7 @@ EMAIL_TO_ADDRESS=contact@notablenomads.com
 ```
 
 ## Development
+
 ## Development
 
 ```bash
@@ -656,3 +657,188 @@ Environment variables for:
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
+
+## SSL Certificate Management
+
+The project includes two scripts for managing SSL certificates:
+
+### 1. `scripts/manage-ssl.sh`
+
+This is the main script for managing SSL certificates across all domains. It handles both the API and frontend domains.
+
+```bash
+Usage: ./scripts/manage-ssl.sh <server-ip> [--staging|--production] [--force-renew] [--cleanup]
+```
+
+#### Options:
+
+- `<server-ip>`: The IP address of your server (Required)
+- `--staging`: Use Let's Encrypt staging environment for testing (default)
+- `--production`: Use Let's Encrypt production environment for real certificates
+- `--force-renew`: Force renewal of existing certificates
+- `--cleanup`: Clean up all certificates and start fresh
+
+#### Examples:
+
+1. Initial setup with staging certificates (for testing):
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --staging
+```
+
+2. Generate production certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production
+```
+
+3. Force renewal of existing certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production --force-renew
+```
+
+4. Clean up and regenerate certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production --cleanup
+```
+
+### 2. `scripts/ssl-cert.sh`
+
+This script handles individual domain certificate operations. It's typically called by `manage-ssl.sh` but can be used directly on the server if needed.
+
+```bash
+Usage: ./ssl-cert.sh [--staging] [--force-renew] [--new] [--check] [--cleanup]
+```
+
+#### Options:
+
+- `--staging`: Use Let's Encrypt staging environment
+- `--force-renew`: Force renewal of existing certificate
+- `--new`: Generate new certificate
+- `--check`: Check existing certificate
+- `--cleanup`: Clean up certificates for the domain
+
+#### Environment Variables:
+
+- `DOMAIN`: The domain to manage certificates for (default: api.notablenomads.com)
+- `EMAIL`: Contact email for Let's Encrypt (default: admin@notablenomads.com)
+
+## Certificate Management Process
+
+### Initial Setup
+
+1. Ensure DNS is configured:
+
+   - `api.notablenomads.com` points to your server IP
+   - `notablenomads.com` points to your server IP
+
+2. Test with staging certificates first:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --staging
+```
+
+3. Once successful, generate production certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production
+```
+
+### Certificate Renewal
+
+Certificates will be automatically renewed by the certbot timer. However, you can force renewal:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production --force-renew
+```
+
+### Troubleshooting
+
+1. Check certificate status:
+
+```bash
+ssh root@91.107.249.14 'certbot certificates'
+```
+
+2. View debug logs:
+
+```bash
+ssh root@91.107.249.14 'cat /root/ssl_debug.log'
+```
+
+3. Check service status:
+
+```bash
+ssh root@91.107.249.14 'docker-compose ps'
+```
+
+4. View service logs:
+
+```bash
+ssh root@91.107.249.14 'docker-compose logs'
+```
+
+### Certificate Cleanup
+
+If you need to start fresh:
+
+1. Clean up all certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --cleanup
+```
+
+2. Generate new certificates:
+
+```bash
+./scripts/manage-ssl.sh 91.107.249.14 --production
+```
+
+## Important Notes
+
+1. **Staging vs Production**
+
+   - Always test with `--staging` first
+   - Staging certificates are not trusted but free to generate
+   - Production certificates have rate limits
+
+2. **DNS Requirements**
+
+   - Both domains must point to your server IP
+   - DNS changes may take time to propagate
+   - The script validates DNS before proceeding
+
+3. **Port Requirements**
+
+   - Port 80 must be available for certificate generation
+   - Port 443 must be available for HTTPS
+   - The script will attempt to free port 80 if needed
+
+4. **Backup Management**
+
+   - Certificates are automatically backed up before operations
+   - Backups are stored in `/root/ssl_backup/<domain>/<timestamp>/`
+   - Each backup includes certificates and renewal configurations
+
+5. **Service Management**
+   - Services are automatically stopped during certificate operations
+   - Services are restarted after successful certificate installation
+   - Health checks ensure services are properly running
+
+## Security Considerations
+
+1. Certificate files are stored in:
+
+   - `/etc/letsencrypt/` (main storage)
+   - `/root/certbot/conf/` (Docker volume)
+
+2. Permissions are automatically managed:
+
+   - Certificate files: 644
+   - Directories: 755
+
+3. Backups are created before any major operation
+
+4. All operations are logged for debugging
