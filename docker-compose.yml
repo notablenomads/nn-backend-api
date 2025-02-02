@@ -40,8 +40,8 @@ services:
       test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/v1/health || exit 1']
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
     logging:
       driver: 'json-file'
       options:
@@ -88,7 +88,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'nginx -t']
+      test: ['CMD-SHELL', 'nginx -t || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
