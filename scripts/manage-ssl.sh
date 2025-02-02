@@ -129,20 +129,21 @@ chmod +x ssl-cert.sh
 # Handle SSL certificates for each domain
 for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
     log_info "Managing SSL certificates for \$DOMAIN..."
+    export DOMAIN
     if [ -d "/etc/letsencrypt/live/\${DOMAIN}" ]; then
         if [ "${FORCE_RENEW}" = "true" ]; then
             log_info "Force renewing certificates for \$DOMAIN..."
-            DOMAIN=\$DOMAIN ./ssl-cert.sh --force-renew
+            ./ssl-cert.sh --force-renew
         else
             log_info "Checking existing certificates for \$DOMAIN..."
-            DOMAIN=\$DOMAIN ./ssl-cert.sh --check
+            ./ssl-cert.sh --check
         fi
     else
         log_info "No existing certificates found for \$DOMAIN, generating new ones..."
         if [ "${USE_STAGING}" = "true" ]; then
-            DOMAIN=\$DOMAIN ./ssl-cert.sh --new --staging
+            ./ssl-cert.sh --new --staging
         else
-            DOMAIN=\$DOMAIN ./ssl-cert.sh --new
+            ./ssl-cert.sh --new
         fi
     fi
 done

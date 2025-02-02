@@ -20,6 +20,9 @@ export ENV_FILE=.env.production
 # Create a token at https://hub.docker.com/settings/security
 DOCKER_HUB_TOKEN="${DOCKER_HUB_TOKEN:-}"  # Set this as environment variable or pass it when running the script
 
+# Deployment mode
+DEPLOY_MODE="http-only"  # Default to HTTP-only mode
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -60,14 +63,49 @@ docker_login() {
     echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin "$host"
 }
 
+# Print usage
+usage() {
+    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip> [--http-only|--production]"
+    echo
+    echo "Options:"
+    echo "  --http-only    Deploy with HTTP-only configuration (default)"
+    echo "  --production   Deploy with HTTPS configuration"
+    exit 1
+}
+
 # Validate input parameters
 if [ -z "$1" ]; then
     log_error "Server IP address is required."
-    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
-    exit 1
+    usage
 fi
 
 SERVER_IP="$1"
+shift
+
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --http-only)
+            DEPLOY_MODE="http-only"
+            shift
+            ;;
+        --production)
+            DEPLOY_MODE="production"
+            shift
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# Check Docker Hub token
+if [ -z "$DOCKER_HUB_TOKEN" ]; then
+    log_error "DOCKER_HUB_TOKEN is not set. Please set it as an environment variable."
+    echo "You can create a token at https://hub.docker.com/settings/security"
+    exit 1
+fi
 
 # Check if .env.production exists
 if [ ! -f "$ENV_FILE" ]; then
@@ -108,39 +146,89 @@ check_command "docker"
 check_command "ssh"
 check_command "scp"
 
-# Step 2: Build and push Docker image
-log_info "Step 2: Building and pushing Docker images"
+# Step 2: Set up Docker Hub authentication
+log_info "Step 2: Setting up Docker Hub authentication"
+echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
 
-# Login to Docker Hub locally
-log_info "Logging in to Docker Hub locally..."
-docker_login ""
+# Step 3: Build and push required images
+log_info "Step 3: Building and pushing required images"
+log_info "Building API image..."
+docker build -t "$DOCKER_HUB_USERNAME/$APP_NAME:latest" .
+log_info "Pushing API image..."
+docker push "$DOCKER_HUB_USERNAME/$APP_NAME:latest"
 
-log_info "Building and pushing Docker images..."
+log_info "Pulling frontend image..."
 docker pull "$DOCKER_HUB_USERNAME/$FRONTEND_APP_NAME:latest"
 
-log_info "Logging out from Docker Hub locally..."
-docker logout
+# Step 4: Prepare nginx configuration
+log_info "Step 4: Preparing nginx configuration"
+if [ "$DEPLOY_MODE" = "http-only" ]; then
+    log_info "Using HTTP-only configuration..."
+    cat > nginx.conf.http << 'EOF'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.notablenomads.com;
 
-log_success "Successfully pulled frontend image $DOCKER_HUB_USERNAME/$FRONTEND_APP_NAME:latest"
+    location / {
+        proxy_pass http://api:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
 
-# Step 3: Set up server
-log_info "Step 3: Setting up server"
-check_ssh_connection "$SERVER_USER@$SERVER_IP"
+    location /socket.io/ {
+        proxy_pass http://api:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
 
-# Create required directories
-log_info "Creating required directories..."
-ssh "$SERVER_USER@$SERVER_IP" "mkdir -p /root/certbot/conf"
+server {
+    listen 80;
+    listen [::]:80;
+    server_name notablenomads.com;
 
-# Login to Docker Hub on remote server
-log_info "Setting up Docker Hub authentication on remote server..."
-ssh "$SERVER_USER@$SERVER_IP" "echo '$DOCKER_HUB_TOKEN' | docker login -u '$DOCKER_HUB_USERNAME' --password-stdin"
+    location / {
+        proxy_pass http://frontend:3030;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+}
+EOF
+    scp nginx.conf.http "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
+else
+    log_info "Using HTTPS configuration..."
+    scp nginx.conf "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
+fi
 
-# Copy configuration files
-log_info "Copying configuration files..."
-scp docker-compose.yml nginx.conf "$SERVER_USER@$SERVER_IP:/root/"
+# Step 5: Deploy to server
+log_info "Step 5: Deploying to server"
+scp docker-compose.yml "$SERVER_USER@$SERVER_IP:/root/"
+scp .env.production "$SERVER_USER@$SERVER_IP:/root/.env"
 
-# Create a temporary script for remote execution
-cat << 'EOF' > /tmp/remote_deploy.sh
+# Step 6: Execute deployment on server
+ssh "$SERVER_USER@$SERVER_IP" DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" DOCKER_HUB_USERNAME="$DOCKER_HUB_USERNAME" << 'DEPLOY'
 #!/bin/bash
 
 # Colors for output
@@ -158,52 +246,35 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root
 
-# Ensure environment file exists and has correct permissions
-if [ ! -f ".env.production" ]; then
-    log_error "Production environment file not found!"
+# Login to Docker Hub with passed credentials
+log_info "Logging in to Docker Hub..."
+if [ -z "$DOCKER_HUB_TOKEN" ] || [ -z "$DOCKER_HUB_USERNAME" ]; then
+    log_error "Docker Hub credentials not passed to remote server"
     exit 1
 fi
 
-# Make sure the .env file is removed before copying
-rm -f .env
-cp .env.production .env
-chmod 600 .env
+echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin || {
+    log_error "Failed to log in to Docker Hub"
+    exit 1
+}
 
-# Export environment variables for use in script
-export $(cat .env | grep -v '^#' | xargs)
-
-# Verify environment file contents
-log_info "Verifying environment file..."
-required_vars=("DATABASE_USERNAME" "DATABASE_PASSWORD" "DATABASE_NAME" "DATABASE_HOST")
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        log_error "Required variable $var is not set in environment file!"
-        exit 1
-    fi
-done
-
-# Stop and remove existing containers
-log_info "Cleaning up existing containers..."
-docker-compose down -v || true
-docker rm -f $(docker ps -aq) 2>/dev/null || true
-
-# Remove existing volumes to ensure clean state
-log_info "Cleaning up volumes..."
-docker volume rm $(docker volume ls -q) 2>/dev/null || true
+# Stop existing services
+log_info "Stopping existing services..."
+docker-compose down
 
 # Pull latest images
 log_info "Pulling latest images..."
 docker-compose pull
 
-# After cleaning up containers and volumes
-log_info "Starting PostgreSQL..."
-docker-compose up -d postgres
+# Start all services
+log_info "Starting all services..."
+docker-compose up -d
 
-# Wait for PostgreSQL to be healthy
+# Wait for PostgreSQL
 log_info "Waiting for PostgreSQL to be healthy..."
 timeout=60
 while [ $timeout -gt 0 ]; do
-    if docker-compose exec postgres pg_isready -U postgres -h localhost > /dev/null 2>&1; then
+    if docker-compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
         log_success "PostgreSQL is healthy!"
         break
     fi
@@ -217,104 +288,71 @@ if [ $timeout -eq 0 ]; then
     exit 1
 fi
 
-# Verify PostgreSQL connection with credentials
-log_info "Verifying PostgreSQL connection..."
-if ! docker-compose exec postgres psql -U postgres -d nn-backend-db -c '\conninfo' > /dev/null 2>&1; then
-    log_error "Failed to connect to PostgreSQL with configured credentials. Checking connection details..."
-    docker-compose exec postgres psql -U postgres -c '\l'
-    docker-compose logs postgres
-    exit 1
-fi
+# Wait for API
+log_info "Waiting for API to be healthy..."
+timeout=60
+while [ $timeout -gt 0 ]; do
+    if curl -s http://localhost:3000/v1/health > /dev/null 2>&1; then
+        log_success "API is healthy!"
+        break
+    fi
+    sleep 1
+    timeout=$((timeout-1))
+done
 
-# Verify database exists
-log_info "Verifying database exists..."
-if ! docker-compose exec postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw nn-backend-db; then
-    log_info "Database does not exist, creating..."
-    docker-compose exec postgres createdb -U postgres nn-backend-db
-fi
-
-# Start the API service separately
-log_info "Starting API service..."
-docker-compose up -d api
-
-# Run database migrations
-log_info "Running database migrations..."
-docker-compose exec api yarn migration:run
-
-# Start the frontend service
-log_info "Starting frontend service..."
-docker-compose up -d frontend
-
-# Wait for services to start
-log_info "Waiting for services to initialize..."
-sleep 10
-
-# Check API logs for database connection
-log_info "Checking API database connection..."
-if docker-compose logs api | grep -q "Unable to connect to the database"; then
-    log_error "API failed to connect to the database. Logs:"
+if [ $timeout -eq 0 ]; then
+    log_error "API health check failed. Checking logs..."
     docker-compose logs api
     exit 1
 fi
 
-# Check frontend service
-log_info "Checking frontend service..."
-if ! docker-compose ps frontend | grep -q "Up"; then
-    log_error "Frontend service failed to start. Logs:"
+# Wait for Frontend
+log_info "Waiting for Frontend to start..."
+timeout=30
+while [ $timeout -gt 0 ]; do
+    if curl -s http://localhost:3030 > /dev/null 2>&1; then
+        log_success "Frontend is responding!"
+        break
+    fi
+    sleep 1
+    timeout=$((timeout-1))
+done
+
+if [ $timeout -eq 0 ]; then
+    log_warn "Frontend health check timed out. Checking logs..."
     docker-compose logs frontend
-    exit 1
 fi
 
-# Start remaining services
-log_info "Starting remaining services..."
-docker-compose up -d
+# Final verification
+log_info "Verifying all services..."
+docker-compose ps
 
-# Quick health check
-log_info "Verifying services health..."
-sleep 5  # Give services a moment to initialize
-
-# Check if containers are running
-if ! docker-compose ps | grep -q "Up"; then
-    log_error "Services failed to start. Checking logs..."
+# Check for any containers in unhealthy or exit state
+if docker-compose ps | grep -E "(unhealthy|Exit)"; then
+    log_error "Some services are not healthy or have exited:"
+    docker-compose ps
+    log_info "Checking logs for failed services..."
     docker-compose logs
     exit 1
 fi
 
-# Simple API health check
-if ! curl -s http://localhost:3000/v1/health > /dev/null; then
-    log_warn "API health check failed, but containers are running. Check logs for details:"
-    docker-compose logs api
-fi
+log_success "All services have been deployed successfully!"
 
-# Simple Frontend health check
-if ! curl -s http://localhost:3030/ > /dev/null; then
-    log_warn "Frontend health check failed, but containers are running. Check logs for details:"
-    docker-compose logs frontend
-fi
+DEPLOY
 
-# Check nginx configuration
-log_info "Checking nginx configuration..."
-if ! docker-compose exec nginx nginx -t; then
-    log_error "Nginx configuration test failed"
-    docker-compose logs nginx
+# Check the exit status of the remote script
+if [ $? -ne 0 ]; then
+    log_error "Deployment failed! Please check the logs above for details."
     exit 1
 fi
 
-log_success "Deployment completed!"
-EOF
-
-# Copy and execute the remote script
-log_info "Executing deployment on remote server..."
-scp /tmp/remote_deploy.sh "$SERVER_USER@$SERVER_IP:/root/remote_deploy.sh"
-ssh "$SERVER_USER@$SERVER_IP" "chmod +x /root/remote_deploy.sh && /root/remote_deploy.sh"
-
-# Clean up
-rm /tmp/remote_deploy.sh
-
 log_success "Deployment completed successfully!"
-echo -e "\n🌍 Your application should now be running at https://$API_DOMAIN"
 echo -e "\n📝 Next steps:"
-echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
-echo "2. Test the API endpoint: curl -k https://$API_DOMAIN/v1/health"
-echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
-echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"
+if [ "$DEPLOY_MODE" = "http-only" ]; then
+    echo "1. Test the deployment: curl http://$API_DOMAIN/v1/health"
+    echo "2. Generate SSL certificates: ./scripts/manage-ssl.sh $SERVER_IP --production"
+    echo "3. Deploy with HTTPS: DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --production"
+else
+    echo "1. Test the deployment: curl -k https://$API_DOMAIN/v1/health"
+    echo "2. Monitor the logs: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
+fi
