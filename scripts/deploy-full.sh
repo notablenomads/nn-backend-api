@@ -9,6 +9,7 @@ SERVER_USER="root"
 API_DOMAIN="api.notablenomads.com"
 FRONTEND_DOMAIN="notablenomads.com"
 DOCKER_HUB_TOKEN="${DOCKER_HUB_TOKEN:-}"
+AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -25,8 +26,21 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 # Print usage
 usage() {
-    echo "Usage: DOCKER_HUB_TOKEN=<token> $0 <server-ip>"
+    echo "Usage: DOCKER_HUB_TOKEN=<token> [AUTO_CONFIRM=true] $0 <server-ip>"
+    echo
+    echo "Options:"
+    echo "  AUTO_CONFIRM=true    Skip confirmation prompts (useful for CI/CD)"
     exit 1
+}
+
+# Function to handle confirmations
+confirm_step() {
+    local step="$1"
+    if [ "$AUTO_CONFIRM" != "true" ]; then
+        read -p "Press Enter to continue with $step (or Ctrl+C to abort)..."
+    else
+        log_info "Auto-confirming $step..."
+    fi
 }
 
 # Validate input parameters
@@ -45,9 +59,10 @@ log_info "Starting full deployment sequence for $API_DOMAIN and $FRONTEND_DOMAIN
 echo "Server IP: $SERVER_IP"
 echo "Force cleanup: false"
 echo "Force SSL regeneration: false"
+echo "Auto confirm: $AUTO_CONFIRM"
 echo
 
-read -p "Press Enter to continue with Step 1: Cleanup (or Ctrl+C to abort)..."
+confirm_step "Step 1: Cleanup"
 
 # Step 1: Cleanup
 log_info "Step 1: Cleaning up existing deployment..."
