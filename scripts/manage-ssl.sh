@@ -228,6 +228,9 @@ log_info "Saving debug information to $DEBUG_LOG..."
     echo
     echo "=== Disk Space ==="
     df -h /etc/letsencrypt /root/certbot
+    echo
+    echo "=== SSL Permissions ==="
+    ls -lR /etc/letsencrypt/{live,archive} 2>/dev/null || true
 } > "$DEBUG_LOG" 2>&1
 
 # Install required packages
@@ -247,32 +250,105 @@ if [ "${CLEANUP}" = "true" ]; then
     done
 fi
 
+# Function to fix SSL permissions
+fix_ssl_permissions() {
+    log_info "Fixing SSL certificate permissions..."
+    
+    # Create ssl-cert group if it doesn't exist
+    groupadd -f ssl-cert
+
+    # Set base directory permissions
+    chmod 755 /etc/letsencrypt
+
+    # Set directory permissions
+    chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live
+    chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/
+
+    # Set file permissions
+    chmod 644 /etc/letsencrypt/archive/*/cert*.pem
+    chmod 644 /etc/letsencrypt/archive/*/chain*.pem
+    chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem
+    chmod 640 /etc/letsencrypt/archive/*/privkey*.pem
+
+    # Set ownership
+    chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live
+
+    log_success "SSL permissions have been fixed"
+}
+
+# Function to verify SSL permissions
+verify_ssl_permissions() {
+    local domain="$1"
+    log_info "Verifying SSL permissions for $domain..."
+    
+    # Check if certificates exist and have correct permissions
+    if [ ! -d "/etc/letsencrypt/live/$domain" ]; then
+        log_warn "Certificate directory for $domain does not exist"
+        return 1
+    fi
+
+    local errors=0
+    
+    # Check directory permissions
+    if [ "$(stat -c '%a' "/etc/letsencrypt/live/$domain")" != "755" ]; then
+        log_warn "Incorrect permissions on /etc/letsencrypt/live/$domain"
+        errors=$((errors + 1))
+    fi
+
+    if [ "$(stat -c '%a' "/etc/letsencrypt/archive/$domain")" != "755" ]; then
+        log_warn "Incorrect permissions on /etc/letsencrypt/archive/$domain"
+        errors=$((errors + 1))
+    fi
+
+    # Check group ownership
+    if [ "$(stat -c '%G' "/etc/letsencrypt/live/$domain")" != "ssl-cert" ]; then
+        log_warn "Incorrect group ownership on /etc/letsencrypt/live/$domain"
+        errors=$((errors + 1))
+    fi
+
+    # Check private key permissions
+    if [ "$(stat -c '%a' "/etc/letsencrypt/archive/$domain/privkey1.pem")" != "640" ]; then
+        log_warn "Incorrect permissions on private key for $domain"
+        errors=$((errors + 1))
+    fi
+
+    if [ $errors -eq 0 ]; then
+        log_success "SSL permissions are correct for $domain"
+        return 0
+    else
+        log_warn "Found $errors permission issues for $domain"
+        return 1
+    fi
+}
+
 # Handle SSL certificates for each domain
 for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-    log_info "Managing SSL certificates for \$DOMAIN..."
+    log_info "Managing SSL certificates for $DOMAIN..."
     export DOMAIN
     export USE_STAGING
     export FORCE_RENEW
     ./ssl-cert.sh
+
+    # Verify and fix permissions after each certificate operation
+    if ! verify_ssl_permissions "$DOMAIN"; then
+        log_info "Fixing permissions for $DOMAIN..."
+        fix_ssl_permissions
+    fi
 done
 
-# Fix certificate permissions
-log_info "Fixing SSL certificate permissions..."
-# Set base directory permissions
-chmod 755 /etc/letsencrypt
+# Final permission verification
+log_info "Performing final SSL permission verification..."
+PERMISSIONS_OK=true
+for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
+    if ! verify_ssl_permissions "$DOMAIN"; then
+        PERMISSIONS_OK=false
+    fi
+done
 
-# Set directory permissions
-chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live
-chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/
-
-# Set file permissions (more permissive for Nginx)
-chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem
-chmod 644 /etc/letsencrypt/archive/*/chain*.pem
-chmod 644 /etc/letsencrypt/archive/*/cert*.pem
-chmod 640 /etc/letsencrypt/archive/*/privkey*.pem
-
-# Set ownership
-chown -R root:root /etc/letsencrypt
+if [ "$PERMISSIONS_OK" = false ]; then
+    log_warn "Some SSL permissions are still incorrect. Attempting one final fix..."
+    fix_ssl_permissions
+fi
 
 # Final verification
 log_info "Performing final verification..."
@@ -283,10 +359,13 @@ log_info "Performing final verification..."
     echo "=== Final Certificate Status ==="
     certbot certificates
     echo
+    echo "=== Final SSL Permissions ==="
+    ls -lR /etc/letsencrypt/{live,archive}
+    echo
     echo "=== Service Health Check ==="
     for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-        echo "Checking \$DOMAIN..."
-        curl -sI "https://\$DOMAIN" || true
+        echo "Checking $DOMAIN..."
+        curl -sI "https://$DOMAIN" || true
     done
 } >> "$DEBUG_LOG" 2>&1
 
