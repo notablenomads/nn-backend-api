@@ -7,7 +7,9 @@ set -e
 SERVER_IP=""
 SERVER_USER="root"
 APP_NAME="nn-backend-api"
-DOMAIN="api.notablenomads.com"
+FRONTEND_APP_NAME="nn-landing"
+API_DOMAIN="api.notablenomads.com"
+FRONTEND_DOMAIN="landing.notablenomads.com"
 DOCKER_HUB_USERNAME="mrdevx"
 
 # Environment configuration
@@ -75,28 +77,31 @@ fi
 
 # Step 1: Verify DNS configuration
 log_info "Step 1: Verifying DNS configuration"
-log_info "Verifying DNS configuration for $DOMAIN..."
 
-# Check DNS A record
-log_info "Checking DNS A record..."
-CURRENT_IP=$(dig +short ${DOMAIN})
+for DOMAIN in "$API_DOMAIN" "$FRONTEND_DOMAIN"; do
+    log_info "Verifying DNS configuration for $DOMAIN..."
 
-if [ -z "$CURRENT_IP" ]; then
-    log_error "No DNS A record found for $DOMAIN"
-    exit 1
-fi
+    # Check DNS A record
+    log_info "Checking DNS A record..."
+    CURRENT_IP=$(dig +short ${DOMAIN})
 
-# Check if the IP is a Cloudflare IP
-if echo "$CURRENT_IP" | grep -qE '^(172\.67\.|104\.21\.|104\.22\.|104\.23\.|104\.24\.|104\.25\.|104\.26\.|104\.27\.|104\.28\.|108\.162\.|162\.158\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.|141\.101\.|103\.21\.|103\.22\.|103\.23\.|103\.24\.|103\.25\.|131\.0\.|141\.101\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.)'; then
-    log_info "Detected Cloudflare proxy, proceeding with deployment"
-else
-    if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
-        log_error "DNS A record points to $CURRENT_IP, but server IP is $SERVER_IP"
+    if [ -z "$CURRENT_IP" ]; then
+        log_error "No DNS A record found for $DOMAIN"
         exit 1
     fi
-fi
 
-log_success "DNS configuration is correct!"
+    # Check if the IP is a Cloudflare IP
+    if echo "$CURRENT_IP" | grep -qE '^(172\.67\.|104\.21\.|104\.22\.|104\.23\.|104\.24\.|104\.25\.|104\.26\.|104\.27\.|104\.28\.|108\.162\.|162\.158\.|173\.245\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.|141\.101\.|103\.21\.|103\.22\.|103\.23\.|103\.24\.|103\.25\.|131\.0\.|141\.101\.|190\.93\.|197\.234\.|198\.41\.|199\.27\.)'; then
+        log_info "Detected Cloudflare proxy, proceeding with deployment"
+    else
+        if [ "$CURRENT_IP" != "$SERVER_IP" ]; then
+            log_error "DNS A record points to $CURRENT_IP, but server IP is $SERVER_IP"
+            exit 1
+        fi
+    fi
+
+    log_success "DNS configuration is correct for $DOMAIN!"
+done
 
 # Check required commands
 check_command "docker"
@@ -104,20 +109,19 @@ check_command "ssh"
 check_command "scp"
 
 # Step 2: Build and push Docker image
-log_info "Step 2: Building and pushing Docker image"
+log_info "Step 2: Building and pushing Docker images"
 
 # Login to Docker Hub locally
 log_info "Logging in to Docker Hub locally..."
 docker_login ""
 
-log_info "Building and pushing Docker image..."
-docker build -t "$DOCKER_HUB_USERNAME/$APP_NAME:latest" .
-docker push "$DOCKER_HUB_USERNAME/$APP_NAME:latest"
+log_info "Building and pushing Docker images..."
+docker pull "$DOCKER_HUB_USERNAME/$FRONTEND_APP_NAME:latest"
 
 log_info "Logging out from Docker Hub locally..."
 docker logout
 
-log_success "Successfully built and pushed image $DOCKER_HUB_USERNAME/$APP_NAME:latest"
+log_success "Successfully pulled frontend image $DOCKER_HUB_USERNAME/$FRONTEND_APP_NAME:latest"
 
 # Step 3: Set up server
 log_info "Step 3: Setting up server"
@@ -237,8 +241,12 @@ docker-compose up -d api
 log_info "Running database migrations..."
 docker-compose exec api yarn migration:run
 
-# Wait for API to start
-log_info "Waiting for API to initialize..."
+# Start the frontend service
+log_info "Starting frontend service..."
+docker-compose up -d frontend
+
+# Wait for services to start
+log_info "Waiting for services to initialize..."
 sleep 10
 
 # Check API logs for database connection
@@ -246,6 +254,14 @@ log_info "Checking API database connection..."
 if docker-compose logs api | grep -q "Unable to connect to the database"; then
     log_error "API failed to connect to the database. Logs:"
     docker-compose logs api
+    exit 1
+fi
+
+# Check frontend service
+log_info "Checking frontend service..."
+if ! docker-compose ps frontend | grep -q "Up"; then
+    log_error "Frontend service failed to start. Logs:"
+    docker-compose logs frontend
     exit 1
 fi
 
@@ -270,6 +286,12 @@ if ! curl -s http://localhost:3000/v1/health > /dev/null; then
     docker-compose logs api
 fi
 
+# Simple Frontend health check
+if ! curl -s http://localhost:3030/ > /dev/null; then
+    log_warn "Frontend health check failed, but containers are running. Check logs for details:"
+    docker-compose logs frontend
+fi
+
 # Check nginx configuration
 log_info "Checking nginx configuration..."
 if ! docker-compose exec nginx nginx -t; then
@@ -290,9 +312,9 @@ ssh "$SERVER_USER@$SERVER_IP" "chmod +x /root/remote_deploy.sh && /root/remote_d
 rm /tmp/remote_deploy.sh
 
 log_success "Deployment completed successfully!"
-echo -e "\n🌍 Your application should now be running at https://$DOMAIN"
+echo -e "\n🌍 Your application should now be running at https://$API_DOMAIN"
 echo -e "\n📝 Next steps:"
 echo "1. Verify your domain's DNS A record points to: $SERVER_IP"
-echo "2. Test the API endpoint: curl -k https://$DOMAIN/v1/health"
+echo "2. Test the API endpoint: curl -k https://$API_DOMAIN/v1/health"
 echo "3. Monitor the logs with: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs -f'"
 echo "4. If needed, run 'scripts/manage-ssl.sh' to handle SSL certificates"

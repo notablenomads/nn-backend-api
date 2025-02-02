@@ -6,7 +6,9 @@ set -e
 # Configuration
 SERVER_IP=""
 SERVER_USER="root"
-DOMAIN="api.notablenomads.com"
+API_DOMAIN="api.notablenomads.com"
+FRONTEND_DOMAIN="landing.notablenomads.com"
+DOMAINS=("$API_DOMAIN" "$FRONTEND_DOMAIN")
 
 # Colors for output
 RED='\033[0;31m'
@@ -124,24 +126,26 @@ apt-get install -y certbot
 # Make SSL script executable
 chmod +x ssl-cert.sh
 
-# Handle SSL certificates
-log_info "Managing SSL certificates..."
-if [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
-    if [ "${FORCE_RENEW}" = "true" ]; then
-        log_info "Force renewing certificates..."
-        ./ssl-cert.sh --force-renew
+# Handle SSL certificates for each domain
+for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
+    log_info "Managing SSL certificates for \$DOMAIN..."
+    if [ -d "/etc/letsencrypt/live/\${DOMAIN}" ]; then
+        if [ "${FORCE_RENEW}" = "true" ]; then
+            log_info "Force renewing certificates for \$DOMAIN..."
+            DOMAIN=\$DOMAIN ./ssl-cert.sh --force-renew
+        else
+            log_info "Checking existing certificates for \$DOMAIN..."
+            DOMAIN=\$DOMAIN ./ssl-cert.sh --check
+        fi
     else
-        log_info "Checking existing certificates..."
-        ./ssl-cert.sh --check
+        log_info "No existing certificates found for \$DOMAIN, generating new ones..."
+        if [ "${USE_STAGING}" = "true" ]; then
+            DOMAIN=\$DOMAIN ./ssl-cert.sh --new --staging
+        else
+            DOMAIN=\$DOMAIN ./ssl-cert.sh --new
+        fi
     fi
-else
-    log_info "No existing certificates found, generating new ones..."
-    if [ "${USE_STAGING}" = "true" ]; then
-        ./ssl-cert.sh --new --staging
-    else
-        ./ssl-cert.sh --new
-    fi
-fi
+done
 
 # Restart nginx to apply any certificate changes
 log_info "Restarting nginx..."
@@ -152,8 +156,10 @@ SSLSETUP
 
 log_success "SSL management completed successfully!"
 echo -e "\n📝 Next steps:"
-echo "1. Verify SSL certificate: curl -v https://$DOMAIN"
-echo "2. Check certificate details: echo | openssl s_client -connect $DOMAIN:443 -servername $DOMAIN 2>/dev/null | openssl x509 -text"
+for DOMAIN in "${DOMAINS[@]}"; do
+    echo "1. Verify SSL certificate for $DOMAIN: curl -v https://$DOMAIN"
+    echo "2. Check certificate details for $DOMAIN: echo | openssl s_client -connect $DOMAIN:443 -servername $DOMAIN 2>/dev/null | openssl x509 -text"
+done
 
 if [ "$USE_STAGING" = true ]; then
     echo -e "\n${YELLOW}Note: SSL certificates are in staging mode. Run with --production for valid certificates.${NC}"
