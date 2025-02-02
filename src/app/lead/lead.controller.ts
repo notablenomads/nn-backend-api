@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { LeadService } from './lead.service';
 import { LeadDto } from './interfaces/lead.interface';
 import { LeadResponseDto } from './interfaces/lead-response.dto';
+import { LeadOptionsDto } from './interfaces/lead-options.dto';
 
 @ApiTags('Lead')
 @Controller('leads')
@@ -68,5 +69,16 @@ export class LeadController {
     } catch {
       throw new HttpException('Lead not found', HttpStatus.NOT_FOUND);
     }
+  }
+
+  @Get('options')
+  @ApiOperation({ summary: 'Get all available options for the lead form' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Retrieved form options successfully',
+    type: LeadOptionsDto,
+  })
+  getFormOptions(): LeadOptionsDto {
+    return this.leadService.getFormOptions();
   }
 }
