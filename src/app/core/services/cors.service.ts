@@ -11,6 +11,14 @@ export class CorsService {
   constructor(private readonly configService: ConfigService) {
     this.allowedDomains = this.configService.get<IConfig['app']['corsEnabledDomains']>('app.corsEnabledDomains');
     this.isRestricted = this.configService.get<IConfig['app']['corsRestrict']>('app.corsRestrict');
+
+    // Log initial configuration
+    if (!this.isRestricted) {
+      this.logger.log('CORS restrictions disabled - allowing all origins');
+    } else {
+      this.logger.log('CORS restrictions enabled with allowed domains:');
+      this.allowedDomains?.forEach((domain) => this.logger.log(`- ${domain}`));
+    }
   }
 
   /**
@@ -31,7 +39,7 @@ export class CorsService {
 
     try {
       const originDomain = new URL(origin).hostname;
-      const isAllowed = this.allowedDomains.some((domain) => this.isDomainMatch(originDomain, domain));
+      const isAllowed = this.allowedDomains?.some((domain) => this.isDomainMatch(originDomain, domain)) ?? true;
 
       if (isAllowed) {
         return { isAllowed: true };
@@ -50,25 +58,17 @@ export class CorsService {
   }
 
   /**
-   * Checks if a domain matches an allowed domain pattern
-   * @param domain Domain to check
-   * @param allowedDomain Allowed domain pattern (can include wildcard)
-   * @returns boolean indicating if domain matches pattern
-   */
-  private isDomainMatch(domain: string, allowedDomain: string): boolean {
-    if (allowedDomain.startsWith('*.')) {
-      const baseDomain = allowedDomain.slice(2); // Remove *. from the start
-      return domain === baseDomain || domain.endsWith('.' + baseDomain);
-    }
-    return domain === allowedDomain;
-  }
-
-  /**
    * Creates a CORS origin validation function for Express/Socket.io
    * @returns A function that handles CORS origin validation
    */
   createOriginValidator() {
     return (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
+      // If CORS is not restricted, allow all origins
+      if (!this.isRestricted) {
+        callback(null, true);
+        return;
+      }
+
       const validation = this.validateOrigin(origin);
 
       if (validation.isAllowed) {
@@ -89,5 +89,22 @@ export class CorsService {
       isRestricted: this.isRestricted,
       allowedDomains: this.allowedDomains,
     };
+  }
+
+  /**
+   * Checks if a domain matches an allowed domain pattern
+   * @param domain Domain to check
+   * @param allowedDomain Allowed domain pattern (can include wildcard)
+   * @returns boolean indicating if domain matches pattern
+   */
+  private isDomainMatch(domain: string, allowedDomain: string): boolean {
+    if (allowedDomain === '*' || allowedDomain === '*.*') {
+      return true;
+    }
+    if (allowedDomain.startsWith('*.')) {
+      const baseDomain = allowedDomain.slice(2); // Remove *. from the start
+      return domain === baseDomain || domain.endsWith('.' + baseDomain);
+    }
+    return domain === allowedDomain;
   }
 }

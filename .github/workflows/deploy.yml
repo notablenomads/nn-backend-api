@@ -8,9 +8,11 @@ on:
 
 env:
   APP_NAME: nn-backend-api
+  FRONTEND_APP_NAME: nn-landing
   DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
   SERVER_IP: 91.107.249.14
-  DOMAIN: api.notablenomads.com
+  API_DOMAIN: api.notablenomads.com
+  FRONTEND_DOMAIN: landing.notablenomads.com
   SERVER_USER: root
 
 jobs:
@@ -135,8 +137,9 @@ jobs:
 
           while [ $attempt -le $max_attempts ]; do
             echo "Health check attempt $attempt/$max_attempts..."
-            if curl -sk https://${{ env.DOMAIN }}/v1/health > /dev/null; then
-              echo "✅ Service is healthy"
+            if curl -sk https://${{ env.API_DOMAIN }}/v1/health > /dev/null && \
+               curl -sk https://${{ env.FRONTEND_DOMAIN }} > /dev/null; then
+              echo "✅ Services are healthy"
               exit 0
             fi
             attempt=$((attempt + 1))
@@ -147,6 +150,7 @@ jobs:
           ssh ${{ env.SERVER_USER }}@${{ env.SERVER_IP }} "
             echo '📊 Container Status' && docker compose ps && \
             echo '📝 API Logs' && docker compose logs --tail 50 api && \
+            echo '📝 Frontend Logs' && docker compose logs --tail 50 frontend && \
             echo '📝 Database Logs' && docker compose logs --tail 20 postgres && \
             echo '📝 Nginx Logs' && docker compose logs --tail 20 nginx
           "
