@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.4](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.6.2...v0.6.4) (2025-02-03)
+
+
+### Bug Fixes
+
+* correct logic for CORS restriction configuration ([9345f6a](https://github.com/Notable-Nomads/nn-backend-api/commit/9345f6a066fe4bbba5a35f01da899fc91efc5119))
+
+
+
 ## [0.6.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.6.2...v0.6.3) (2025-02-02)
 
 
