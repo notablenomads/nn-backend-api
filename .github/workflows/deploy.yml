@@ -12,9 +12,6 @@ env:
   DOCKER_DEFAULT_PLATFORM: linux/arm64
   DOCKER_IMAGE: mrdevx/nn-backend-api
   NODE_ENV: production
-  API_DOMAIN: api.notablenomads.com
-  FRONTEND_DOMAIN: notablenomads.com
-  SERVER_USER: root
 
 jobs:
   deploy:
@@ -35,36 +32,13 @@ jobs:
         id: package_version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
-      - name: Generate deployment timestamp
-        id: timestamp
-        run: echo "TIMESTAMP=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
-
-      - name: Create .env.production file
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > .env.production
-          echo "Created .env.production file"
-
-      - name: Create .yarnrc.yml file
-        run: |
-          cp .yarnrc.yml-example .yarnrc.yml
-          echo "Created .yarnrc.yml file from example"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -82,90 +56,16 @@ jobs:
             ${{ env.DOCKER_IMAGE }}:latest
             ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
             ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new
 
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-      - name: Run deployment script
-        env:
-          API_DOMAIN: ${{ env.API_DOMAIN }}
-          FRONTEND_DOMAIN: ${{ env.FRONTEND_DOMAIN }}
-          SERVER_USER: ${{ env.SERVER_USER }}
-        run: |
-          chmod +x ./scripts/deploy-full.sh
-          ./scripts/deploy-full.sh "$SERVER_IP"
-
-      - name: Verify deployment
-        id: verify
-        env:
-          API_DOMAIN: ${{ env.API_DOMAIN }}
-          FRONTEND_DOMAIN: ${{ env.FRONTEND_DOMAIN }}
-        run: |
-          echo "Waiting for services to stabilize..."
-          sleep 30
-
-          MAX_RETRIES=5
-          RETRY_COUNT=0
-
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if curl -sk "https://$API_DOMAIN/v1/health" | grep -q "status.*ok"; then
-              echo "✅ API is healthy"
-              API_HEALTHY=true
-              break
-            else
-              echo "API health check failed, attempt $(($RETRY_COUNT + 1))/$MAX_RETRIES"
-              RETRY_COUNT=$(($RETRY_COUNT + 1))
-              sleep 10
-            fi
-          done
-
-          if [ "$API_HEALTHY" != "true" ]; then
-            echo "❌ API health check failed after $MAX_RETRIES attempts"
-            exit 1
-          fi
-
-          if curl -sk -o /dev/null -w "%{http_code}" "https://$FRONTEND_DOMAIN" | grep -q "200"; then
-            echo "✅ Frontend is accessible"
-          else
-            echo "❌ Frontend check failed"
-            exit 1
-          fi
-
-      - name: Notify on Success
-        if: success()
-        run: |
-          echo "🎉 Deployment successful!"
-          echo "Version: ${{ env.VERSION }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Timestamp: ${{ env.TIMESTAMP }}"
-          echo "API URL: https://${{ env.API_DOMAIN }}"
-          echo "Frontend URL: https://${{ env.FRONTEND_DOMAIN }}"
-
-      - name: Notify on Failure
-        if: failure()
-        run: |
-          echo "❌ Deployment failed!"
-          echo "Please check the logs for more details."
-          echo "API Domain: ${{ env.API_DOMAIN }}"
-          echo "Frontend Domain: ${{ env.FRONTEND_DOMAIN }}"
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
         with:
-          name: Release ${{ env.VERSION }}
-          body: |
-            Release ${{ env.VERSION }}
-            Deployed on: ${{ env.TIMESTAMP }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-            API URL: https://${{ env.API_DOMAIN }}
-            Frontend URL: https://${{ env.FRONTEND_DOMAIN }}
-
-            Changes included in this release:
-            ${{ github.event.head_commit.message }}
-          draft: false
-          prerelease: false
+      - name: Deploy to server
+        env:
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+        run: |
+          chmod +x ./scripts/deploy.sh
+          ./scripts/deploy.sh "$SERVER_IP"
