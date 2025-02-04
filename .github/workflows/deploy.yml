@@ -32,13 +32,11 @@ jobs:
         id: package_version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+          platforms: linux/arm64
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -46,26 +44,16 @@ jobs:
           username: mrdevx
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.DOCKER_IMAGE }}:latest
-            ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
-            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-      - name: Deploy to server
+      - name: Run full deployment
         env:
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          AUTO_CONFIRM: true
         run: |
-          chmod +x ./scripts/deploy.sh
-          ./scripts/deploy.sh "$SERVER_IP"
+          chmod +x ./scripts/deploy-full.sh
+          ./scripts/deploy-full.sh "$SERVER_IP"
