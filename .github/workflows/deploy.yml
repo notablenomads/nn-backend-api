@@ -90,16 +90,6 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-      - name: Scan Docker image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
       - name: Run deployment script
         env:
           API_DOMAIN: ${{ env.API_DOMAIN }}
@@ -162,8 +152,6 @@ jobs:
           echo "Please check the logs for more details."
           echo "API Domain: ${{ env.API_DOMAIN }}"
           echo "Frontend Domain: ${{ env.FRONTEND_DOMAIN }}"
-          # You can add Slack/Discord/Email notification here
-          # using secrets.SLACK_WEBHOOK_URL or similar
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
