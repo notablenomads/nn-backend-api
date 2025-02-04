@@ -37,6 +37,11 @@ jobs:
           echo "${{ secrets.ENV_FILE }}" > .env.production
           echo "Created .env.production file"
 
+      - name: Create .yarnrc.yml file
+        run: |
+          cp .yarnrc.yml-example .yarnrc.yml
+          echo "Created .yarnrc.yml file from example"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
