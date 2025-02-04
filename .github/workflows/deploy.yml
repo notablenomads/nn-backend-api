@@ -60,6 +60,7 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
+          load: true
           tags: |
             ${{ env.DOCKER_IMAGE }}:latest
             ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
@@ -77,4 +78,5 @@ jobs:
           AUTO_CONFIRM: true
         run: |
           chmod +x ./scripts/deploy-full.sh
+          docker pull ${{ env.DOCKER_IMAGE }}:latest
           ./scripts/deploy-full.sh "$SERVER_IP"
