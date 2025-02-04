@@ -54,6 +54,17 @@ jobs:
           username: mrdevx
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
