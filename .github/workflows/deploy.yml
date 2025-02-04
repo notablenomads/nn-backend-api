@@ -80,3 +80,36 @@ jobs:
           chmod +x ./scripts/deploy-full.sh
           docker pull ${{ env.DOCKER_IMAGE }}:latest
           ./scripts/deploy-full.sh "$SERVER_IP"
+
+      - name: Send Telegram notification on success
+        if: success()
+        run: |
+          MESSAGE="🚀 Deployment Successful!%0A%0A"
+          MESSAGE+="🏷 Version: ${{ env.VERSION }}%0A"
+          MESSAGE+="📝 Commit: ${GITHUB_SHA::7}%0A"
+          MESSAGE+="👤 Author: ${{ github.actor }}%0A"
+          MESSAGE+="🔗 Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}%0A%0A"
+          MESSAGE+="🌐 API: https://api.notablenomads.com%0A"
+          MESSAGE+="🌍 Frontend: https://notablenomads.com"
+
+          curl -s -X POST \
+            https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+            -d text="$MESSAGE" \
+            -d parse_mode=HTML
+
+      - name: Send Telegram notification on failure
+        if: failure()
+        run: |
+          MESSAGE="❌ Deployment Failed!%0A%0A"
+          MESSAGE+="🏷 Version: ${{ env.VERSION }}%0A"
+          MESSAGE+="📝 Commit: ${GITHUB_SHA::7}%0A"
+          MESSAGE+="👤 Author: ${{ github.actor }}%0A"
+          MESSAGE+="🔗 Action URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
+          MESSAGE+="Please check the GitHub Actions logs for more details."
+
+          curl -s -X POST \
+            https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+            -d text="$MESSAGE" \
+            -d parse_mode=HTML
