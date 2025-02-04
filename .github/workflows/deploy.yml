@@ -17,6 +17,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     env:
       SERVER_IP: ${{ secrets.SERVER_IP }}
@@ -24,6 +25,13 @@ jobs:
       AUTO_CONFIRM: true
 
     steps:
+      - name: Debug Trigger Info
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref type: ${{ github.ref_type }}"
+          echo "SHA: ${{ github.sha }}"
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
