@@ -4,15 +4,40 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allow manual trigger
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  DOCKER_DEFAULT_PLATFORM: linux/arm64
+  DOCKER_IMAGE: mrdevx/nn-backend-api
+  NODE_ENV: production
+  API_DOMAIN: api.notablenomads.com
+  FRONTEND_DOMAIN: notablenomads.com
+  SERVER_USER: root
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      SERVER_IP: ${{ secrets.SERVER_IP }}
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+      AUTO_CONFIRM: true
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from package.json
+        id: package_version
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: Generate deployment timestamp
+        id: timestamp
+        run: echo "TIMESTAMP=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
 
       - name: Create .env.production file
         run: |
@@ -34,6 +59,14 @@ jobs:
         with:
           platforms: linux/arm64,linux/arm/v7
 
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
@@ -46,33 +79,112 @@ jobs:
           username: mrdevx
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
       - name: Run deployment script
         env:
-          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-          AUTO_CONFIRM: true
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          DOCKER_DEFAULT_PLATFORM: linux/arm64
+          API_DOMAIN: ${{ env.API_DOMAIN }}
+          FRONTEND_DOMAIN: ${{ env.FRONTEND_DOMAIN }}
+          SERVER_USER: ${{ env.SERVER_USER }}
         run: |
           chmod +x ./scripts/deploy-full.sh
           ./scripts/deploy-full.sh "$SERVER_IP"
 
       - name: Verify deployment
+        id: verify
+        env:
+          API_DOMAIN: ${{ env.API_DOMAIN }}
+          FRONTEND_DOMAIN: ${{ env.FRONTEND_DOMAIN }}
         run: |
           echo "Waiting for services to stabilize..."
           sleep 30
 
-          # Check API health
-          if curl -sk "https://api.notablenomads.com/v1/health" | grep -q "status.*ok"; then
-            echo "✅ API is healthy"
-          else
-            echo "❌ API health check failed"
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -sk "https://$API_DOMAIN/v1/health" | grep -q "status.*ok"; then
+              echo "✅ API is healthy"
+              API_HEALTHY=true
+              break
+            else
+              echo "API health check failed, attempt $(($RETRY_COUNT + 1))/$MAX_RETRIES"
+              RETRY_COUNT=$(($RETRY_COUNT + 1))
+              sleep 10
+            fi
+          done
+
+          if [ "$API_HEALTHY" != "true" ]; then
+            echo "❌ API health check failed after $MAX_RETRIES attempts"
             exit 1
           fi
 
-          # Check frontend
-          if curl -sk -o /dev/null -w "%{http_code}" "https://notablenomads.com" | grep -q "200"; then
+          if curl -sk -o /dev/null -w "%{http_code}" "https://$FRONTEND_DOMAIN" | grep -q "200"; then
             echo "✅ Frontend is accessible"
           else
             echo "❌ Frontend check failed"
             exit 1
           fi
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "🎉 Deployment successful!"
+          echo "Version: ${{ env.VERSION }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Timestamp: ${{ env.TIMESTAMP }}"
+          echo "API URL: https://${{ env.API_DOMAIN }}"
+          echo "Frontend URL: https://${{ env.FRONTEND_DOMAIN }}"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Please check the logs for more details."
+          echo "API Domain: ${{ env.API_DOMAIN }}"
+          echo "Frontend Domain: ${{ env.FRONTEND_DOMAIN }}"
+          # You can add Slack/Discord/Email notification here
+          # using secrets.SLACK_WEBHOOK_URL or similar
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ env.VERSION }}
+          body: |
+            Release ${{ env.VERSION }}
+            Deployed on: ${{ env.TIMESTAMP }}
+
+            API URL: https://${{ env.API_DOMAIN }}
+            Frontend URL: https://${{ env.FRONTEND_DOMAIN }}
+
+            Changes included in this release:
+            ${{ github.event.head_commit.message }}
+          draft: false
+          prerelease: false
