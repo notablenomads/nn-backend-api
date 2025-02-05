@@ -66,7 +66,7 @@ cd /root
 
 # Stop all running containers
 log_info "Stopping all containers..."
-docker-compose down -v || true
+docker compose down -v || true
 
 # Remove all containers
 log_info "Removing all containers..."
