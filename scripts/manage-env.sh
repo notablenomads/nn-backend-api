@@ -60,13 +60,11 @@ restart_services() {
         return 1
     fi
 
-    # Try docker compose v2 first, fall back to v1 if needed
+    # Try docker compose v2
     if ssh "$SERVER_USER@$SERVER_IP" "docker compose version" &>/dev/null; then
         DOCKER_COMPOSE_CMD="docker compose"
-    elif ssh "$SERVER_USER@$SERVER_IP" "docker-compose version" &>/dev/null; then
-        DOCKER_COMPOSE_CMD="docker-compose"
     else
-        log_error "Neither docker compose v2 nor docker-compose v1 is available"
+        log_error "Docker compose v2 is not available"
         return 1
     fi
 
