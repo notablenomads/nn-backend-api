@@ -148,12 +148,12 @@ verify_certs() {
 # Function to stop services
 stop_services() {
     log_info "Stopping services..."
-    docker-compose stop nginx frontend || true
+    docker compose stop nginx frontend || true
     
     # Wait for services to stop
     local retries=0
     while [ $retries -lt 5 ]; do
-        if ! docker-compose ps | grep -q "Up"; then
+        if ! docker compose ps | grep -q "Up"; then
             log_success "Services stopped"
             return 0
         fi
@@ -168,12 +168,12 @@ stop_services() {
 # Function to start services
 start_services() {
     log_info "Starting services..."
-    docker-compose up -d nginx frontend
+    docker compose up -d nginx frontend
     
     # Wait for services to be healthy
     local retries=0
     while [ $retries -lt 10 ]; do
-        if docker-compose ps | grep -q "healthy"; then
+        if docker compose ps | grep -q "healthy"; then
             log_success "Services are healthy"
             return 0
         fi
