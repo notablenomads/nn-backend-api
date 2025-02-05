@@ -151,8 +151,8 @@ check_remote_requirements() {
         fi
         
         # Check Docker Compose
-        if ! command -v docker-compose &> /dev/null; then
-            echo "ERROR: Docker Compose is not installed"
+        if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
+            echo "ERROR: Docker Compose v2 is not installed"
             exit 1
         fi
         
@@ -212,13 +212,13 @@ log_info "Saving debug information to $DEBUG_LOG..."
     echo
     echo "=== Docker Version ==="
     docker --version
-    docker-compose --version
+    docker compose version
     echo
     echo "=== Docker Status ==="
     docker ps -a
     echo
     echo "=== Docker Compose Status ==="
-    docker-compose ps
+    docker compose ps
     echo
     echo "=== Certificate Status ==="
     certbot certificates || true
@@ -354,7 +354,7 @@ fi
 log_info "Performing final verification..."
 {
     echo "=== Final Docker Status ==="
-    docker-compose ps
+    docker compose ps
     echo
     echo "=== Final Certificate Status ==="
     certbot certificates
@@ -389,5 +389,5 @@ fi
 
 echo -e "\n💡 Troubleshooting:"
 echo "1. Check logs: ssh $SERVER_USER@$SERVER_IP 'cat $DEBUG_LOG'"
-echo "2. View service status: ssh $SERVER_USER@$SERVER_IP 'docker-compose ps'"
-echo "3. View service logs: ssh $SERVER_USER@$SERVER_IP 'docker-compose logs'" 
+echo "2. View service status: ssh $SERVER_USER@$SERVER_IP 'docker compose ps'"
+echo "3. View service logs: ssh $SERVER_USER@$SERVER_IP 'docker compose logs'" 
