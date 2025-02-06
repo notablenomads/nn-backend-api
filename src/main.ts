@@ -1,7 +1,7 @@
 import helmet from 'helmet';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
-import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
+import { ClassSerializerInterceptor, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -9,6 +9,9 @@ import { AppModule } from './app/app.module';
 import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
 import { CorsService } from './app/core/services/cors.service';
 import { PackageInfoService } from './app/core/services/package-info.service';
+import { HttpExceptionFilter } from './app/core/filters/http-exception.filter';
+import { CustomValidationPipe } from './app/core/pipes/validation.pipe';
+import { TransformInterceptor } from './app/core/interceptors/transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -84,18 +87,13 @@ async function bootstrap() {
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: true },
-      forbidNonWhitelisted: true,
-      forbidUnknownValues: true,
-      // disableErrorMessages: environment === 'production',
-    }),
-  );
+  app.useGlobalPipes(new CustomValidationPipe());
 
   app.useGlobalFilters(new AllExceptionsFilter(config));
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Global transform interceptor
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   // Swagger documentation setup
   const isSwaggerEnabled = config.get('app.enableSwagger');

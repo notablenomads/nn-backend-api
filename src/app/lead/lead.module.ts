@@ -3,11 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailModule } from '../email/email.module';
 import { LeadService } from './lead.service';
 import { LeadController } from './lead.controller';
+import { LeadValidationService } from './services/lead-validation.service';
 import { Lead } from './entities/lead.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Lead]), EmailModule],
-  providers: [LeadService],
+  providers: [LeadService, LeadValidationService],
   controllers: [LeadController],
   exports: [LeadService],
 })
