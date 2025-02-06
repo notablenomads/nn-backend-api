@@ -15,6 +15,7 @@ import { LeadValidationService } from './services/lead-validation.service';
 import { LeadDto } from './dto/lead.dto';
 import { LeadResponseDto } from './interfaces/lead-response.dto';
 import { LeadOptionsDto } from './interfaces/lead-options.dto';
+import { createLeadProcessingError, createLeadNotFoundError } from './constants/lead.errors';
 
 @ApiTags('Lead')
 @Controller('leads')
@@ -57,12 +58,7 @@ export class LeadController {
 
       if (!success) {
         throw new HttpException(
-          {
-            message: 'Failed to process lead submission',
-            errors: {
-              general: ['An error occurred while processing your submission. Please try again later.'],
-            },
-          },
+          createLeadProcessingError('Failed to process lead submission'),
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
@@ -74,13 +70,7 @@ export class LeadController {
     } catch (error) {
       // Handle validation errors from class-validator and custom validation
       if (error?.response?.message === 'Validation failed' && error?.response?.errors) {
-        throw new HttpException(
-          {
-            message: 'Validation failed',
-            errors: error.response.errors,
-          },
-          HttpStatus.BAD_REQUEST,
-        );
+        throw error;
       }
 
       // Handle other known errors
@@ -90,12 +80,7 @@ export class LeadController {
 
       // Handle unexpected errors
       throw new HttpException(
-        {
-          message: 'Internal server error',
-          errors: {
-            general: ['An unexpected error occurred. Please try again later.'],
-          },
-        },
+        createLeadProcessingError('An unexpected error occurred. Please try again later.'),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -142,7 +127,7 @@ export class LeadController {
     try {
       return await this.leadService.findOne(id);
     } catch {
-      throw new HttpException('Lead not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(createLeadNotFoundError(), HttpStatus.NOT_FOUND);
     }
   }
 }
