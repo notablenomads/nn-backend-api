@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { ErrorService } from './error.service';
+import { BLOG_ERRORS } from '../../blog/constants/blog.errors';
+import { CHAT_ERRORS } from '../../ai-chat/constants/chat.errors';
+import { EMAIL_ERRORS } from '../../email/constants/email.errors';
+import { LEAD_ERRORS } from '../../lead/constants/lead.errors';
 
 const errorService = new ErrorService();
 
-export const CONSTANTS = {
-  ERRORS_PREFIX: 'APP',
-};
-
-const ERRORS = {
+const CORE_ERRORS = {
   GENERIC: {
     INTERNAL_SERVER_ERROR: errorService.createError('INTERNAL_SERVER_ERROR', 'An unexpected error occurred'),
     VALIDATION_ERROR: errorService.createDynamicError('VALIDATION_ERROR', 'Validation failed: {reason}'),
@@ -48,26 +48,12 @@ const ERRORS = {
     ),
     INVALID_PARAMETERS: errorService.createDynamicError('INVALID_PARAMETERS', 'Invalid parameters: {reason}'),
   },
-  EMAIL: {
-    SEND_FAILED: errorService.createDynamicError('EMAIL_SEND_FAILED', 'Failed to send email: {reason}'),
-    INVALID_ADDRESS: errorService.createDynamicError('EMAIL_INVALID_ADDRESS', 'Invalid email address: {email}'),
-    TEMPLATE_ERROR: errorService.createDynamicError(
-      'EMAIL_TEMPLATE_ERROR',
-      'Failed to process email template: {reason}',
-    ),
-  },
-  CHAT: {
-    CONNECTION_ERROR: errorService.createDynamicError(
-      'CHAT_CONNECTION_ERROR',
-      'Failed to establish chat connection: {reason}',
-    ),
-    MESSAGE_FAILED: errorService.createDynamicError('CHAT_MESSAGE_FAILED', 'Failed to process chat message: {reason}'),
-    STREAM_ERROR: errorService.createDynamicError('CHAT_STREAM_ERROR', 'Failed to process chat stream: {reason}'),
-  },
-  BLOG: {
-    FETCH_ERROR: errorService.createDynamicError('BLOG_FETCH_ERROR', 'Failed to fetch blog posts: {reason}'),
-    PARSE_ERROR: errorService.createDynamicError('BLOG_PARSE_ERROR', 'Failed to parse blog content: {reason}'),
-  },
 };
 
-export { ERRORS };
+export const ERRORS = {
+  ...CORE_ERRORS,
+  BLOG: BLOG_ERRORS,
+  CHAT: CHAT_ERRORS,
+  EMAIL: EMAIL_ERRORS,
+  LEAD: LEAD_ERRORS,
+};

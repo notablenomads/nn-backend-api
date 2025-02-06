@@ -21,14 +21,14 @@ export class EmailController {
   })
   @ApiResponse({
     status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: ERRORS.EMAIL.SEND_FAILED({ reason: 'Internal server error' }).message,
+    description: ERRORS.EMAIL.SENDING.FAILED({ reason: 'Internal server error' }).message,
   })
   async submitContactForm(@Body() formData: ContactFormDto) {
     const success = await this.emailService.sendContactFormEmail(formData);
 
     if (!success) {
       throw new HttpException(
-        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to process email request' }).message,
+        ERRORS.EMAIL.SENDING.FAILED({ reason: 'Failed to process email request' }).message,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
