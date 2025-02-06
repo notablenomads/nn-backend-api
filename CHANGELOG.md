@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.0...v0.8.1) (2025-02-06)
+
+
+
 # [0.8.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.7.0...v0.8.0) (2025-02-06)
 
 
