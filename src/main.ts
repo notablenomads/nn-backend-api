@@ -12,6 +12,7 @@ import { PackageInfoService } from './app/core/services/package-info.service';
 import { HttpExceptionFilter } from './app/core/filters/http-exception.filter';
 import { CustomValidationPipe } from './app/core/pipes/validation.pipe';
 import { TransformInterceptor } from './app/core/interceptors/transform.interceptor';
+import { CustomThrottlerGuard } from './app/core/guards/throttler.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -83,7 +84,7 @@ async function bootstrap() {
     logger.log('CORS restrictions disabled - allowing all origins');
   }
 
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
+  app.setGlobalPrefix(apiPrefix, { exclude: ['/', 'health'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
@@ -94,6 +95,10 @@ async function bootstrap() {
 
   // Global transform interceptor
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  // Global throttler guard
+  const throttlerGuard = app.get(CustomThrottlerGuard);
+  app.useGlobalGuards(throttlerGuard);
 
   // Swagger documentation setup
   const isSwaggerEnabled = config.get('app.enableSwagger');
