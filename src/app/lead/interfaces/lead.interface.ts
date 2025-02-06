@@ -13,7 +13,7 @@ import {
   IsNotEmpty,
   ValidateIf,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum ServiceType {
   WEB_APP = 'WEB_APP',
@@ -111,13 +111,13 @@ export class LeadDto {
   @IsEnum(ExistingProjectChallenge, { message: 'Invalid project challenge selected' })
   existingProjectChallenge?: ExistingProjectChallenge;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Project description',
     example: 'Building a marketplace app for local artisans',
   })
+  @IsOptional()
   @IsString({ message: 'Project description must be a string' })
-  @IsNotEmpty({ message: 'Project description is required' })
-  @MinLength(50, { message: 'Project description must be at least 50 characters long' })
+  @MinLength(20, { message: 'Project description must be at least 50 characters long' })
   @MaxLength(2000, { message: 'Project description cannot exceed 2000 characters' })
   projectDescription: string;
 
