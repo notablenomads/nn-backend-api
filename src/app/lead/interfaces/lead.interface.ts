@@ -1,4 +1,18 @@
-import { IsString, IsEmail, IsEnum, IsArray, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsEnum,
+  IsArray,
+  IsOptional,
+  IsBoolean,
+  IsUrl,
+  MinLength,
+  MaxLength,
+  ArrayMinSize,
+  ArrayMaxSize,
+  IsNotEmpty,
+  ValidateIf,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum ServiceType {
@@ -73,15 +87,18 @@ export class LeadDto {
     enum: ServiceType,
     isArray: true,
   })
-  @IsArray()
-  @IsEnum(ServiceType, { each: true })
+  @IsArray({ message: 'Services must be provided as an array' })
+  @ArrayMinSize(1, { message: 'At least one service must be selected' })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 services can be selected' })
+  @IsEnum(ServiceType, { each: true, message: 'Invalid service type selected' })
   services: ServiceType[];
 
   @ApiProperty({
     description: 'Type of project (new or existing)',
     enum: ProjectType,
   })
-  @IsEnum(ProjectType)
+  @IsNotEmpty({ message: 'Project type is required' })
+  @IsEnum(ProjectType, { message: 'Invalid project type selected' })
   projectType: ProjectType;
 
   @ApiProperty({
@@ -89,36 +106,42 @@ export class LeadDto {
     enum: ExistingProjectChallenge,
     required: false,
   })
-  @IsOptional()
-  @IsEnum(ExistingProjectChallenge)
+  @ValidateIf((o) => o.projectType === ProjectType.EXISTING)
+  @IsNotEmpty({ message: 'Challenge must be specified for existing projects' })
+  @IsEnum(ExistingProjectChallenge, { message: 'Invalid project challenge selected' })
   existingProjectChallenge?: ExistingProjectChallenge;
 
   @ApiProperty({
     description: 'Project description',
     example: 'Building a marketplace app for local artisans',
   })
-  @IsString()
+  @IsString({ message: 'Project description must be a string' })
+  @IsNotEmpty({ message: 'Project description is required' })
+  @MinLength(50, { message: 'Project description must be at least 50 characters long' })
+  @MaxLength(2000, { message: 'Project description cannot exceed 2000 characters' })
   projectDescription: string;
 
   @ApiProperty({
     description: 'Target audience',
     enum: TargetAudience,
   })
-  @IsEnum(TargetAudience)
+  @IsNotEmpty({ message: 'Target audience is required' })
+  @IsEnum(TargetAudience, { message: 'Invalid target audience selected' })
   targetAudience: TargetAudience;
 
   @ApiProperty({
     description: 'Industry',
     enum: Industry,
   })
-  @IsEnum(Industry)
+  @IsNotEmpty({ message: 'Industry is required' })
+  @IsEnum(Industry, { message: 'Invalid industry selected' })
   industry: Industry;
 
   @ApiProperty({
     description: 'Has competitors or inspiration',
     type: Boolean,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'Has competitors must be a boolean value' })
   hasCompetitors: boolean;
 
   @ApiProperty({
@@ -126,51 +149,60 @@ export class LeadDto {
     required: false,
     type: [String],
   })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
+  @ValidateIf((o) => o.hasCompetitors === true)
+  @IsArray({ message: 'Competitor URLs must be provided as an array' })
+  @ArrayMinSize(1, { message: 'At least one competitor URL must be provided when hasCompetitors is true' })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 competitor URLs allowed' })
+  @IsUrl({}, { each: true, message: 'Invalid URL format for competitor website' })
   competitorUrls?: string[];
 
   @ApiProperty({
     description: 'Has existing brand guidelines',
     type: Boolean,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'Has existing brand must be a boolean value' })
   hasExistingBrand: boolean;
 
   @ApiProperty({
     description: 'Preferred design style',
     enum: DesignStyle,
   })
-  @IsEnum(DesignStyle)
+  @IsNotEmpty({ message: 'Design style is required' })
+  @IsEnum(DesignStyle, { message: 'Invalid design style selected' })
   designStyle: DesignStyle;
 
   @ApiProperty({
     description: 'Project timeline',
     enum: Timeline,
   })
-  @IsEnum(Timeline)
+  @IsNotEmpty({ message: 'Timeline is required' })
+  @IsEnum(Timeline, { message: 'Invalid timeline selected' })
   timeline: Timeline;
 
   @ApiProperty({
     description: 'Project budget',
     enum: Budget,
   })
-  @IsEnum(Budget)
+  @IsNotEmpty({ message: 'Budget is required' })
+  @IsEnum(Budget, { message: 'Invalid budget selected' })
   budget: Budget;
 
   @ApiProperty({
     description: 'Contact name',
     example: 'John Doe',
   })
-  @IsString()
+  @IsString({ message: 'Name must be a string' })
+  @IsNotEmpty({ message: 'Name is required' })
+  @MinLength(2, { message: 'Name must be at least 2 characters long' })
+  @MaxLength(100, { message: 'Name cannot exceed 100 characters' })
   name: string;
 
   @ApiProperty({
     description: 'Contact email',
     example: 'john.doe@example.com',
   })
-  @IsEmail()
+  @IsEmail({}, { message: 'Invalid email format' })
+  @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
   @ApiProperty({
@@ -178,21 +210,23 @@ export class LeadDto {
     required: false,
   })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Company name must be a string' })
+  @MaxLength(200, { message: 'Company name cannot exceed 200 characters' })
   company?: string;
 
   @ApiProperty({
     description: 'Preferred contact method',
     enum: ContactMethod,
   })
-  @IsEnum(ContactMethod)
+  @IsNotEmpty({ message: 'Preferred contact method is required' })
+  @IsEnum(ContactMethod, { message: 'Invalid contact method selected' })
   preferredContactMethod: ContactMethod;
 
   @ApiProperty({
     description: 'Wants free consultation',
     type: Boolean,
   })
-  @IsBoolean()
+  @IsBoolean({ message: 'Wants consultation must be a boolean value' })
   wantsConsultation: boolean;
 
   @ApiProperty({
@@ -200,6 +234,7 @@ export class LeadDto {
     required: false,
   })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Additional notes must be a string' })
+  @MaxLength(1000, { message: 'Additional notes cannot exceed 1000 characters' })
   additionalNotes?: string;
 }
