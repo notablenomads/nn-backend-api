@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+# [0.7.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.6.9...v0.7.0) (2025-02-06)
+
+
+### Features
+
+* enhance LeadDto validation and error handling in LeadController ([9ca84ab](https://github.com/Notable-Nomads/nn-backend-api/commit/9ca84ab234d25e433452d62ca8f84313891bffa1))
+
+
+
 ## [0.6.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.6.8...v0.6.9) (2025-02-04)
 
 
