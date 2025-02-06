@@ -1,11 +1,13 @@
 import { Controller, Post, Body, HttpStatus, HttpException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { EmailService } from './email.service';
 import { ContactFormDto } from './interfaces/contact-form.interface';
 import { ERRORS } from '../core/errors/errors';
 
 @ApiTags('Email')
 @Controller('email')
+@Throttle({ default: { ttl: 60, limit: 10 } })
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 

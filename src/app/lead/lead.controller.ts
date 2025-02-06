@@ -10,6 +10,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { LeadService } from './lead.service';
 import { LeadValidationService } from './services/lead-validation.service';
 import { LeadDto } from './dto/lead.dto';
@@ -19,6 +20,7 @@ import { createLeadProcessingError, createLeadNotFoundError } from './constants/
 
 @ApiTags('Lead')
 @Controller('leads')
+@Throttle({ default: { ttl: 60, limit: 20 } })
 export class LeadController {
   constructor(
     private readonly leadService: LeadService,

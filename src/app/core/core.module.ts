@@ -22,8 +22,23 @@ import { CustomThrottlerGuard } from './guards/throttler.guard';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60, // Time-to-live - the time window in seconds
-        limit: 10, // The maximum number of requests within the TTL
+        ttl: 60,
+        limit: 30, // Default limit
+      },
+      {
+        ttl: 60,
+        limit: 5,
+        name: 'auth', // For authentication routes
+      },
+      {
+        ttl: 60,
+        limit: 10,
+        name: 'email', // For email-related routes
+      },
+      {
+        ttl: 60,
+        limit: 20,
+        name: 'api', // For general API routes
       },
     ]),
     DatabaseModule,
