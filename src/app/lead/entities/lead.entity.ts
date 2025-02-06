@@ -9,10 +9,11 @@ import {
   Timeline,
   Budget,
   ContactMethod,
-} from '../interfaces/lead.interface';
+} from '../enums/lead.enum';
+import { ILead } from '../interfaces/lead.interface';
 
 @Entity('leads')
-export class Lead {
+export class Lead implements ILead {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

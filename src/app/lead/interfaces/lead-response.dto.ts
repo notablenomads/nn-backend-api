@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ILead } from './lead.interface';
 import {
   ServiceType,
   ProjectType,
@@ -9,9 +10,9 @@ import {
   Timeline,
   Budget,
   ContactMethod,
-} from './lead.interface';
+} from '../enums/lead.enum';
 
-export class LeadResponseDto {
+export class LeadResponseDto implements ILead {
   @ApiProperty()
   id: string;
 
