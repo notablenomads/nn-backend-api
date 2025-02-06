@@ -56,16 +56,27 @@ export class BlogService {
 
       for (const author of this.authors) {
         const posts = await this.fetchMediumPosts(author);
-        allPosts.push(...posts);
+        if (posts && posts.length > 0) {
+          allPosts.push(...posts);
+        }
       }
 
-      this.cachedPosts = allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
-      this.lastFetchTime = now;
+      if (allPosts.length > 0) {
+        this.cachedPosts = allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+        this.lastFetchTime = now;
+      } else {
+        this.logger.warn('No blog posts were fetched from any author');
+      }
     } catch (error) {
       this.logger.error(
         ERRORS.BLOG.FETCH.FAILED({ reason: 'Failed to update blog posts cache: ' + error.message }).message,
         error.stack,
       );
+      // If we have cached posts, return them instead of throwing
+      if (this.cachedPosts.length > 0) {
+        this.logger.log('Returning cached posts due to fetch error');
+        return;
+      }
       throw error;
     }
   }
@@ -76,12 +87,17 @@ export class BlogService {
       const response = await firstValueFrom(this.httpService.get(feedUrl));
       const feed = await this.parseMediumFeed(response.data);
 
+      if (!feed?.rss?.channel?.item) {
+        this.logger.warn(`No items found in feed for author ${author.username}`);
+        return [];
+      }
+
       return feed.rss.channel.item.map((item) => ({
-        title: item.title,
-        content: this.cleanHtmlContent(item['content:encoded']),
+        title: item.title || 'Untitled',
+        content: this.cleanHtmlContent(item['content:encoded'] || ''),
         url: item.link,
         publishedAt: new Date(item.pubDate),
-        imageUrl: this.extractImageUrl(item['content:encoded']),
+        imageUrl: this.extractImageUrl(item['content:encoded'] || ''),
         author: {
           username: author.username,
           name: author.name,
@@ -103,14 +119,23 @@ export class BlogService {
         if (error) {
           this.logger.error(ERRORS.BLOG.PROCESSING.PARSE_ERROR({ reason: error.message }).message, error.stack);
           reject(error);
-        } else {
-          resolve(result);
+          return;
         }
+
+        if (!result?.rss?.channel) {
+          const error = new Error('Invalid RSS feed structure');
+          this.logger.error(ERRORS.BLOG.PROCESSING.PARSE_ERROR({ reason: error.message }).message);
+          reject(error);
+          return;
+        }
+
+        resolve(result);
       });
     });
   }
 
   private cleanHtmlContent(html: string): string {
+    if (!html) return '';
     return html
       .replace(/<[^>]*>/g, '')
       .replace(/&nbsp;/g, ' ')
@@ -119,6 +144,7 @@ export class BlogService {
   }
 
   private extractImageUrl(html: string): string | undefined {
+    if (!html) return undefined;
     const imgMatch = html.match(/<img[^>]+src="([^">]+)"/);
     return imgMatch ? imgMatch[1] : undefined;
   }
