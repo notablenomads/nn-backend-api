@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.3](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.2...v0.8.3) (2025-02-06)
+
+
+### Features
+
+* enhance throttling configuration for email and lead routes ([4dcfc62](https://github.com/Notable-Nomads/nn-backend-api/commit/4dcfc6218e59dec6bfafea2105332cd81d27cfc7))
+
 ### [0.8.2](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.1...v0.8.2) (2025-02-06)
 
 ## [0.8.1](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.0...v0.8.1) (2025-02-06)
