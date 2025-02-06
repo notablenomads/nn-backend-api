@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+# [0.8.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.7.0...v0.8.0) (2025-02-06)
+
+
+### Bug Fixes
+
+* temporarily disable error messages in production environment ([7190f3d](https://github.com/Notable-Nomads/nn-backend-api/commit/7190f3d169389d7dacf5d95fabf49249d8a86078))
+
+
+### Features
+
+* enhance error handling in email and blog services, and add custom validation pipe and response interceptor ([ca11b52](https://github.com/Notable-Nomads/nn-backend-api/commit/ca11b52c220c88f7fbc6767b656ed52c031dfc75))
+* implement error handling module and integrate error management in lead validation and controller ([99b4b9a](https://github.com/Notable-Nomads/nn-backend-api/commit/99b4b9a5083fb3888e6aef00af9ed7498ad34ab3))
+* implement lead validation service and refactor lead controller for improved data validation ([3c49fbf](https://github.com/Notable-Nomads/nn-backend-api/commit/3c49fbf726e0e0adba7ee997a2105ee8cec088fd))
+* improve blog service error handling and enhance feed parsing logic ([6057047](https://github.com/Notable-Nomads/nn-backend-api/commit/60570476bff6e1dfc999ec13573944c3edc7c86c))
+* refactor error handling to streamline error creation and improve consistency across services ([078dbb4](https://github.com/Notable-Nomads/nn-backend-api/commit/078dbb4afccc4573feb10928d2fedfe752524b5b))
+* update LeadDto to use ApiPropertyOptional and adjust validation for project description ([6d1e593](https://github.com/Notable-Nomads/nn-backend-api/commit/6d1e593ba9da02e23f99445d96572194364f7c01))
+
+
+
 # [0.7.0](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.6.9...v0.7.0) (2025-02-06)
 
 
