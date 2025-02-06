@@ -30,13 +30,14 @@ async function bootstrap() {
     helmet({
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'http:', 'https:', 'data:', 'blob:'],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'cdn.socket.io', '*.notablenomads.com'],
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
           connectSrc: [
             "'self'",
+            'ws://localhost:*',
+            'wss://localhost:*',
             'ws://api.notablenomads.com',
             'wss://api.notablenomads.com',
-            'http://api.notablenomads.com',
             'https://api.notablenomads.com',
             'wss://api.production.platform.notablenomads.com',
             'wss://api.staging.platform.notablenomads.com',
@@ -45,15 +46,19 @@ async function bootstrap() {
             'ws://*.notablenomads.com',
             'wss://*.notablenomads.com',
           ],
-          styleSrc: ["'self'", "'unsafe-inline'", '*.notablenomads.com'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
-          fontSrc: ["'self'", '*.notablenomads.com', 'data:', 'https:'],
+          fontSrc: ["'self'", 'data:', 'https:'],
           objectSrc: ["'none'"],
+          mediaSrc: ["'none'"],
           frameSrc: ["'none'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
           upgradeInsecureRequests: [],
         },
       },
-      crossOriginEmbedderPolicy: { policy: 'credentialless' },
+      crossOriginEmbedderPolicy: false,
       crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
       dnsPrefetchControl: { allow: false },
@@ -63,9 +68,12 @@ async function bootstrap() {
         includeSubDomains: true,
         preload: true,
       },
+      ieNoOpen: true,
+      noSniff: true,
+      originAgentCluster: true,
+      permittedCrossDomainPolicies: { permittedPolicies: 'none' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       xssFilter: true,
-      noSniff: true,
     }),
   );
 
@@ -84,7 +92,7 @@ async function bootstrap() {
     logger.log('CORS restrictions disabled - allowing all origins');
   }
 
-  app.setGlobalPrefix(apiPrefix, { exclude: ['/', 'health'] });
+  app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
