@@ -5,7 +5,7 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LeadDto } from './interfaces/lead.interface';
+import { LeadDto } from './dto/lead.dto';
 import { LeadResponseDto } from './interfaces/lead-response.dto';
 import { Lead } from './entities/lead.entity';
 import { LeadEmailTemplateHelper } from './helpers/lead-email-template.helper';
@@ -21,7 +21,7 @@ import {
   Timeline,
   Budget,
   ContactMethod,
-} from './interfaces/lead.interface';
+} from './enums/lead.enum';
 
 @Injectable()
 export class LeadService {
