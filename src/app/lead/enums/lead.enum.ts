@@ -1,0 +1,65 @@
+export enum ServiceType {
+  WEB_APP = 'WEB_APP',
+  MOBILE_APP = 'MOBILE_APP',
+  AI_ML = 'AI_ML',
+  DEVOPS = 'DEVOPS',
+  ARCHITECTURE = 'ARCHITECTURE',
+  OTHER = 'OTHER',
+}
+
+export enum ProjectType {
+  NEW = 'NEW',
+  EXISTING = 'EXISTING',
+}
+
+export enum ExistingProjectChallenge {
+  PERFORMANCE = 'PERFORMANCE',
+  SCALABILITY = 'SCALABILITY',
+  BUGS = 'BUGS',
+  UX = 'UX',
+  OTHER = 'OTHER',
+}
+
+export enum TargetAudience {
+  CONSUMERS = 'CONSUMERS',
+  BUSINESSES = 'BUSINESSES',
+  BOTH = 'BOTH',
+}
+
+export enum Industry {
+  ECOMMERCE = 'ECOMMERCE',
+  HEALTHCARE = 'HEALTHCARE',
+  EDUCATION = 'EDUCATION',
+  SAAS = 'SAAS',
+  FINANCE = 'FINANCE',
+  ENTERTAINMENT = 'ENTERTAINMENT',
+  OTHER = 'OTHER',
+}
+
+export enum DesignStyle {
+  MODERN = 'MODERN',
+  BOLD = 'BOLD',
+  PROFESSIONAL = 'PROFESSIONAL',
+  UNDECIDED = 'UNDECIDED',
+}
+
+export enum Timeline {
+  LESS_THAN_3_MONTHS = 'LESS_THAN_3_MONTHS',
+  THREE_TO_SIX_MONTHS = 'THREE_TO_SIX_MONTHS',
+  MORE_THAN_6_MONTHS = 'MORE_THAN_6_MONTHS',
+  FLEXIBLE = 'FLEXIBLE',
+}
+
+export enum Budget {
+  LESS_THAN_10K = 'LESS_THAN_10K',
+  TEN_TO_FIFTY_K = 'TEN_TO_FIFTY_K',
+  FIFTY_TO_HUNDRED_K = 'FIFTY_TO_HUNDRED_K',
+  MORE_THAN_100K = 'MORE_THAN_100K',
+  NOT_SURE = 'NOT_SURE',
+}
+
+export enum ContactMethod {
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE',
+  WHATSAPP = 'WHATSAPP',
+}

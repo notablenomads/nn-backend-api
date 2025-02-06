@@ -65,7 +65,7 @@ export class EmailService {
         throw new Error(ERRORS.ENTITY.NOT_FOUND('Logo file', 'path', logoPath).message);
       }
     } catch (error) {
-      this.logger.error(ERRORS.EMAIL.TEMPLATE_ERROR({ reason: error.message }).message, error.stack);
+      this.logger.error(ERRORS.EMAIL.TEMPLATE.PARSE_ERROR({ reason: error.message }).message, error.stack);
       throw error;
     }
   }
@@ -76,7 +76,7 @@ export class EmailService {
       const userEmailSuccess = await this.sendUserConfirmation(data);
       return adminEmailSuccess && userEmailSuccess;
     } catch (error) {
-      this.logger.error(ERRORS.EMAIL.SEND_FAILED({ reason: error.message }).message, error.stack);
+      this.logger.error(ERRORS.EMAIL.SENDING.FAILED({ reason: error.message }).message, error.stack);
       return false;
     }
   }
@@ -112,7 +112,7 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error(
-        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to send admin notification: ' + error.message }).message,
+        ERRORS.EMAIL.SENDING.FAILED({ reason: 'Failed to send admin notification: ' + error.message }).message,
         error.stack,
       );
       return false;
@@ -149,7 +149,7 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error(
-        ERRORS.EMAIL.SEND_FAILED({ reason: 'Failed to send user confirmation: ' + error.message }).message,
+        ERRORS.EMAIL.SENDING.FAILED({ reason: 'Failed to send user confirmation: ' + error.message }).message,
         error.stack,
       );
       return false;

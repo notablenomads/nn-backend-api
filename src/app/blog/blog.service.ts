@@ -40,7 +40,7 @@ export class BlogService {
         total: this.cachedPosts.length,
       };
     } catch (error) {
-      this.logger.error(ERRORS.BLOG.FETCH_ERROR({ reason: error.message }).message, error.stack);
+      this.logger.error(ERRORS.BLOG.FETCH.FAILED({ reason: error.message }).message, error.stack);
       throw error;
     }
   }
@@ -63,7 +63,7 @@ export class BlogService {
       this.lastFetchTime = now;
     } catch (error) {
       this.logger.error(
-        ERRORS.BLOG.FETCH_ERROR({ reason: 'Failed to update blog posts cache: ' + error.message }).message,
+        ERRORS.BLOG.FETCH.FAILED({ reason: 'Failed to update blog posts cache: ' + error.message }).message,
         error.stack,
       );
       throw error;
@@ -90,7 +90,7 @@ export class BlogService {
       }));
     } catch (error) {
       this.logger.error(
-        ERRORS.BLOG.FETCH_ERROR({ reason: `Failed to fetch posts for ${author.username}: ${error.message}` }).message,
+        ERRORS.BLOG.FETCH.FAILED({ reason: `Failed to fetch posts for ${author.username}: ${error.message}` }).message,
         error.stack,
       );
       return [];
@@ -101,7 +101,7 @@ export class BlogService {
     return new Promise((resolve, reject) => {
       xml2js.parseString(xmlData, { explicitArray: false }, (error, result) => {
         if (error) {
-          this.logger.error(ERRORS.BLOG.PARSE_ERROR({ reason: error.message }).message, error.stack);
+          this.logger.error(ERRORS.BLOG.PROCESSING.PARSE_ERROR({ reason: error.message }).message, error.stack);
           reject(error);
         } else {
           resolve(result);

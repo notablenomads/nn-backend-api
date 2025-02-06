@@ -43,7 +43,7 @@ export class AiChatService {
       const response = await result.response;
       return response.text();
     } catch (error) {
-      this.logger.error(ERRORS.CHAT.MESSAGE_FAILED({ reason: error.message }).message, error.stack);
+      this.logger.error(ERRORS.CHAT.PROCESSING.MESSAGE_FAILED({ reason: error.message }).message, error.stack);
       throw error;
     }
   }
@@ -88,7 +88,7 @@ export class AiChatService {
 
           subscriber.complete();
         } catch (error) {
-          const errorMessage = ERRORS.CHAT.STREAM_ERROR({ reason: error.message });
+          const errorMessage = ERRORS.CHAT.PROCESSING.STREAM_ERROR({ reason: error.message });
           this.logger.error(errorMessage.message, error.stack);
           subscriber.error(errorMessage);
         }
