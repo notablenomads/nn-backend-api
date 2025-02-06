@@ -91,7 +91,7 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
       forbidNonWhitelisted: true,
       forbidUnknownValues: true,
-      disableErrorMessages: environment === 'production',
+      // disableErrorMessages: environment === 'production',
     }),
   );
 
