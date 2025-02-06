@@ -82,7 +82,7 @@ export class LeadService {
         throw new Error(ERRORS.ENTITY.NOT_FOUND('Logo file', 'path', logoPath).message);
       }
     } catch (error) {
-      this.logger.error(ERRORS.EMAIL.TEMPLATE_ERROR({ reason: error.message }).message, error.stack);
+      this.logger.error(ERRORS.EMAIL.TEMPLATE.PARSE_ERROR({ reason: error.message }).message, error.stack);
       throw error;
     }
   }
