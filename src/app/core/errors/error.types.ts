@@ -8,18 +8,19 @@ export interface IErrorResponse {
   errors: Record<string, string[]>;
 }
 
-export interface IValidationError extends IErrorResponse {
-  code: string;
+export type ErrorCreator = (params?: Record<string, string | number>) => IBaseError;
+
+export interface IErrorCategory {
+  [key: string]: IBaseError | ErrorCreator;
 }
 
-export type ErrorParams = Record<string, string | number>;
-
-export interface IErrorFactory {
-  create(message: string): IBaseError;
-  createWithParams(params: ErrorParams): IBaseError;
+export interface ICoreErrors {
+  GENERIC: IErrorCategory;
+  ENTITY: IErrorCategory;
+  AUTH: IErrorCategory;
+  API: IErrorCategory;
 }
 
-export interface IErrorOptions {
-  prefix?: string;
-  shouldFormat?: boolean;
+export interface IModuleErrors {
+  [key: string]: IErrorCategory;
 }
