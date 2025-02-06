@@ -1,34 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { IBaseError, IErrorResponse, ErrorParams, IErrorOptions } from './error.types';
+import { IBaseError, IErrorResponse } from './error.types';
 
 @Injectable()
 export class ErrorService {
   private readonly defaultPrefix = 'APP';
 
-  formatErrorCode(input: string, options?: IErrorOptions): string {
-    const prefix = options?.prefix || this.defaultPrefix;
-    const code = options?.shouldFormat !== false ? input.replace(/\s/g, '_').toUpperCase() : input;
-    return `${prefix}_${code}`;
-  }
-
-  createError(code: string, messageTemplate: string, options?: IErrorOptions): IBaseError {
+  createError(code: string, message: string, prefix?: string): IBaseError {
     return {
-      code: this.formatErrorCode(code, options),
-      message: messageTemplate,
+      code: this.formatErrorCode(code, prefix),
+      message,
     };
   }
 
-  createDynamicError(code: string, messageTemplate: string, options?: IErrorOptions) {
-    return (params: ErrorParams): IBaseError => {
+  createDynamicError(code: string, messageTemplate: string, prefix?: string) {
+    return (params?: Record<string, string | number>): IBaseError => {
       let message = messageTemplate;
-      Object.entries(params).forEach(([key, value]) => {
-        message = message.replace(`{${key}}`, String(value));
-      });
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          message = message.replace(`{${key}}`, String(value));
+        });
+      }
       return {
-        code: this.formatErrorCode(code, options),
+        code: this.formatErrorCode(code, prefix),
         message,
       };
     };
+  }
+
+  private formatErrorCode(code: string, prefix?: string): string {
+    const finalPrefix = prefix || this.defaultPrefix;
+    return `${finalPrefix}_${code.replace(/\s/g, '_').toUpperCase()}`;
   }
 
   createValidationError(errors: Record<string, string[]>): IErrorResponse {

@@ -7,32 +7,34 @@ export const LEAD_ERRORS = {
     EXISTING_PROJECT_CHALLENGE: errorService.createError(
       'LEAD_VALIDATION_EXISTING_PROJECT_CHALLENGE',
       'Challenge must be specified for existing projects',
-      { prefix: 'LEAD' },
+      'LEAD',
     ),
     COMPETITOR_URLS: errorService.createError(
       'LEAD_VALIDATION_COMPETITOR_URLS',
       'Competitor URLs must be provided when hasCompetitors is true',
-      { prefix: 'LEAD' },
+      'LEAD',
     ),
   },
   SUBMISSION: {
-    FAILED: errorService.createDynamicError('LEAD_SUBMISSION_FAILED', 'Failed to process lead submission: {reason}', {
-      prefix: 'LEAD',
-    }),
+    FAILED: errorService.createDynamicError(
+      'LEAD_SUBMISSION_FAILED',
+      'Failed to process lead submission: {reason}',
+      'LEAD',
+    ),
     EMAIL_FAILED: errorService.createDynamicError(
       'LEAD_EMAIL_FAILED',
       'Failed to send lead notification emails: {reason}',
-      { prefix: 'LEAD' },
+      'LEAD',
     ),
   },
-  NOT_FOUND: errorService.createError('LEAD_NOT_FOUND', 'The requested lead could not be found', { prefix: 'LEAD' }),
+  NOT_FOUND: errorService.createError('LEAD_NOT_FOUND', 'The requested lead could not be found', 'LEAD'),
   PROCESSING: {
     TEMPLATE_ERROR: errorService.createDynamicError(
       'LEAD_TEMPLATE_ERROR',
       'Failed to process lead template: {reason}',
-      { prefix: 'LEAD' },
+      'LEAD',
     ),
-    LOGO_NOT_FOUND: errorService.createError('LEAD_LOGO_NOT_FOUND', 'Logo file could not be found', { prefix: 'LEAD' }),
+    LOGO_NOT_FOUND: errorService.createError('LEAD_LOGO_NOT_FOUND', 'Logo file could not be found', 'LEAD'),
   },
 };
 
