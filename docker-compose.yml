@@ -37,6 +37,7 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
       # Monitoring
       MONITORING_MEMORY_THRESHOLD_MS: ${MONITORING_MEMORY_THRESHOLD_MS:-2000}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     expose:
       - '3000'
     networks:
@@ -131,7 +132,8 @@ networks:
     driver: bridge
 
 volumes:
+  postgres_data:
+    name: nn_postgres_data
   nginx_temp:
   nginx_run:
-  postgres_data:
   nginx_conf:
