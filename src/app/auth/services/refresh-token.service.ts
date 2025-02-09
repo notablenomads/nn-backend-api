@@ -186,4 +186,14 @@ export class RefreshTokenService {
         return value;
     }
   }
+
+  async findValidTokensByUserId(userId: string): Promise<RefreshToken[]> {
+    return this.refreshTokenRepository.find({
+      where: {
+        userId,
+        isValid: true,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+  }
 }
