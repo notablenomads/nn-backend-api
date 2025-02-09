@@ -19,17 +19,20 @@ export class AuthService {
     return this.login(user);
   }
 
-  async validateUser(email: string, password: string): Promise<User> {
+  async validateUser(email: string, password: string): Promise {
     const user = await this.userService.findByEmail(email);
     if (!user) {
+      await this.handleFailedLogin(email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await user.validatePassword(password);
     if (!isPasswordValid) {
+      await this.handleFailedLogin(email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    await this.resetFailedAttempts(email);
     return user;
   }
 
