@@ -63,15 +63,20 @@ export class RefreshTokenService {
   }
 
   async revokeAllUserTokens(userId: string): Promise<void> {
+    this.logger.debug(`Attempting to revoke all tokens for user ${userId}`);
+
     const tokens = await this.refreshTokenRepository.find({
       where: { userId, isValid: true },
     });
+
+    this.logger.debug(`Found ${tokens.length} active tokens to revoke`);
 
     for (const token of tokens) {
       token.isValid = false;
     }
 
     await this.refreshTokenRepository.save(tokens);
+    this.logger.debug(`Successfully revoked ${tokens.length} tokens for user ${userId}`);
   }
 
   async replaceToken(oldToken: string, userId: string): Promise<RefreshTokenResponseDto> {

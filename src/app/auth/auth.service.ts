@@ -86,10 +86,18 @@ export class AuthService {
   }
 
   async logout(refreshToken: string): Promise<void> {
+    const validToken = await this.refreshTokenService.validateToken(refreshToken);
+    if (!validToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
     await this.refreshTokenService.revokeToken(refreshToken);
   }
 
   async logoutAll(userId: string): Promise<void> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
     await this.refreshTokenService.revokeAllUserTokens(userId);
   }
 
