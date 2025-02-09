@@ -3,50 +3,81 @@
 # Exit on any error
 set -e
 
-# Configuration
-SERVER_IP="$1"
-SERVER_USER="root"
-API_DOMAIN="api.notablenomads.com"
-FRONTEND_DOMAIN="notablenomads.com"
-DOCKER_HUB_TOKEN="${DOCKER_HUB_TOKEN:-}"
-AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+# Load common functions and configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/config.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Initialize configuration
+init_config
 
-# Helper functions
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        -f|--force)
+            AUTO_CONFIRM=true
+            shift
+            ;;
+        --skip-cleanup)
+            SKIP_CLEANUP=true
+            shift
+            ;;
+        --skip-ssl)
+            SKIP_SSL=true
+            shift
+            ;;
+        --backup-only)
+            BACKUP_ONLY=true
+            shift
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            SERVER_IP="$1"
+            shift
+            ;;
+    esac
+done
 
-# Print usage
-usage() {
-    echo "Usage: DOCKER_HUB_TOKEN=<token> [AUTO_CONFIRM=true] $0 <server-ip>"
-    echo
-    echo "Options:"
-    echo "  AUTO_CONFIRM=true    Skip confirmation prompts (useful for CI/CD)"
-    exit 1
-}
+# Show help function
+show_help() {
+    cat << EOF
+Deploy Full Script
+=================
 
-# Function to handle confirmations
-confirm_step() {
-    local step="$1"
-    if [ "$AUTO_CONFIRM" != "true" ]; then
-        read -p "Press Enter to continue with $step (or Ctrl+C to abort)..."
-    else
-        log_info "Auto-confirming $step..."
-    fi
+Performs a full deployment of the Notable Nomads application.
+
+Usage:
+    $0 [options] <server-ip>
+
+Options:
+    -c, --config <path>   Use custom config file
+    -f, --force           Skip all confirmations
+    --skip-cleanup        Skip cleanup step
+    --skip-ssl           Skip SSL renewal
+    --backup-only        Only perform backup
+    
+Environment Variables:
+    DOCKER_HUB_TOKEN     Docker Hub authentication token
+    AUTO_CONFIRM         Skip confirmation prompts if set to 'true'
+
+Examples:
+    $0 -f 123.456.789.0
+    $0 --skip-cleanup 123.456.789.0
+EOF
 }
 
 # Validate input parameters
-if [ -z "$1" ]; then
+if [ -z "$SERVER_IP" ]; then
     log_error "Server IP address is required."
-    usage
+    show_help
+    exit 1
 fi
 
 if [ -z "$DOCKER_HUB_TOKEN" ]; then
@@ -55,27 +86,48 @@ if [ -z "$DOCKER_HUB_TOKEN" ]; then
     exit 1
 fi
 
-log_info "Starting full deployment sequence for $API_DOMAIN and $FRONTEND_DOMAIN"
+# Initialize progress tracking
+init_progress 4
+
+# Print deployment information
+log_info "Starting full deployment sequence for $(get_config API_DOMAIN) and $(get_config FRONTEND_DOMAIN)"
 echo "Server IP: $SERVER_IP"
-echo "Force cleanup: false"
-echo "Force SSL regeneration: false"
-echo "Auto confirm: $AUTO_CONFIRM"
+echo "Skip cleanup: ${SKIP_CLEANUP:-false}"
+echo "Skip SSL: ${SKIP_SSL:-false}"
+echo "Auto confirm: ${AUTO_CONFIRM:-false}"
 echo
 
-confirm_step "Step 1: Cleanup"
-
-# Step 1: Cleanup
-log_info "Step 1: Cleaning up existing deployment..."
-log_info "Checking SSH connection..."
-if ! ssh -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_IP" "echo 'SSH connection successful'" &> /dev/null; then
-    log_error "Could not establish SSH connection to $SERVER_USER@$SERVER_IP"
+# Verify SSH connection
+if ! verify_ssh_connection "$(get_config SERVER_USER)" "$SERVER_IP"; then
     exit 1
 fi
 
-log_info "Starting cleanup process on $SERVER_IP..."
+# Setup error handling
+trap 'handle_error $?' ERR
 
-# Create and copy cleanup script
-cat > remote_cleanup.sh << 'EOF'
+handle_error() {
+    local exit_code=$1
+    log_error "Deployment failed with exit code $exit_code"
+    perform_backup
+    exit $exit_code
+}
+
+# Perform backup if requested
+if [ "$BACKUP_ONLY" = "true" ]; then
+    perform_backup
+    log_success "Backup completed successfully!"
+    exit 0
+fi
+
+# Step 1: Cleanup
+if [ "$SKIP_CLEANUP" != "true" ]; then
+    progress "Cleaning up existing deployment"
+    confirm_step "cleanup"
+    
+    log_info "Starting cleanup process on $SERVER_IP..."
+    
+    # Create and copy cleanup script
+    cat > remote_cleanup.sh << 'EOF'
 #!/bin/bash
 
 # Colors for output
@@ -156,21 +208,25 @@ docker images
 
 log_success "Cleanup completed successfully!"
 EOF
-
-# Copy and execute cleanup script
-scp remote_cleanup.sh "$SERVER_USER@$SERVER_IP:/root/"
-ssh "$SERVER_USER@$SERVER_IP" "chmod +x /root/remote_cleanup.sh && /root/remote_cleanup.sh"
-rm remote_cleanup.sh
-
-log_success "Server cleanup completed successfully!"
-log_info "SSL certificates have been backed up (if they existed)."
+    
+    # Copy and execute cleanup script
+    scp remote_cleanup.sh "$(get_config SERVER_USER)@$SERVER_IP:/root/"
+    ssh "$(get_config SERVER_USER)@$SERVER_IP" "chmod +x /root/remote_cleanup.sh && /root/remote_cleanup.sh"
+    rm remote_cleanup.sh
+    
+    log_success "Server cleanup completed successfully!"
+    log_info "SSL certificates have been backed up (if they existed)."
+fi
 
 # Step 2: Deploy with HTTPS
-log_info "Step 2: Deploying with HTTPS configuration..."
-DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP"
+progress "Deploying with HTTPS configuration"
+if [ "$SKIP_SSL" != "true" ]; then
+    confirm_step "deployment"
+    DOCKER_HUB_TOKEN="$DOCKER_HUB_TOKEN" ./scripts/deploy.sh "$SERVER_IP"
+fi
 
 # Step 3: Verify deployment
-log_info "Step 3: Verifying deployment..."
+progress "Verifying deployment"
 log_info "Checking HTTPS endpoints..."
 
 # Function to check HTTPS endpoint
@@ -212,11 +268,11 @@ check_https_endpoint() {
 }
 
 # Check both domains
-check_https_endpoint "$API_DOMAIN" true
-check_https_endpoint "$FRONTEND_DOMAIN" false
+check_https_endpoint "$(get_config API_DOMAIN)" true
+check_https_endpoint "$(get_config FRONTEND_DOMAIN)" false
 
-log_success "Full deployment completed successfully!"
-echo -e "\n📝 Next steps:"
-echo "1. Monitor the logs: ssh $SERVER_USER@$SERVER_IP 'docker compose logs -f'"
-echo "2. Test the API: curl https://$API_DOMAIN/v1/health"
-echo "3. Visit the frontend: https://$FRONTEND_DOMAIN" 
+# Step 4: Final verification
+progress "Final verification"
+log_success "Deployment completed successfully!"
+log_info "API endpoint: https://$(get_config API_DOMAIN)"
+log_info "Frontend endpoint: https://$(get_config FRONTEND_DOMAIN)"
