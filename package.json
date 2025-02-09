@@ -32,7 +32,8 @@
     "migration:run": "yarn typeorm migration:run -d typeorm.config.ts",
     "migration:revert": "yarn typeorm migration:revert -d typeorm.config.ts",
     "migration:show": "yarn typeorm migration:show -d typeorm.config.ts",
-    "release": "npx standard-version && git add CHANGELOG.md && git commit --amend --no-edit && git tag -f v$(node -p \"require('./package.json').version\")",
+    "prerelease": "git add .",
+    "release": "npx standard-version --commit-all",
     "prepare": "husky"
   },
   "dependencies": {
