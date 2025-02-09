@@ -120,18 +120,18 @@ async function bootstrap() {
   });
 
   // Configure CORS
-  app.enableCors({
-    origin: corsService.createOriginValidator(),
-    credentials: true,
-  });
+  app.enableCors(corsService.getCorsOptions());
 
   // Log CORS configuration
   const corsStatus = corsService.getStatus();
   if (corsStatus.isRestricted) {
     logger.log('CORS restrictions enabled with allowed domains:');
     corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
+  } else if (environment === 'production') {
+    logger.error('WARNING: CORS restrictions are disabled in production!');
+    process.exit(1);
   } else {
-    logger.log('CORS restrictions disabled - allowing all origins');
+    logger.warn('CORS restrictions disabled - allowing all origins (non-production only)');
   }
 
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });

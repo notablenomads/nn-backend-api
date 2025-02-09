@@ -7,6 +7,7 @@ export class CorsService {
   private readonly logger = new Logger(CorsService.name);
   private readonly allowedDomains: string[];
   private readonly isRestricted: boolean;
+  private readonly maxAgeInSeconds = 3600; // 1 hour CORS cache
 
   constructor(private readonly configService: ConfigService) {
     this.allowedDomains = this.configService.get<IConfig['app']['corsEnabledDomains']>('app.corsEnabledDomains');
@@ -69,8 +70,8 @@ export class CorsService {
    */
   createOriginValidator() {
     return (origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) => {
-      // If CORS is not restricted, allow all origins
-      if (!this.isRestricted) {
+      // If CORS is not restricted, allow all origins (only in non-production)
+      if (!this.isRestricted && this.configService.get('app.nodeEnv') !== 'production') {
         callback(null, true);
         return;
       }
@@ -83,6 +84,23 @@ export class CorsService {
         this.logger.warn(`CORS validation failed: ${validation.error}`);
         callback(new Error(validation.error || 'Not allowed by CORS'));
       }
+    };
+  }
+
+  /**
+   * Get CORS options for the application
+   * @returns CorsOptions object
+   */
+  getCorsOptions() {
+    return {
+      origin: this.createOriginValidator(),
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-API-Key'],
+      exposedHeaders: ['Content-Disposition'],
+      credentials: true,
+      maxAge: this.maxAgeInSeconds,
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
     };
   }
 
