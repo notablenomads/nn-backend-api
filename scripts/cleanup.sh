@@ -66,19 +66,19 @@ cd /root
 
 # Stop all running containers
 log_info "Stopping all containers..."
-docker compose down -v || true
+docker compose down || true
 
-# Remove all containers
-log_info "Removing all containers..."
-docker rm -f $(docker ps -aq) 2>/dev/null || true
+# Remove all containers except postgres
+log_info "Removing containers (except postgres)..."
+docker ps -a | grep -v "postgres" | awk 'NR>1 {print $1}' | xargs -r docker rm -f
 
 # Remove all docker networks
 log_info "Removing docker networks..."
 docker network prune -f
 
-# Remove all docker volumes
-log_info "Removing docker volumes..."
-docker volume rm $(docker volume ls -q) 2>/dev/null || true
+# Remove all docker volumes except postgres data
+log_info "Removing docker volumes (except postgres data)..."
+docker volume ls -q | grep -v "nn_postgres_data" | xargs -r docker volume rm 2>/dev/null || true
 
 # Remove all unused images
 log_info "Removing unused images..."
@@ -89,74 +89,35 @@ log_info "Cleaning up Docker authentication..."
 rm -rf ~/.docker/config.json || true
 docker logout
 
-# Clean up SSL certificates and related files
-if [ "$1" = "true" ]; then
-    log_warn "Removing all SSL certificates and related files..."
-    rm -rf /etc/letsencrypt/live/*
-    rm -rf /etc/letsencrypt/archive/*
-    rm -rf /etc/letsencrypt/renewal/*
-    rm -rf certbot/conf/*
-    rm -rf certbot/www/*
-    rm -rf certbot/logs/*
-    rm -rf ssl_backup/*
-else
-    log_info "Backing up existing certificates..."
-    mkdir -p ssl_backup
-    if [ -d "/etc/letsencrypt/live" ]; then
-        cp -rL /etc/letsencrypt/live/* ssl_backup/ 2>/dev/null || true
-    fi
+# Remove SSL certificates if in force mode
+if [ "$FORCE" = true ]; then
+    log_warn "Force mode: Removing SSL certificates..."
+    rm -rf /etc/letsencrypt/live/* /etc/letsencrypt/archive/* /etc/letsencrypt/renewal/*
+    rm -rf /etc/nginx/ssl/*
 fi
 
-# Clean up nginx configuration
-log_info "Cleaning up nginx configuration..."
-rm -f nginx.conf.http nginx.conf.orig nginx.conf.bak nginx.conf
+# Remove nginx configuration
+log_info "Removing nginx configuration..."
+rm -rf /etc/nginx/conf.d/*
 
-# Clean up temporary files
-log_info "Cleaning up temporary files..."
-rm -rf /tmp/* /var/tmp/*
-
-# Clean up logs
-log_info "Cleaning up logs..."
-find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
-
-# Clean up any remaining Docker resources
-log_info "Final Docker cleanup..."
-docker system prune -af --volumes
-
-# Verify cleanup
-log_info "Verifying cleanup..."
-echo "Containers:"
-docker ps -a
-echo "Volumes:"
-docker volume ls
-echo "Networks:"
-docker network ls
-echo "Images:"
-docker images
-
-log_success "Cleanup completed successfully!"
+log_success "Cleanup completed!"
 EOF
 
-# Copy cleanup script to remote server
-scp /tmp/remote_cleanup.sh "$SERVER_USER@$SERVER_IP:/tmp/cleanup.sh"
+# Copy and execute the cleanup script on the remote server
+log_info "Copying cleanup script to remote server..."
+scp /tmp/remote_cleanup.sh "$SERVER_USER@$SERVER_IP:/tmp/remote_cleanup.sh"
 
-# Execute cleanup script on remote server
-ssh "$SERVER_USER@$SERVER_IP" "chmod +x /tmp/cleanup.sh && /tmp/cleanup.sh $FORCE"
+log_info "Making cleanup script executable..."
+ssh "$SERVER_USER@$SERVER_IP" "chmod +x /tmp/remote_cleanup.sh"
 
-# Clean up local temporary file
-rm /tmp/remote_cleanup.sh
-
-log_success "Server cleanup completed successfully!"
+log_info "Executing cleanup script..."
 if [ "$FORCE" = true ]; then
-    log_warn "All certificates and data have been removed. You will need to generate new certificates on next deployment."
+    ssh "$SERVER_USER@$SERVER_IP" "FORCE=true /tmp/remote_cleanup.sh"
 else
-    log_info "SSL certificates have been backed up (if they existed)."
+    ssh "$SERVER_USER@$SERVER_IP" "/tmp/remote_cleanup.sh"
 fi
 
-echo -e "\n📝 Next steps:"
-echo "1. Run the deployment script with HTTP-only configuration first:"
-echo "   DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --http-only"
-echo "2. Then set up SSL certificates:"
-echo "   ./scripts/manage-ssl.sh $SERVER_IP --production"
-echo "3. Finally, deploy with HTTPS:"
-echo "   DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh $SERVER_IP --production"
+log_info "Removing temporary cleanup script..."
+ssh "$SERVER_USER@$SERVER_IP" "rm -f /tmp/remote_cleanup.sh"
+
+log_success "Remote cleanup completed successfully!"
