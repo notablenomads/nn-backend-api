@@ -113,6 +113,8 @@ export class RefreshTokenService {
           if (token.wasUsed) {
             this.logger.warn(`Refresh token reuse detected for user ${token.userId}`);
             await this.revokeAllUserTokens(token.userId);
+            token.isValid = false;
+            await this.refreshTokenRepository.save(token);
             throw new UnauthorizedException('Token reuse detected. All sessions have been invalidated.');
           }
 
