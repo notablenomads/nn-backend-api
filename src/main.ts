@@ -28,162 +28,81 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  // Add Cache-Control header middleware for production
-  if (environment === 'production') {
-    app.use((req, res, next) => {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      next();
-    });
-  }
-
+  // Basic helmet configuration - Cloudflare and Nginx handle most security headers
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
-          connectSrc: [
-            "'self'",
-            'ws://localhost:*',
-            'wss://localhost:*',
-            'ws://api.notablenomads.com',
-            'wss://api.notablenomads.com',
-            'https://api.notablenomads.com',
-            'https://*.notablenomads.com',
-            'ws://*.notablenomads.com',
-            'wss://*.notablenomads.com',
-          ],
+          connectSrc: ["'self'", 'wss://*.notablenomads.com', 'https://*.notablenomads.com'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
           fontSrc: ["'self'", 'data:', 'https:'],
-          objectSrc: ["'none'"],
-          mediaSrc: ["'none'"],
-          frameSrc: ["'none'"],
-          formAction: ["'self'"],
-          frameAncestors: ["'none'"],
-          baseUri: ["'self'"],
-          upgradeInsecureRequests: [],
         },
-        reportOnly: environment !== 'production', // Enable report-only mode in non-production
+        reportOnly: environment !== 'production',
       },
-      crossOriginEmbedderPolicy: false,
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      dnsPrefetchControl: { allow: false },
-      frameguard: { action: 'deny' },
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
-        preload: true,
-      },
-      ieNoOpen: true,
-      noSniff: true,
-      originAgentCluster: true,
-      permittedCrossDomainPolicies: { permittedPolicies: 'none' },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      xssFilter: true,
-      hidePoweredBy: true,
+      crossOriginEmbedderPolicy: false, // Handled by Cloudflare
+      crossOriginOpenerPolicy: false, // Handled by Cloudflare
+      crossOriginResourcePolicy: false, // Handled by Cloudflare
     }),
   );
 
-  // Add custom security headers
+  // Only essential headers not handled by Cloudflare/Nginx
   app.use((req, res, next) => {
-    // Feature-Policy header
-    res.setHeader(
-      'Permissions-Policy',
-      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
-    );
-
-    // Expect-CT header for certificate transparency
-    if (environment === 'production') {
-      res.setHeader('Expect-CT', 'enforce, max-age=86400');
-    }
-
-    // Cross-Origin-Resource-Policy header
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-
-    // Additional security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Download-Options', 'noopen');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-
-    // Clear site data on logout (optional, add to logout route)
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
       res.setHeader('Clear-Site-Data', '"cache","cookies","storage"');
     }
-
     next();
   });
 
-  // Configure CORS
+  // Configure CORS - Note: Cloudflare also handles CORS, this is a backup
   app.enableCors({
     origin: corsService.createOriginValidator(),
     credentials: true,
   });
 
-  // Log CORS configuration
-  const corsStatus = corsService.getStatus();
-  if (corsStatus.isRestricted) {
-    logger.log('CORS restrictions enabled with allowed domains:');
-    corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
-  } else {
-    logger.log('CORS restrictions disabled - allowing all origins');
-  }
+  logger.log(
+    `CORS ${corsService.getStatus().isRestricted ? 'restricted to specific domains' : 'allowing all origins'}`,
+  );
 
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalPipes(new CustomValidationPipe());
-
   app.useGlobalFilters(new AllExceptionsFilter(config));
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Global transform interceptor
   app.useGlobalInterceptors(new TransformInterceptor());
-
-  // Global performance interceptor
-  const performanceInterceptor = app.get(PerformanceInterceptor);
-  app.useGlobalInterceptors(performanceInterceptor);
-
-  // Global throttler guard
-  const throttlerGuard = app.get(CustomThrottlerGuard);
-  app.useGlobalGuards(throttlerGuard);
+  app.useGlobalInterceptors(app.get(PerformanceInterceptor));
+  app.useGlobalGuards(app.get(CustomThrottlerGuard));
 
   // Swagger documentation setup
   const isSwaggerEnabled = config.get('app.enableSwagger');
   if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
-    const options = new DocumentBuilder()
+    const swaggerConfig = new DocumentBuilder()
       .setTitle(packageInfo.name)
       .setVersion(packageInfo.version)
       .setDescription(packageInfo.description + (environment === 'production' ? ' (Read-only mode)' : ''))
       .addBearerAuth()
       .build();
-    const document = SwaggerModule.createDocument(app, options);
 
-    // Configure Swagger UI options
-    const customOptions = {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    const uiConfig = {
       swaggerOptions: {
         persistAuthorization: true,
-        tryItOutEnabled: environment !== 'production', // Disable in production only
+        tryItOutEnabled: environment !== 'production',
         supportedSubmitMethods:
           environment === 'production' ? [] : ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'],
         displayRequestDuration: true,
-        docExpansion: 'list',
-        filter: true,
-        showExtensions: true,
       },
       customSiteTitle: `${packageInfo.name} API Documentation`,
       customfavIcon: 'https://notablenomads.com/favicon.ico',
-      customCss: environment === 'production' ? '.swagger-ui .try-out { display: none }' : '', // Hide "Try it out" section in production
+      customCss: environment === 'production' ? '.swagger-ui .try-out { display: none }' : '',
     };
 
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, document, customOptions);
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document, uiConfig);
   }
 
   await app.listen(config.get('app.port'), config.get('app.host'));
