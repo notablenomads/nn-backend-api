@@ -33,4 +33,7 @@ export default (): IConfig => ({
   sentry: {
     dsn: process.env.SENTRY_DSN || '',
   },
+  monitoring: {
+    memoryThresholdMs: parseInt(process.env.MONITORING_MEMORY_THRESHOLD_MS || '1000', 10),
+  },
 });

@@ -36,6 +36,10 @@ export interface ISentryConfig {
   dsn: string;
 }
 
+export interface IMonitoringConfig {
+  memoryThresholdMs: number;
+}
+
 export interface IConfig {
   app: IAppConfig;
   ai: IAiConfig;
@@ -43,4 +47,5 @@ export interface IConfig {
   email: IEmailConfig;
   database: IDatabaseConfig;
   sentry: ISentryConfig;
+  monitoring: IMonitoringConfig;
 }
