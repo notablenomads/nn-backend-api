@@ -1,5 +1,15 @@
 import { Request } from 'express';
-import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -26,8 +36,8 @@ export class AuthController {
     status: HttpStatus.CONFLICT,
     description: 'User with this email already exists',
   })
-  async register(@Body() registerDto: RegisterDto, @Req() req: Request): Promise<ITokens> {
-    return this.authService.register(registerDto, req);
+  async register(@Body() registerDto: RegisterDto): Promise<ITokens> {
+    return this.authService.register(registerDto);
   }
 
   @Post('login')
@@ -37,8 +47,8 @@ export class AuthController {
     status: HttpStatus.OK,
     description: 'Login successful',
   })
-  async login(@Body() loginDto: LoginDto, @Req() req: Request): Promise<ITokens> {
-    return this.authService.login(loginDto, req);
+  async login(@Body() loginDto: LoginDto): Promise<ITokens> {
+    return this.authService.login(loginDto);
   }
 
   @UseGuards(JwtRefreshGuard)
@@ -50,7 +60,7 @@ export class AuthController {
   })
   async refreshTokens(@Req() req: Request): Promise<ITokens> {
     const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
-    return this.authService.refreshTokens(refreshToken, req);
+    return this.authService.refreshTokens(refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -62,8 +72,12 @@ export class AuthController {
     description: 'Logout successful',
   })
   async logout(@Req() req: Request): Promise<void> {
-    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
-    await this.authService.logout(refreshToken, req);
+    const authHeader = req.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Invalid authorization header');
+    }
+    const refreshToken = authHeader.replace('Bearer', '').trim();
+    await this.authService.logout(refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -74,7 +88,7 @@ export class AuthController {
     status: HttpStatus.NO_CONTENT,
     description: 'Logged out from all devices successfully',
   })
-  async logoutAll(@GetUser() user: User, @Req() req: Request): Promise<void> {
-    await this.authService.logoutAll(user.id, req);
+  async logoutAll(@GetUser() user: User): Promise<void> {
+    await this.authService.logoutAll(user.id);
   }
 }

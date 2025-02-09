@@ -1,14 +1,15 @@
 import { Repository, LessThan, MoreThan } from 'typeorm';
-import { Request } from 'express';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { CryptoService } from '../../core/services/crypto.service';
+import { CreateRefreshTokenDto, RefreshTokenResponseDto } from '../dto/refresh-token.dto';
 
 @Injectable()
 export class RefreshTokenService {
   private readonly MAX_ACTIVE_SESSIONS = 5;
+  private readonly logger = new Logger(RefreshTokenService.name);
 
   constructor(
     @InjectRepository(RefreshToken)
@@ -17,57 +18,62 @@ export class RefreshTokenService {
     private readonly cryptoService: CryptoService,
   ) {}
 
-  async createRefreshToken(userId: string, req: Request): Promise<RefreshToken> {
-    // Check active sessions count
+  async createRefreshToken(userId: string): Promise<RefreshTokenResponseDto> {
     const activeTokensCount = await this.countActiveTokens(userId);
 
     if (activeTokensCount >= this.MAX_ACTIVE_SESSIONS) {
-      // Remove oldest token
       await this.removeOldestToken(userId);
     }
 
-    const token = this.cryptoService.generateSecureToken();
+    const plainToken = this.cryptoService.generateSecureToken();
+    const { encryptedData, iv, authTag } = this.cryptoService.encryptToken(plainToken);
+
     const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn', '7d');
     const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
 
-    const refreshToken = this.refreshTokenRepository.create({
-      token,
+    const tokenData: CreateRefreshTokenDto = {
+      token: encryptedData,
+      iv,
+      authTag,
       userId,
       expiresAt,
-      userAgent: req.get('user-agent'),
-      ipAddress: req.ip,
-    });
+      isValid: true,
+    };
 
-    return this.refreshTokenRepository.save(refreshToken);
+    const savedToken = await this.refreshTokenRepository.save(this.refreshTokenRepository.create(tokenData));
+
+    return {
+      id: savedToken.id,
+      token: plainToken, // Return plain token in response
+      expiresAt: savedToken.expiresAt,
+      isValid: savedToken.isValid,
+      userId: savedToken.userId,
+    };
   }
 
-  async revokeToken(token: string, ipAddress: string): Promise<void> {
+  async revokeToken(token: string): Promise<void> {
     const refreshToken = await this.refreshTokenRepository.findOne({ where: { token, isValid: true } });
 
     if (refreshToken) {
       refreshToken.isValid = false;
-      refreshToken.revokedAt = new Date();
-      refreshToken.revokedByIp = ipAddress;
       await this.refreshTokenRepository.save(refreshToken);
     }
   }
 
-  async revokeAllUserTokens(userId: string, ipAddress: string): Promise<void> {
+  async revokeAllUserTokens(userId: string): Promise<void> {
     const tokens = await this.refreshTokenRepository.find({
       where: { userId, isValid: true },
     });
 
     for (const token of tokens) {
       token.isValid = false;
-      token.revokedAt = new Date();
-      token.revokedByIp = ipAddress;
     }
 
     await this.refreshTokenRepository.save(tokens);
   }
 
-  async replaceToken(oldToken: string, userId: string, req: Request): Promise<RefreshToken> {
-    const newToken = await this.createRefreshToken(userId, req);
+  async replaceToken(oldToken: string, userId: string): Promise<RefreshTokenResponseDto> {
+    const newToken = await this.createRefreshToken(userId);
 
     const oldRefreshToken = await this.refreshTokenRepository.findOne({
       where: { token: oldToken, isValid: true },
@@ -75,32 +81,51 @@ export class RefreshTokenService {
 
     if (oldRefreshToken) {
       oldRefreshToken.isValid = false;
-      oldRefreshToken.revokedAt = new Date();
-      oldRefreshToken.revokedByIp = req.ip;
-      oldRefreshToken.replacedByToken = newToken.token;
       await this.refreshTokenRepository.save(oldRefreshToken);
     }
 
     return newToken;
   }
 
-  async validateToken(token: string): Promise<RefreshToken | null> {
-    const refreshToken = await this.refreshTokenRepository.findOne({
-      where: { token, isValid: true },
+  async validateToken(plainToken: string): Promise<RefreshToken | null> {
+    // Find all valid tokens first
+    const tokens = await this.refreshTokenRepository.find({
+      where: {
+        isValid: true,
+        expiresAt: MoreThan(new Date()),
+      },
       relations: ['user'],
     });
 
-    if (!refreshToken || !refreshToken.isValid || refreshToken.expiresAt < new Date()) {
-      return null;
+    // Try to find a matching token by decrypting and comparing
+    for (const token of tokens) {
+      try {
+        const decryptedToken = this.cryptoService.decryptToken(token.token, token.iv, token.authTag);
+        if (await this.cryptoService.secureCompare(decryptedToken, plainToken)) {
+          // Return a new object with the plain token
+          return {
+            ...token,
+            token: plainToken,
+          };
+        }
+      } catch (error) {
+        this.logger.error('Token decryption failed:', error);
+        continue;
+      }
     }
 
-    return refreshToken;
+    return null;
   }
 
   async cleanupExpiredTokens(): Promise<void> {
-    await this.refreshTokenRepository.delete({
-      expiresAt: LessThan(new Date()),
-    });
+    try {
+      await this.refreshTokenRepository.delete({
+        expiresAt: LessThan(new Date()),
+      });
+    } catch (error) {
+      this.logger.error('Failed to cleanup expired tokens:', error);
+      throw new Error('Token cleanup failed');
+    }
   }
 
   private async countActiveTokens(userId: string): Promise<number> {
@@ -126,7 +151,6 @@ export class RefreshTokenService {
 
     if (oldestToken) {
       oldestToken.isValid = false;
-      oldestToken.revokedAt = new Date();
       await this.refreshTokenRepository.save(oldestToken);
     }
   }

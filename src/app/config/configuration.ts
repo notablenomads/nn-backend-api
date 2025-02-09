@@ -42,4 +42,7 @@ export default (): IConfig => ({
   monitoring: {
     memoryThresholdMs: parseInt(process.env.MONITORING_MEMORY_THRESHOLD_MS || '1000', 10),
   },
+  encryption: {
+    key: process.env.ENCRYPTION_KEY || '',
+  },
 });
