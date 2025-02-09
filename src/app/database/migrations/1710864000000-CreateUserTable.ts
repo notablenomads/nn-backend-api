@@ -1,28 +1,62 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
 export class CreateUserTable1710864000000 implements MigrationInterface {
-  name = 'CreateUserTable1710864000000';
-
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      CREATE TABLE "users" (
-        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-        "email" character varying NOT NULL,
-        "firstName" character varying NOT NULL,
-        "lastName" character varying NOT NULL,
-        "password" character varying NOT NULL,
-        "isActive" boolean NOT NULL DEFAULT true,
-        "roles" text NOT NULL DEFAULT 'user',
-        "refreshToken" character varying,
-        "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-        "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
-        CONSTRAINT "UQ_users_email" UNIQUE ("email"),
-        CONSTRAINT "PK_users" PRIMARY KEY ("id")
-      )
-    `);
+    await queryRunner.createTable(
+      new Table({
+        name: 'users',
+        columns: [
+          {
+            name: 'id',
+            type: 'uuid',
+            isPrimary: true,
+            default: 'uuid_generate_v4()',
+          },
+          {
+            name: 'email',
+            type: 'varchar',
+            isUnique: true,
+          },
+          {
+            name: 'firstName',
+            type: 'varchar',
+          },
+          {
+            name: 'lastName',
+            type: 'varchar',
+          },
+          {
+            name: 'password',
+            type: 'varchar',
+          },
+          {
+            name: 'roles',
+            type: 'text',
+            isArray: true,
+            default: "'{user}'",
+          },
+          {
+            name: 'isActive',
+            type: 'boolean',
+            default: true,
+          },
+          {
+            name: 'createdAt',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updatedAt',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
+        ],
+      }),
+      true,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP TABLE "users"');
+    await queryRunner.dropTable('users', true);
   }
 }
