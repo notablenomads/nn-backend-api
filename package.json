@@ -23,7 +23,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "postinstall": "husky install",
+    "postinstall": "husky",
     "prepack": "pinst --disable",
     "postpack": "pinst --enable",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js",
@@ -33,7 +33,7 @@
     "migration:revert": "yarn typeorm migration:revert -d typeorm.config.ts",
     "migration:show": "yarn typeorm migration:show -d typeorm.config.ts",
     "release": "npx standard-version",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.744.0",
@@ -71,6 +71,8 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
     "@faker-js/faker": "^9.4.0",
     "@jest/globals": "^29.7.0",
     "@nestjs/cli": "^11.0.2",
@@ -107,11 +109,22 @@
     "typescript": "^5.7.3"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "eslint --fix"
+    "*.{js,jsx,ts,tsx}": [
+      "yarn prettier --write",
+      "yarn eslint --fix"
     ],
-    "*.js": "eslint --cache --fix",
-    "*.ts": "prettier --write"
+    "*.{json,md}": [
+      "yarn prettier --write"
+    ],
+    "package.json": [
+      "yarn prettier --write"
+    ],
+    "CHANGELOG.md": [
+      "yarn prettier --write"
+    ],
+    "*.{yml,yaml}": [
+      "yarn prettier --write"
+    ]
   },
   "jest": {
     "moduleNameMapper": {
