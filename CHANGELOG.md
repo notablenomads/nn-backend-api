@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.5...v0.8.7) (2025-02-09)
+
+
+### Features
+
+* **monitoring:** add performance monitoring and health check services ([bb294f5](https://github.com/Notable-Nomads/nn-backend-api/commit/bb294f506a63d69d8861e1b1d9e051f00e33e644))
+* **monitoring:** integrate Sentry for error tracking and performance monitoring ([a98da21](https://github.com/Notable-Nomads/nn-backend-api/commit/a98da212e6afd959bfd547fe5c347080dfae9fca))
+
 ### [0.8.6](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.5...v0.8.6) (2025-02-09)
 
 ### [0.8.5](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.4...v0.8.5) (2025-02-06)
