@@ -27,8 +27,11 @@ export class RefreshToken {
   @Column({ type: 'timestamp' })
   expiresAt: Date;
 
-  @Column({ default: true })
+  @Column({ default: false })
   isValid: boolean;
+
+  @Column({ default: false })
+  wasUsed: boolean;
 
   @ManyToOne(() => User, (user) => user.refreshTokens, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })

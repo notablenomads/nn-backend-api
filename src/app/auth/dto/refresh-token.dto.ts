@@ -5,6 +5,7 @@ export class CreateRefreshTokenDto {
   userId: string;
   expiresAt: Date;
   isValid: boolean;
+  wasUsed: boolean;
 }
 
 export class RefreshTokenResponseDto {
