@@ -64,7 +64,7 @@ export class AuthService {
     }
 
     const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.user.id, req);
-    const accessToken = this.generateAccessToken(validToken.user);
+    const accessToken = this.generateAccessToken(validToken.user as User);
 
     return {
       accessToken,
