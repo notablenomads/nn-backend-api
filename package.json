@@ -32,7 +32,8 @@
     "migration:run": "yarn typeorm migration:run -d typeorm.config.ts",
     "migration:revert": "yarn typeorm migration:revert -d typeorm.config.ts",
     "migration:show": "yarn typeorm migration:show -d typeorm.config.ts",
-    "release": "npx standard-version"
+    "release": "npx standard-version",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.744.0",

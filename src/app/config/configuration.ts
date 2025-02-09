@@ -25,7 +25,7 @@ export default (): IConfig => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
   email: {
-    fromAddress: process.env.EMAIL_FROM_ADDRESS || 'no-reply@mail.notablenomads.com',
+    fromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@example.com',
     toAddress: process.env.EMAIL_TO_ADDRESS || '',
   },
   database: {

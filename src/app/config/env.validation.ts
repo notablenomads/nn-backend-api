@@ -12,22 +12,46 @@ export const validationSchema = Joi.object({
   CORS_RESTRICT: Joi.boolean().default(false).description('Whether to enforce CORS restrictions'),
 
   // JWT Configuration
-  JWT_SECRET: Joi.string().required().description('JWT secret key'),
-  JWT_REFRESH_SECRET: Joi.string().required().description('JWT refresh token secret key'),
-  JWT_EXPIRES_IN: Joi.string().default('15m').description('JWT expiration time'),
-  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d').description('JWT refresh token expiration time'),
+  JWT_SECRET: Joi.string().min(32).required().description('JWT secret key - Must be at least 32 characters long'),
+  JWT_REFRESH_SECRET: Joi.string()
+    .min(32)
+    .required()
+    .description('JWT refresh token secret key - Must be at least 32 characters long'),
+  JWT_EXPIRES_IN: Joi.string()
+    .pattern(/^[0-9]+[smhd]$/)
+    .default('15m')
+    .description('JWT expiration time (e.g., 15m, 1h, 7d)'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string()
+    .pattern(/^[0-9]+[smhd]$/)
+    .default('7d')
+    .description('JWT refresh token expiration time (e.g., 15m, 1h, 7d)'),
 
   // AI Configuration
-  GEMINI_API_KEY: Joi.string().default('AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo'),
+  GEMINI_API_KEY: Joi.string().required().description('AI API key').when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
 
   // AWS Configuration
   AWS_REGION: Joi.string().default('eu-central-1'),
-  AWS_ACCESS_KEY_ID: Joi.string().required(),
-  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+  AWS_ACCESS_KEY_ID: Joi.string().required().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  AWS_SECRET_ACCESS_KEY: Joi.string().required().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
 
   // Email Configuration
-  EMAIL_FROM_ADDRESS: Joi.string().email().default('noreply@notablenomads.com'),
-  EMAIL_TO_ADDRESS: Joi.string().email().default('contact@notablenomads.com'),
+  EMAIL_FROM_ADDRESS: Joi.string()
+    .email()
+    .default('noreply@notablenomads.com')
+    .description('Email address to send from'),
+  EMAIL_TO_ADDRESS: Joi.string().email().default('contact@notablenomads.com').description('Email address to send to'),
 
   // Sentry Configuration
   SENTRY_DSN: Joi.string().uri().allow('').default(''),

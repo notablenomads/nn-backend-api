@@ -54,8 +54,6 @@ GEMINI_API_KEY=your_gemini_api_key
 
 ### Managing Environment Variables
 
-You can manage environment variables using the `manage-env.sh` script:
-
 ```bash
 # Set or update a variable
 ./scripts/manage-env.sh <server-ip> --set KEY=VALUE
@@ -63,30 +61,11 @@ You can manage environment variables using the `manage-env.sh` script:
 # Get a variable's value
 ./scripts/manage-env.sh <server-ip> --get KEY
 
-# List all variables
-./scripts/manage-env.sh <server-ip> --list
-
 # Backup current environment
 ./scripts/manage-env.sh <server-ip> --backup
 
 # Restore from backup
 ./scripts/manage-env.sh <server-ip> --restore env_backup_file.env
-```
-
-Example: Disabling CORS and restarting services:
-
-```bash
-# Backup current environment first
-./scripts/manage-env.sh <server-ip> --backup
-
-# Disable CORS by setting CORS_RESTRICT to true
-./scripts/manage-env.sh <server-ip> --set CORS_RESTRICT=true
-
-# Restart services to apply changes
-ssh root@<server-ip> "cd /root && docker-compose restart"
-
-# Verify the change
-./scripts/manage-env.sh <server-ip> --get CORS_RESTRICT
 ```
 
 ## Development
@@ -111,61 +90,15 @@ yarn format
 
 ## Deployment
 
-### 1. Main Deployment Script
-
 ```bash
 # Deploy the application
 DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh <server-ip>
-```
 
-### 2. SSL Certificate Management
-
-The project includes two scripts for managing SSL certificates:
-
-#### `scripts/manage-ssl.sh`
-
-Main script for managing SSL certificates across all domains:
-
-```bash
-# Test with staging certificates
-./scripts/manage-ssl.sh <server-ip> --staging
-
-# Generate production certificates
+# SSL certificate management
 ./scripts/manage-ssl.sh <server-ip> --production
 
-# Force certificate renewal
-./scripts/manage-ssl.sh <server-ip> --production --force-renew
-
-# Clean up and regenerate certificates
-./scripts/manage-ssl.sh <server-ip> --production --cleanup
-```
-
-#### `scripts/ssl-cert.sh`
-
-Server-side script for individual domain certificate operations:
-
-```bash
-# Check certificates
-./ssl-cert.sh --check
-
-# Force renew certificates
-./ssl-cert.sh --force-renew
-
-# Generate new certificates
-./ssl-cert.sh --new [--staging]
-
-# Clean up certificates
-./ssl-cert.sh --cleanup
-```
-
-### 3. Server Cleanup
-
-```bash
-# Clean up server (preserves SSL certificates)
+# Server cleanup (preserves SSL certificates)
 ./scripts/cleanup.sh <server-ip>
-
-# Force cleanup (removes everything)
-./scripts/cleanup.sh <server-ip> --force
 ```
 
 ## Monitoring
@@ -176,73 +109,12 @@ ssh root@<server-ip> 'docker compose logs -f'
 
 # Follow specific service logs
 ssh root@<server-ip> 'docker compose logs -f api'
-
-# View last N lines
-ssh root@<server-ip> 'docker compose logs --tail=100 api'
 ```
 
 ## API Documentation
 
 API documentation is available at `/v1/docs` in non-production environments.
 
-## Security Considerations
-
-1. **Certificate Storage**:
-
-   - Main storage: `/etc/letsencrypt/`
-   - Docker volume: `/root/certbot/conf/`
-
-2. **File Permissions**:
-
-   - Certificate files: 644
-   - Directories: 755
-
-3. **Backups**:
-
-   - Automatic backup before operations
-   - Location: `/root/ssl_backup/<domain>/<timestamp>/`
-   - Includes certificates and configurations
-
-4. **SSL/TLS**:
-   - Automatic renewal every 90 days
-   - Modern cipher configuration
-   - HTTP/2 enabled
-   - Security headers configured
-
-## Troubleshooting
-
-1. **Certificate Issues**:
-
-```bash
-# Check certificate status
-ssh root@<server-ip> 'certbot certificates'
-
-# View debug logs
-ssh root@<server-ip> 'cat /root/ssl_debug.log'
-```
-
-2. **Service Issues**:
-
-```bash
-# Check service status
-ssh root@<server-ip> 'docker-compose ps'
-
-# View service logs
-ssh root@<server-ip> 'docker-compose logs'
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Create a Pull Request
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Authors
-
-- **Mahdi Rashidi** - _Initial work_ - [mrdevx](https://github.com/mrdevx)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
