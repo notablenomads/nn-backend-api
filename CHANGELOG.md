@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.11](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.10...v0.8.11) (2025-02-09)
+
+
+### Features
+
+* **backup:** add database backup script with error handling and compression ([6a21981](https://github.com/Notable-Nomads/nn-backend-api/commit/6a21981883f12ed607705bc7b7cce6f913a800cd))
+* **migration:** create leads table with necessary fields and foreign key constraint ([f9d5824](https://github.com/Notable-Nomads/nn-backend-api/commit/f9d5824758ce13b013f86284be4dc5058751d484))
+
 ### [0.8.10](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.9...v0.8.10) (2025-02-09)
 
 
