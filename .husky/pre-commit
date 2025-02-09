@@ -1,1 +1,7 @@
-npx lint-staged
+#!/bin/sh
+
+# Increase memory limit for Node.js
+export NODE_OPTIONS="--max-old-space-size=4096"
+
+# Run lint-staged with proper error handling
+yarn lint-staged || exit 1

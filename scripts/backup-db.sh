@@ -17,11 +17,17 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 # Configuration
-BACKUP_DIR="/Users/mrdevx/Documents/Backups/NotableNomads"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/notablenomads}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-DB_NAME="notable_nomads"
-DB_USER="postgres"
-DB_PASSWORD="postgres"
+DB_NAME="${DATABASE_NAME:-notable_nomads}"
+DB_USER="${DATABASE_USERNAME:-postgres}"
+DB_PASSWORD="${DATABASE_PASSWORD}"
+
+# Validate environment
+if [ -z "$DB_PASSWORD" ]; then
+    log_error "DATABASE_PASSWORD environment variable is not set"
+    exit 1
+fi
 
 # Create backup directory if it doesn't exist
 if [ ! -d "$BACKUP_DIR" ]; then

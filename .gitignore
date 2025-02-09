@@ -38,3 +38,51 @@ Thumbs.db
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Security and Secrets
+*.pem
+*.key
+*.cert
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+secrets/
+credentials/
+.npmrc
+.aws/
+.ssh/
+*.log
+logs/
+*.dump
+*.backup
+*backup*/
+*secret*
+*password*
+*credential*
+
+# Test files
+*.spec.ts
+*.test.ts
+coverage/
+.nyc_output/
+test-results/
+
+# Build and Deploy
+build/
+dist/
+out/
+*.zip
+*.tar.gz
+*.tgz
+.docker/
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
