@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.13](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.12...v0.8.13) (2025-02-09)
+
+### Features
+
+- add commit message validation and linting configuration ([c43b304](https://github.com/Notable-Nomads/nn-backend-api/commit/c43b30460abe251dbd0845f9558ac9deb4400f3b))
+
 ### [0.8.12](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.11...v0.8.12) (2025-02-09)
 
 ### Features
