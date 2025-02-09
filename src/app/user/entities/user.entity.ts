@@ -35,7 +35,7 @@ export class User implements IUser {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ type: 'simple-array', default: ['user'] })
+  @Column('text', { array: true, default: ['user'] })
   roles: string[];
 
   @OneToMany(() => Lead, (lead) => lead.user)

@@ -2,6 +2,7 @@ import { Repository, LessThan, MoreThan } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { UnauthorizedException } from '@nestjs/common';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { CryptoService } from '../../core/services/crypto.service';
 import { CreateRefreshTokenDto, RefreshTokenResponseDto } from '../dto/refresh-token.dto';
@@ -38,6 +39,7 @@ export class RefreshTokenService {
       userId,
       expiresAt,
       isValid: true,
+      wasUsed: false, // Initialize wasUsed to false
     };
 
     const savedToken = await this.refreshTokenRepository.save(this.refreshTokenRepository.create(tokenData));
@@ -101,15 +103,23 @@ export class RefreshTokenService {
     for (const token of tokens) {
       try {
         const decryptedToken = this.cryptoService.decryptToken(token.token, token.iv, token.authTag);
-        if (await this.cryptoService.secureCompare(decryptedToken, plainToken)) {
-          // Return a new object with the plain token
-          return {
-            ...token,
-            token: plainToken,
-          };
+
+        if (decryptedToken === plainToken) {
+          // Token reuse detection - if token was already used, revoke all tokens for the user
+          if (token.wasUsed) {
+            this.logger.warn(`Refresh token reuse detected for user ${token.userId}`);
+            await this.revokeAllUserTokens(token.userId);
+            throw new UnauthorizedException('Token reuse detected. All sessions have been invalidated.');
+          }
+
+          // Mark token as used
+          token.wasUsed = true;
+          await this.refreshTokenRepository.save(token);
+
+          return token;
         }
       } catch (error) {
-        this.logger.error('Token decryption failed:', error);
+        this.logger.error(`Error decrypting token: ${error.message}`);
         continue;
       }
     }
