@@ -1,11 +1,8 @@
-import { Request } from 'express';
-import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { GetUser } from './decorators/get-user.decorator';
-import { User } from '../user/entities/user.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ITokens } from './interfaces/tokens.interface';
 import { RefreshTokensDto } from './dto/refresh-tokens.dto';
@@ -55,32 +52,25 @@ export class AuthController {
     return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Logout user' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Logout successful',
-  })
-  async logout(@Req() req: Request): Promise<void> {
-    const authHeader = req.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Invalid authorization header');
-    }
-    const refreshToken = authHeader.replace('Bearer', '').trim();
-    await this.authService.logout(refreshToken);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user from current session' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async logout(@Body() refreshTokenDto: RefreshTokensDto): Promise<void> {
+    await this.authService.logout(refreshTokenDto.refreshToken);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('logout-all')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Logged out from all devices successfully',
-  })
-  async logoutAll(@GetUser() user: User): Promise<void> {
-    await this.authService.logoutAll(user.id);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user from all sessions' })
+  @ApiResponse({ status: 200, description: 'Logged out from all sessions' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(@Req() req: { user: { sub: string } }): Promise<void> {
+    await this.authService.logoutAll(req.user.sub);
   }
 }
