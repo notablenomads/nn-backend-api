@@ -28,7 +28,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const isValid = user.refreshToken === refreshToken;
+    const isValid = await this.cryptoService.secureCompare(user.refreshToken, refreshToken);
     if (!isValid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
