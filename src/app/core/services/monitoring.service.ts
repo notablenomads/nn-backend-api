@@ -2,6 +2,9 @@ import * as Sentry from '@sentry/node';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+const MAX_SANITIZATION_DEPTH = 3; // Prevent deep recursion
+const MAX_OBJECT_SIZE = 10000; // Limit object size to prevent memory issues
+
 export interface IPerformanceMetric {
   type: 'performance' | 'memory' | 'error' | 'request';
   className?: string;
@@ -27,9 +30,24 @@ export interface IPerformanceMetric {
 export class MonitoringService implements OnModuleInit {
   private readonly logger = new Logger(MonitoringService.name);
   private readonly environment: string;
+  private readonly memoryThresholdMs: number;
+  private readonly allowedMetadataFields: Set<string>;
 
   constructor(private readonly configService: ConfigService) {
     this.environment = this.configService.get<string>('app.nodeEnv', 'development');
+    this.memoryThresholdMs = this.configService.get<number>('monitoring.memoryThresholdMs', 1000);
+    // Define allowed metadata fields (whitelist approach)
+    this.allowedMetadataFields = new Set([
+      'userId',
+      'requestId',
+      'path',
+      'method',
+      'statusCode',
+      'duration',
+      'service',
+      'feature',
+      'version',
+    ]);
   }
 
   onModuleInit() {
@@ -41,29 +59,79 @@ export class MonitoringService implements OnModuleInit {
         tracesSampleRate: 1.0,
         enabled: this.environment === 'production',
         beforeSend(event) {
-          // Sanitize error events in non-production environments
-          if (event.environment !== 'production') {
+          try {
+            // Always sanitize sensitive data regardless of environment
+            if (event.request) {
+              // Remove sensitive headers
+              const sanitizedHeaders = { ...event.request.headers };
+              ['authorization', 'cookie', 'x-api-key'].forEach((header) => delete sanitizedHeaders[header]);
+              event.request.headers = sanitizedHeaders;
+
+              // Remove query strings from URLs that might contain tokens
+              if (event.request.url) {
+                event.request.url = event.request.url.split('?')[0];
+              }
+            }
+
+            // Sanitize error messages and stack traces
+            if (event.exception) {
+              event.exception.values = event.exception.values?.map((value) => ({
+                ...value,
+                // Remove sensitive info from stack traces
+                stacktrace: {
+                  ...value.stacktrace,
+                  frames: value.stacktrace?.frames?.map((frame) => ({
+                    ...frame,
+                    vars: undefined, // Remove local variables
+                  })),
+                },
+              }));
+            }
+
+            // Remove PII and sensitive data
             delete event.user;
-            event.request = {};
+
+            return event;
+          } catch (error) {
+            // If sanitization fails, log the error and return a safe version of the event
+            this.logger.error('Error sanitizing Sentry event:', error);
+            return {
+              ...event,
+              message: 'Error details sanitized due to processing error',
+              extra: {},
+              request: {},
+            };
           }
-          return event;
         },
       });
     }
   }
 
   logPerformanceMetric(metric: Omit<IPerformanceMetric, 'timestamp'>) {
-    const enrichedMetric: IPerformanceMetric = {
-      ...metric,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      // Check object size before processing
+      if (JSON.stringify(metric).length > MAX_OBJECT_SIZE) {
+        this.logger.warn('Metric object too large, truncating...');
+        metric = this.truncateObject(metric);
+      }
 
-    // Log in JSON format for easier parsing
-    this.logger.log(JSON.stringify(enrichedMetric));
+      // Sanitize any sensitive data before logging
+      const sanitizedMetric = this.sanitizeMetricData(metric);
 
-    // Send to external monitoring services in production
-    if (this.environment === 'production') {
-      this.sendToExternalMonitoring(enrichedMetric);
+      const enrichedMetric: IPerformanceMetric = {
+        ...sanitizedMetric,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Log in JSON format for easier parsing
+      this.logger.log(JSON.stringify(enrichedMetric));
+
+      // Send to external monitoring services in production
+      if (this.environment === 'production') {
+        this.sendToExternalMonitoring(enrichedMetric);
+      }
+    } catch (error) {
+      this.logger.error('Error processing performance metric:', error);
     }
   }
 
@@ -83,21 +151,22 @@ export class MonitoringService implements OnModuleInit {
   }
 
   logError(error: Error, metadata?: Record<string, any>, correlationId?: string) {
+    const sanitizedMetadata = this.sanitizeMetadata(metadata);
+
     this.logPerformanceMetric({
       type: 'error',
       error,
-      metadata,
+      metadata: sanitizedMetadata,
       correlationId,
     });
 
-    // Send error to Sentry in production
     if (this.environment === 'production') {
       Sentry.withScope((scope) => {
         if (correlationId) {
           scope.setTag('correlationId', correlationId);
         }
-        if (metadata) {
-          scope.setExtras(metadata);
+        if (sanitizedMetadata) {
+          scope.setExtras(sanitizedMetadata);
         }
         Sentry.captureException(error);
       });
@@ -125,17 +194,95 @@ export class MonitoringService implements OnModuleInit {
     });
   }
 
+  private sanitizeMetricData(metric: Omit<IPerformanceMetric, 'timestamp'>): Omit<IPerformanceMetric, 'timestamp'> {
+    try {
+      const sanitized = { ...metric };
+
+      if (sanitized.metadata) {
+        sanitized.metadata = this.sanitizeMetadata(sanitized.metadata, 0);
+      }
+
+      if (sanitized.request?.path) {
+        // Remove query parameters from paths
+        sanitized.request.path = sanitized.request.path.split('?')[0];
+      }
+
+      return sanitized;
+    } catch (error) {
+      this.logger.error('Error sanitizing metric data:', error);
+      return {
+        type: metric.type,
+        className: metric.className,
+        methodName: metric.methodName,
+      };
+    }
+  }
+
+  private sanitizeMetadata(metadata?: Record<string, any>, depth: number = 0): Record<string, any> | undefined {
+    try {
+      if (!metadata || depth >= MAX_SANITIZATION_DEPTH) return undefined;
+
+      const sanitized: Record<string, any> = {};
+
+      // Use whitelist approach - only copy allowed fields
+      Object.keys(metadata).forEach((key) => {
+        if (this.allowedMetadataFields.has(key)) {
+          const value = metadata[key];
+          if (value === null || value === undefined) {
+            return;
+          }
+
+          if (typeof value === 'object' && !Array.isArray(value)) {
+            sanitized[key] = this.sanitizeMetadata(value, depth + 1);
+          } else {
+            sanitized[key] = value;
+          }
+        }
+      });
+
+      return sanitized;
+    } catch (error) {
+      this.logger.error('Error sanitizing metadata:', error);
+      return undefined;
+    }
+  }
+
+  private truncateObject(obj: any, maxDepth: number = 2): any {
+    if (maxDepth <= 0) return '[Truncated]';
+
+    if (Array.isArray(obj)) {
+      return obj
+        .slice(0, 10)
+        .map((item) => (typeof item === 'object' ? this.truncateObject(item, maxDepth - 1) : item));
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      const truncated: Record<string, any> = {};
+      Object.keys(obj)
+        .slice(0, 20)
+        .forEach((key) => {
+          truncated[key] = typeof obj[key] === 'object' ? this.truncateObject(obj[key], maxDepth - 1) : obj[key];
+        });
+      return truncated;
+    }
+
+    return obj;
+  }
+
   private sendToExternalMonitoring(metric: IPerformanceMetric) {
     if (metric.type === 'performance' && metric.duration) {
-      Sentry.addBreadcrumb({
-        category: 'performance',
-        message: `${metric.className}.${metric.methodName}`,
-        data: {
-          duration: metric.duration,
-          path: metric.metadata?.path,
-          method: metric.metadata?.method,
-        },
-      });
+      // Only log performance metrics that exceed the configured threshold
+      if (metric.duration > this.memoryThresholdMs) {
+        Sentry.addBreadcrumb({
+          category: 'performance',
+          message: `${metric.className}.${metric.methodName}`,
+          data: {
+            duration: metric.duration,
+            path: metric.metadata?.path,
+            method: metric.metadata?.method,
+          },
+        });
+      }
     }
   }
 }
