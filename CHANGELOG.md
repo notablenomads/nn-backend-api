@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.10](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.9...v0.8.10) (2025-02-09)
+
+
+### Features
+
+* **auth:** add wasUsed property to refresh tokens and implement token reuse detection ([1b9bcfd](https://github.com/Notable-Nomads/nn-backend-api/commit/1b9bcfdd9b536fc54204c2575e10985be33c5c53))
+* **auth:** enhance logout functionality with token validation and improve response messages ([7d6b02d](https://github.com/Notable-Nomads/nn-backend-api/commit/7d6b02d750bc51fc3bb1d81815f94f40e4f56ae1))
+* **auth:** enhance refresh token entity with JoinColumn and update user relationship ([aa1e50f](https://github.com/Notable-Nomads/nn-backend-api/commit/aa1e50f4b941b10ac79f11fc7e7d728f573e4749))
+* **auth:** implement encryption for refresh tokens and refine database structure ([fda69ee](https://github.com/Notable-Nomads/nn-backend-api/commit/fda69ee9d1a33e89b6f69bb7ae46e445bc3adf2a))
+* **auth:** implement refresh token functionality and cleanup service ([d2fdb9b](https://github.com/Notable-Nomads/nn-backend-api/commit/d2fdb9bedbff61a11d756d959419242dbba01c5e))
+* **auth:** limit active refresh tokens per user and implement token removal ([01a6f84](https://github.com/Notable-Nomads/nn-backend-api/commit/01a6f84a171547651a01d44f4712356d564f85ec))
+* **auth:** refactor user and refresh token relationship, remove refreshToken column from users ([33e7e08](https://github.com/Notable-Nomads/nn-backend-api/commit/33e7e0896787c2d9b147b2efdd05562e89396f4b))
+* **auth:** remove user relation from token retrieval and return payload in JWT strategy ([1d3c39a](https://github.com/Notable-Nomads/nn-backend-api/commit/1d3c39a34d4516631c601cc0018ea6b370179f8c))
+* **auth:** update refresh token endpoint to accept DTO and validate user identity ([92984d2](https://github.com/Notable-Nomads/nn-backend-api/commit/92984d2873586e11efb52234daadc6bf7ff1286c))
+* **cleanup:** enhance cleanup script to exclude postgres data and improve SSL certificate handling ([a662dd7](https://github.com/Notable-Nomads/nn-backend-api/commit/a662dd7919a42f8b40e06852ac798de6e21101cf))
+* **docker:** add encryption key to environment variables and fix volume declaration ([9e4da6f](https://github.com/Notable-Nomads/nn-backend-api/commit/9e4da6f9797ce0ce8c4585d195883fc9a7a89c9d))
+
 ### [0.8.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.8...v0.8.9) (2025-02-09)
 
 
