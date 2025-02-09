@@ -12,9 +12,10 @@ import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 import { Lead } from '../../lead/entities/lead.entity';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
+import { IUser } from '../interfaces/user.interface';
 
 @Entity('users')
-export class User {
+export class User implements IUser {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -40,7 +41,7 @@ export class User {
   @OneToMany(() => Lead, (lead) => lead.user)
   leads: Lead[];
 
-  @OneToMany('RefreshToken', 'user', { cascade: true })
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, { cascade: true })
   refreshTokens: RefreshToken[];
 
   @CreateDateColumn()
@@ -48,10 +49,6 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @Column({ nullable: true })
-  @Exclude()
-  refreshToken?: string;
 
   @BeforeInsert()
   @BeforeUpdate()
