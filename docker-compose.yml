@@ -12,6 +12,11 @@ services:
       API_PREFIX: ${API_PREFIX:-v1}
       CORS_ENABLED_DOMAINS: ${CORS_ENABLED_DOMAINS:-*.notablenomads.com,notablenomads.com}
       CORS_RESTRICT: ${CORS_RESTRICT:-true}
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       # Database
       DATABASE_HOST: ${DATABASE_HOST:-postgres}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
