@@ -33,6 +33,10 @@ services:
       EMAIL_TO_ADDRESS: ${EMAIL_TO_ADDRESS:-contact@notablenomads.com}
       # AI
       ***REMOVED***: ${***REMOVED***}
+      # Sentry
+      SENTRY_DSN: ${SENTRY_DSN}
+      # Monitoring
+      MONITORING_MEMORY_THRESHOLD_MS: ${MONITORING_MEMORY_THRESHOLD_MS:-2000}
     expose:
       - '3000'
     networks:
