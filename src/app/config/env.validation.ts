@@ -25,4 +25,7 @@ export const validationSchema = Joi.object({
 
   // Sentry Configuration
   SENTRY_DSN: Joi.string().uri().allow('').default(''),
+
+  // Monitoring Configuration
+  MONITORING_MEMORY_THRESHOLD_MS: Joi.number().default(1000).description('Memory logging threshold in milliseconds'),
 });
