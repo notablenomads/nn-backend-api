@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.8](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.7...v0.8.8) (2025-02-09)
+
+
+### Features
+
+* **auth:** add user registration endpoint with validation and conflict handling ([cd47636](https://github.com/Notable-Nomads/nn-backend-api/commit/cd47636c99f5844d31146575094d4dd2ced59c04))
+* **auth:** implement JWT authentication with user management and refresh token support ([d7edd18](https://github.com/Notable-Nomads/nn-backend-api/commit/d7edd18e5445008c4e45cfad9e4558adf1030983))
+* **auth:** implement login attempt tracking and secure token generation ([04b9092](https://github.com/Notable-Nomads/nn-backend-api/commit/04b9092b0d9666046cd4659ebe70862a29f3c0bd))
+* **config:** add JWT configuration with secret and expiration settings ([bbb4953](https://github.com/Notable-Nomads/nn-backend-api/commit/bbb4953436fe1fd5cdb19237bd7d1e6c7d166bf7))
+* **docker:** add JWT configuration to docker-compose ([0493f80](https://github.com/Notable-Nomads/nn-backend-api/commit/0493f8002ec558c5ae07d7294e1a9fd957dbd89f))
+* **monitoring:** add memory threshold configuration and enhance data sanitization ([314b4ba](https://github.com/Notable-Nomads/nn-backend-api/commit/314b4bac7f2d2305b6fab2ef188898c176adf1ea))
+* **monitoring:** enhance data sanitization with depth and size limits for metrics ([ee6f9c1](https://github.com/Notable-Nomads/nn-backend-api/commit/ee6f9c10dffc36bb845d82044f7400bc7e671ce4))
+
 ### [0.8.7](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.5...v0.8.7) (2025-02-09)
 
 
