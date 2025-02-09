@@ -9,6 +9,7 @@ import { DatabaseModule } from '../database/database.module';
 import { CustomThrottlerGuard } from './guards/throttler.guard';
 import { MonitoringService } from './services/monitoring.service';
 import { PerformanceInterceptor } from './interceptors/performance.interceptor';
+import { CryptoService } from './services/crypto.service';
 
 @Global()
 @Module({
@@ -45,7 +46,14 @@ import { PerformanceInterceptor } from './interceptors/performance.interceptor';
     ]),
     DatabaseModule,
   ],
-  providers: [CorsService, PackageInfoService, CustomThrottlerGuard, MonitoringService, PerformanceInterceptor],
+  providers: [
+    CorsService,
+    PackageInfoService,
+    CustomThrottlerGuard,
+    MonitoringService,
+    PerformanceInterceptor,
+    CryptoService,
+  ],
   exports: [
     CorsService,
     PackageInfoService,
@@ -53,6 +61,7 @@ import { PerformanceInterceptor } from './interceptors/performance.interceptor';
     CustomThrottlerGuard,
     MonitoringService,
     PerformanceInterceptor,
+    CryptoService,
   ],
 })
 export class CoreModule {}

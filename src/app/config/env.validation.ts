@@ -11,6 +11,12 @@ export const validationSchema = Joi.object({
     .description('Comma-separated list of allowed domains'),
   CORS_RESTRICT: Joi.boolean().default(false).description('Whether to enforce CORS restrictions'),
 
+  // JWT Configuration
+  JWT_SECRET: Joi.string().required().description('JWT secret key'),
+  JWT_REFRESH_SECRET: Joi.string().required().description('JWT refresh token secret key'),
+  JWT_EXPIRES_IN: Joi.string().default('15m').description('JWT expiration time'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d').description('JWT refresh token expiration time'),
+
   // AI Configuration
   GEMINI_API_KEY: Joi.string().default('AIzaSyAni9RfAsb18pxORSSbjyP4mam23APjFeo'),
 

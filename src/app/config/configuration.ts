@@ -10,6 +10,12 @@ export default (): IConfig => ({
     corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',') || [],
     corsRestrict: process.env.CORS_RESTRICT !== 'false',
   },
+  jwt: {
+    secret: process.env.JWT_SECRET,
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+  },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
   },
