@@ -12,6 +12,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
+import { TokenBlacklistService } from './services/token-blacklist.service';
 
 @Module({
   imports: [
@@ -30,7 +31,14 @@ import { TokenCleanupService } from './services/token-cleanup.service';
     ScheduleModule.forRoot(),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, RefreshTokenService, TokenCleanupService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtRefreshStrategy,
+    RefreshTokenService,
+    TokenCleanupService,
+    TokenBlacklistService,
+  ],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

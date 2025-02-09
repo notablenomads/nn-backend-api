@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { ITokens } from './interfaces/tokens.interface';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { CryptoService } from '../core/services/crypto.service';
+import { TokenBlacklistService } from './services/token-blacklist.service';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly cryptoService: CryptoService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<ITokens> {
@@ -90,6 +92,14 @@ export class AuthService {
     if (!validToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    // Get the JWT expiration time
+    const decoded = this.jwtService.decode(refreshToken) as { exp: number };
+    if (decoded?.exp) {
+      // Add token to blacklist until its expiration
+      await this.tokenBlacklistService.blacklistToken(refreshToken, decoded.exp * 1000);
+    }
+
     await this.refreshTokenService.revokeToken(refreshToken);
   }
 
@@ -98,6 +108,18 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+
+    // Get all valid refresh tokens for the user
+    const tokens = await this.refreshTokenService.findValidTokensByUserId(userId);
+
+    // Blacklist all tokens
+    for (const token of tokens) {
+      const decoded = this.jwtService.decode(token.token) as { exp: number };
+      if (decoded?.exp) {
+        await this.tokenBlacklistService.blacklistToken(token.token, decoded.exp * 1000);
+      }
+    }
+
     await this.refreshTokenService.revokeAllUserTokens(userId);
   }
 

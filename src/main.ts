@@ -66,6 +66,7 @@ async function bootstrap() {
           baseUri: ["'self'"],
           upgradeInsecureRequests: [],
         },
+        reportOnly: environment !== 'production', // Enable report-only mode in non-production
       },
       crossOriginEmbedderPolicy: false,
       crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
@@ -86,6 +87,25 @@ async function bootstrap() {
       hidePoweredBy: true,
     }),
   );
+
+  // Add custom security headers
+  app.use((req, res, next) => {
+    // Feature-Policy header
+    res.setHeader(
+      'Permissions-Policy',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+    );
+
+    // Expect-CT header for certificate transparency
+    if (environment === 'production') {
+      res.setHeader('Expect-CT', 'enforce, max-age=86400');
+    }
+
+    // Cross-Origin-Resource-Policy header
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+
+    next();
+  });
 
   // Configure CORS
   app.enableCors({
