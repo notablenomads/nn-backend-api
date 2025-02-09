@@ -1,16 +1,17 @@
-export interface IStreamChunkResponse {
+export interface IBaseStreamResponse {
+  success: boolean;
+  timestamp: string;
+}
+
+export interface IStreamChunkResponse extends IBaseStreamResponse {
   chunk: string;
-  success: boolean;
 }
 
-export interface IStreamErrorResponse {
+export interface IStreamErrorResponse extends IBaseStreamResponse {
   error: string;
-  success: boolean;
 }
 
-export interface IStreamCompleteResponse {
-  success: boolean;
-}
+export type IStreamCompleteResponse = IBaseStreamResponse;
 
 export enum StreamEventType {
   CHUNK = 'streamChunk',
