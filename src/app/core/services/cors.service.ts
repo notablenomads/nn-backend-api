@@ -38,8 +38,14 @@ export class CorsService {
     }
 
     try {
-      const originDomain = new URL(origin).hostname;
-      const isAllowed = this.allowedDomains?.some((domain) => this.isDomainMatch(originDomain, domain)) ?? true;
+      const originDomain = this.extractDomain(origin);
+      if (!originDomain) {
+        return { isAllowed: false, error: 'Invalid origin domain' };
+      }
+
+      const isAllowed = this.isRestricted
+        ? (this.allowedDomains?.some((domain) => this.isDomainMatch(originDomain, domain)) ?? false)
+        : true;
 
       if (isAllowed) {
         return { isAllowed: true };
@@ -106,5 +112,13 @@ export class CorsService {
       return domain === baseDomain || domain.endsWith('.' + baseDomain);
     }
     return domain === allowedDomain;
+  }
+
+  private extractDomain(origin: string): string | null {
+    try {
+      return new URL(origin).hostname;
+    } catch {
+      return null;
+    }
   }
 }

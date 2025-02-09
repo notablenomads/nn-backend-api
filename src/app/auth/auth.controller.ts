@@ -1,5 +1,6 @@
 import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -46,9 +47,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async refreshTokens(
     @Body() refreshTokenDto: RefreshTokensDto,
-    @Req() req: { user: { sub: string } },
+    @Req() req: { user: { sub: string; exp: number } },
   ): Promise<ITokens> {
-    // Validate that the user from the access token matches the refresh token's user
+    // Validate access token expiration
+    if (Date.now() >= req.user.exp * 1000) {
+      throw new UnauthorizedException('Access token has expired');
+    }
     return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.sub);
   }
 

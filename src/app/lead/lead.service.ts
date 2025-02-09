@@ -128,40 +128,50 @@ export class LeadService {
     return response;
   }
 
-  private async sendAdminNotification(leadData: LeadDto): Promise<boolean> {
-    try {
-      const content = this.formatAdminEmailContent(leadData);
-      const command = new SendEmailCommand({
-        Source: this.fromEmail,
-        Destination: {
-          ToAddresses: [this.toEmail],
-        },
-        Message: {
-          Subject: {
-            Data: `New Project Lead from ${leadData.name}${leadData.company ? ` (${leadData.company})` : ''}`,
-            Charset: 'UTF-8',
+  private async sendAdminNotification(leadData: LeadDto, maxRetries = 3): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const content = this.formatAdminEmailContent(leadData);
+        const command = new SendEmailCommand({
+          Source: this.fromEmail,
+          Destination: {
+            ToAddresses: [this.toEmail],
           },
-          Body: {
-            Html: {
-              Data: LeadEmailTemplateHelper.generateTemplate(this.templateConfig, {
-                subject: 'New Project Lead Submission',
-                content,
-                showSocialLinks: false,
-              }),
+          Message: {
+            Subject: {
+              Data: `New Project Lead from ${leadData.name}${leadData.company ? ` (${leadData.company})` : ''}`,
               Charset: 'UTF-8',
             },
+            Body: {
+              Html: {
+                Data: LeadEmailTemplateHelper.generateTemplate(this.templateConfig, {
+                  subject: 'New Project Lead Submission',
+                  content,
+                  showSocialLinks: false,
+                }),
+                Charset: 'UTF-8',
+              },
+            },
           },
-        },
-        ReplyToAddresses: [leadData.email],
-      });
+          ReplyToAddresses: [leadData.email],
+        });
 
-      const response = await this.sesClient.send(command);
-      this.logger.log(`Admin notification sent successfully: ${response.MessageId}`);
-      return true;
-    } catch (error) {
-      this.logger.error(`Failed to send admin notification: ${error.message}`, error.stack);
-      return false;
+        const response = await this.sesClient.send(command);
+        this.logger.log(`Admin notification sent successfully: ${response.MessageId}`);
+        return true;
+      } catch (error) {
+        const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        this.logger.warn(`Attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+
+        if (attempt === maxRetries) {
+          this.logger.error(`Failed to send admin notification after ${maxRetries} attempts`, error.stack);
+          return false;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+      }
     }
+    return false;
   }
 
   private async sendUserConfirmation(leadData: LeadDto): Promise<boolean> {

@@ -32,6 +32,9 @@ export class MonitoringService implements OnModuleInit {
   private readonly environment: string;
   private readonly memoryThresholdMs: number;
   private readonly allowedMetadataFields: Set<string>;
+  private errorRateLimit = new Map<string, number>();
+  private readonly ERROR_RATE_WINDOW = 60000; // 1 minute
+  private readonly MAX_ERRORS_PER_WINDOW = 50;
 
   constructor(private readonly configService: ConfigService) {
     this.environment = this.configService.get<string>('app.nodeEnv', 'development');
@@ -151,6 +154,20 @@ export class MonitoringService implements OnModuleInit {
   }
 
   logError(error: Error, metadata?: Record<string, any>, correlationId?: string) {
+    const errorKey = `${error.name}:${error.message}`;
+    const recentErrors = this.errorRateLimit.get(errorKey) || 0;
+
+    if (recentErrors >= this.MAX_ERRORS_PER_WINDOW) {
+      this.logger.warn(`Error rate limit exceeded for: ${errorKey}`);
+      return;
+    }
+
+    this.errorRateLimit.set(errorKey, recentErrors + 1);
+    setTimeout(
+      () => this.errorRateLimit.set(errorKey, (this.errorRateLimit.get(errorKey) || 1) - 1),
+      this.ERROR_RATE_WINDOW,
+    );
+
     const sanitizedMetadata = this.sanitizeMetadata(metadata);
 
     this.logPerformanceMetric({
