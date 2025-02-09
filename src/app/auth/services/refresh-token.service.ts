@@ -96,7 +96,6 @@ export class RefreshTokenService {
         isValid: true,
         expiresAt: MoreThan(new Date()),
       },
-      relations: ['user'],
     });
 
     // Try to find a matching token by decrypting and comparing
@@ -116,7 +115,7 @@ export class RefreshTokenService {
           token.wasUsed = true;
           await this.refreshTokenRepository.save(token);
 
-          return token;
+          return { ...token, userId: token.userId };
         }
       } catch (error) {
         this.logger.error(`Error decrypting token: ${error.message}`);
