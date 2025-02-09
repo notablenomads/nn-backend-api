@@ -32,10 +32,15 @@ export interface IDatabaseConfig {
   schema: string;
 }
 
+export interface ISentryConfig {
+  dsn: string;
+}
+
 export interface IConfig {
   app: IAppConfig;
   ai: IAiConfig;
   aws: IAwsConfig;
   email: IEmailConfig;
   database: IDatabaseConfig;
+  sentry: ISentryConfig;
 }
