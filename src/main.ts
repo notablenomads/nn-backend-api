@@ -13,6 +13,7 @@ import { HttpExceptionFilter } from './app/core/filters/http-exception.filter';
 import { CustomValidationPipe } from './app/core/pipes/validation.pipe';
 import { TransformInterceptor } from './app/core/interceptors/transform.interceptor';
 import { CustomThrottlerGuard } from './app/core/guards/throttler.guard';
+import { PerformanceInterceptor } from './app/core/interceptors/performance.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -100,6 +101,10 @@ async function bootstrap() {
 
   // Global transform interceptor
   app.useGlobalInterceptors(new TransformInterceptor());
+
+  // Global performance interceptor
+  const performanceInterceptor = app.get(PerformanceInterceptor);
+  app.useGlobalInterceptors(performanceInterceptor);
 
   // Global throttler guard
   const throttlerGuard = app.get(CustomThrottlerGuard);
