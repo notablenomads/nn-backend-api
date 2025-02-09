@@ -32,8 +32,4 @@ export class UserService {
 
     return this.userRepository.save(user);
   }
-
-  async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
-    await this.userRepository.update(userId, { refreshToken });
-  }
 }

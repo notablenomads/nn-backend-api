@@ -19,8 +19,6 @@ export default new DataSource({
   schema: process.env.DATABASE_SCHEMA || 'public',
   entities: [join(__dirname, 'src', 'app', '**', '*.entity{.ts,.js}')],
   migrations: [join(__dirname, 'src', 'app', 'database', 'migrations', '*{.ts,.js}')],
-  // Disable synchronization
   synchronize: false,
-  // Enable logging for migrations
   logging: true,
 });

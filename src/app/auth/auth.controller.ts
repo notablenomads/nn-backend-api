@@ -1,13 +1,11 @@
-import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { GetUser } from './decorators/get-user.decorator';
-import { User } from '../user/entities/user.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import { ITokens } from './interfaces/jwt-payload.interface';
+import { ITokens } from './interfaces/tokens.interface';
+import { RefreshTokensDto } from './dto/refresh-tokens.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,30 +35,42 @@ export class AuthController {
     description: 'Login successful',
   })
   async login(@Body() loginDto: LoginDto): Promise<ITokens> {
-    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
-    return this.authService.login(user);
+    return this.authService.login(loginDto);
   }
 
-  @UseGuards(JwtRefreshGuard)
-  @Get('refresh')
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Token refresh successful',
-  })
-  async refreshTokens(@GetUser() user: User): Promise<ITokens> {
-    return this.authService.refreshTokens(user);
-  }
-
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired tokens' })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  async refreshTokens(
+    @Body() refreshTokenDto: RefreshTokensDto,
+    @Req() req: { user: { sub: string } },
+  ): Promise<ITokens> {
+    // Validate that the user from the access token matches the refresh token's user
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.sub);
+  }
+
   @Post('logout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Logout user' })
-  @ApiResponse({
-    status: HttpStatus.NO_CONTENT,
-    description: 'Logout successful',
-  })
-  async logout(@GetUser() user: User): Promise<void> {
-    await this.authService.logout(user.id);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user from current session' })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async logout(@Body() refreshTokenDto: RefreshTokensDto): Promise<void> {
+    await this.authService.logout(refreshTokenDto.refreshToken);
+  }
+
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user from all sessions' })
+  @ApiResponse({ status: 200, description: 'Logged out from all sessions' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(@Req() req: { user: { sub: string } }): Promise<void> {
+    await this.authService.logoutAll(req.user.sub);
   }
 }

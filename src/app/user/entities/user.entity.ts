@@ -11,9 +11,11 @@ import {
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 import { Lead } from '../../lead/entities/lead.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
+import { IUser } from '../interfaces/user.interface';
 
 @Entity('users')
-export class User {
+export class User implements IUser {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -33,21 +35,20 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ type: 'simple-array', default: ['user'] })
+  @Column('text', { array: true, default: ['user'] })
   roles: string[];
 
   @OneToMany(() => Lead, (lead) => lead.user)
   leads: Lead[];
+
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, { cascade: true })
+  refreshTokens: RefreshToken[];
 
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @Column({ nullable: true })
-  @Exclude()
-  refreshToken?: string;
 
   @BeforeInsert()
   @BeforeUpdate()

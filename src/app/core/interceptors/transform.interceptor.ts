@@ -30,7 +30,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, IResponse<T>>
         // Otherwise, wrap it in our standard response format
         return {
           statusCode: response.statusCode || HttpStatus.OK,
-          message: this.getSuccessMessage(request.method),
+          message: this.getSuccessMessage(request.method, request.url),
           data,
           timestamp: new Date().toISOString(),
           path: request.url,
@@ -43,7 +43,16 @@ export class TransformInterceptor<T> implements NestInterceptor<T, IResponse<T>>
     return data && typeof data === 'object' && 'statusCode' in data && 'message' in data && 'data' in data;
   }
 
-  private getSuccessMessage(method: string): string {
+  private getSuccessMessage(method: string, url: string): string {
+    // Special cases based on URL
+    if (url.includes('/auth/logout')) {
+      return 'Logged out successfully';
+    }
+    if (url.includes('/auth/logout-all')) {
+      return 'Logged out from all sessions successfully';
+    }
+
+    // Default cases based on HTTP method
     switch (method.toUpperCase()) {
       case 'POST':
         return 'Resource created successfully';
