@@ -1,10 +1,13 @@
+import { Request } from 'express';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { User } from '../user/entities/user.entity';
-import { IJwtPayload, ITokens } from './interfaces/jwt-payload.interface';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { ITokens } from './interfaces/tokens.interface';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { CryptoService } from '../core/services/crypto.service';
 
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -18,18 +21,23 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly refreshTokenService: RefreshTokenService,
     private readonly cryptoService: CryptoService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<ITokens> {
+  async register(registerDto: RegisterDto, req: Request): Promise<ITokens> {
     const user = await this.userService.register(registerDto);
-    return this.login(user);
+    return this.generateTokens(user, req);
+  }
+
+  async login(loginDto: LoginDto, req: Request): Promise<ITokens> {
+    const user = await this.validateUser(loginDto.email, loginDto.password);
+    await this.resetFailedAttempts(loginDto.email);
+    return this.generateTokens(user, req);
   }
 
   async validateUser(email: string, password: string): Promise<User> {
-    // Generic error message to avoid user enumeration
     const errorMessage = 'Invalid email or password';
-
     if (await this.isLoginBlocked(email)) {
       throw new UnauthorizedException('Too many failed attempts. Please try again later.');
     }
@@ -46,67 +54,54 @@ export class AuthService {
       throw new UnauthorizedException(errorMessage);
     }
 
-    await this.resetFailedAttempts(email);
     return user;
   }
 
-  async login(user: User): Promise<ITokens> {
-    const tokens = await this.generateTokens(user);
-    const hashedRefreshToken = await this.cryptoService.generateSecureToken();
-    await this.updateRefreshToken(user.id, hashedRefreshToken);
-    return tokens;
-  }
+  async refreshTokens(refreshToken: string, req: Request): Promise<ITokens> {
+    const validToken = await this.refreshTokenService.validateToken(refreshToken);
+    if (!validToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
-  async refreshTokens(user: User): Promise<ITokens> {
-    const tokens = await this.generateTokens(user);
-    const hashedRefreshToken = await this.cryptoService.generateSecureToken();
-    await this.updateRefreshToken(user.id, hashedRefreshToken);
-    return tokens;
-  }
-
-  async logout(userId: string): Promise<void> {
-    await this.updateRefreshToken(userId, null);
-  }
-
-  private async generateTokens(user: User): Promise<ITokens> {
-    const payload: IJwtPayload = {
-      sub: user.id,
-      email: user.email,
-      roles: user.roles,
-    };
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.secret'),
-        expiresIn: this.configService.get<string>('jwt.expiresIn', '15m'),
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
-        expiresIn: this.configService.get<string>('jwt.refreshExpiresIn', '7d'),
-      }),
-    ]);
+    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.user.id, req);
+    const accessToken = this.generateAccessToken(validToken.user);
 
     return {
       accessToken,
-      refreshToken,
+      refreshToken: newRefreshToken.token,
     };
   }
 
-  private async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
-    await this.userService.updateRefreshToken(userId, refreshToken);
+  async logout(refreshToken: string, req: Request): Promise<void> {
+    await this.refreshTokenService.revokeToken(refreshToken, req.ip);
+  }
+
+  async logoutAll(userId: string, req: Request): Promise<void> {
+    await this.refreshTokenService.revokeAllUserTokens(userId, req.ip);
+  }
+
+  private async generateTokens(user: User, req: Request): Promise<ITokens> {
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = await this.refreshTokenService.createRefreshToken(user.id, req);
+
+    return {
+      accessToken,
+      refreshToken: refreshToken.token,
+    };
+  }
+
+  private generateAccessToken(user: User): string {
+    const payload = { sub: user.id, email: user.email, roles: user.roles };
+    return this.jwtService.sign(payload);
   }
 
   private async handleFailedLogin(email: string): Promise<void> {
-    const attempts = this.loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
-
-    if (Date.now() - attempts.firstAttempt > LOGIN_ATTEMPT_WINDOW) {
-      attempts.count = 1;
-      attempts.firstAttempt = Date.now();
-    } else {
-      attempts.count += 1;
+    const attempt = this.loginAttempts.get(email) || { count: 0, firstAttempt: Date.now() };
+    attempt.count++;
+    if (!attempt.firstAttempt) {
+      attempt.firstAttempt = Date.now();
     }
-
-    this.loginAttempts.set(email, attempts);
+    this.loginAttempts.set(email, attempt);
   }
 
   private async resetFailedAttempts(email: string): Promise<void> {
@@ -114,14 +109,15 @@ export class AuthService {
   }
 
   private async isLoginBlocked(email: string): Promise<boolean> {
-    const attempts = this.loginAttempts.get(email);
-    if (!attempts) return false;
+    const attempt = this.loginAttempts.get(email);
+    if (!attempt) return false;
 
-    if (Date.now() - attempts.firstAttempt > LOGIN_ATTEMPT_WINDOW) {
+    const isWithinWindow = Date.now() - attempt.firstAttempt < LOGIN_ATTEMPT_WINDOW;
+    if (!isWithinWindow) {
       this.loginAttempts.delete(email);
       return false;
     }
 
-    return attempts.count >= MAX_LOGIN_ATTEMPTS;
+    return attempt.count >= MAX_LOGIN_ATTEMPTS;
   }
 }

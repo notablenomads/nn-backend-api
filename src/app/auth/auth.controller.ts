@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Request } from 'express';
+import { Controller, Post, Body, UseGuards, Get, HttpCode, HttpStatus, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -7,7 +8,7 @@ import { GetUser } from './decorators/get-user.decorator';
 import { User } from '../user/entities/user.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import { ITokens } from './interfaces/jwt-payload.interface';
+import { ITokens } from './interfaces/tokens.interface';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -25,8 +26,8 @@ export class AuthController {
     status: HttpStatus.CONFLICT,
     description: 'User with this email already exists',
   })
-  async register(@Body() registerDto: RegisterDto): Promise<ITokens> {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Req() req: Request): Promise<ITokens> {
+    return this.authService.register(registerDto, req);
   }
 
   @Post('login')
@@ -36,9 +37,8 @@ export class AuthController {
     status: HttpStatus.OK,
     description: 'Login successful',
   })
-  async login(@Body() loginDto: LoginDto): Promise<ITokens> {
-    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
-    return this.authService.login(user);
+  async login(@Body() loginDto: LoginDto, @Req() req: Request): Promise<ITokens> {
+    return this.authService.login(loginDto, req);
   }
 
   @UseGuards(JwtRefreshGuard)
@@ -48,8 +48,9 @@ export class AuthController {
     status: HttpStatus.OK,
     description: 'Token refresh successful',
   })
-  async refreshTokens(@GetUser() user: User): Promise<ITokens> {
-    return this.authService.refreshTokens(user);
+  async refreshTokens(@Req() req: Request): Promise<ITokens> {
+    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
+    return this.authService.refreshTokens(refreshToken, req);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -60,7 +61,20 @@ export class AuthController {
     status: HttpStatus.NO_CONTENT,
     description: 'Logout successful',
   })
-  async logout(@GetUser() user: User): Promise<void> {
-    await this.authService.logout(user.id);
+  async logout(@Req() req: Request): Promise<void> {
+    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
+    await this.authService.logout(refreshToken, req);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Logged out from all devices successfully',
+  })
+  async logoutAll(@GetUser() user: User, @Req() req: Request): Promise<void> {
+    await this.authService.logoutAll(user.id, req);
   }
 }

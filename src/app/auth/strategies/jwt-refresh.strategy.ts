@@ -3,16 +3,13 @@ import { Request } from 'express';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from '../../user/user.service';
-import { CryptoService } from '../../core/services/crypto.service';
-import { IJwtPayload } from '../interfaces/jwt-payload.interface';
+import { RefreshTokenService } from '../services/refresh-token.service';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(
     private readonly configService: ConfigService,
-    private readonly userService: UserService,
-    private readonly cryptoService: CryptoService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -21,20 +18,17 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     });
   }
 
-  async validate(req: Request, payload: IJwtPayload) {
-    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
-    const { sub: userId } = payload;
-    const user = await this.userService.findById(userId);
+  async validate(req: Request, payload: any) {
+    const refreshToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
 
-    if (!user || !user.isActive || !user.refreshToken) {
+    const validToken = await this.refreshTokenService.validateToken(refreshToken);
+    if (!validToken || validToken.user.id !== payload.sub) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const isValid = await this.cryptoService.secureCompare(user.refreshToken, refreshToken);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    return user;
+    return validToken.user;
   }
 }
