@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.16](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.15...v0.8.16) (2025-02-09)
+
+### Features
+
+- Add request size middleware and enhance security headers in the application ([81f5aca](https://github.com/Notable-Nomads/nn-backend-api/commit/81f5aca3a8e86728e9948adedd9e60739be2941f))
+- Implement security middleware to block access to sensitive paths and enhance app security ([d44e21b](https://github.com/Notable-Nomads/nn-backend-api/commit/d44e21b8755f0f95621662d8a2dac508a9988fe0))
+- Implement token blacklist service and enhance authentication flow with token revocation ([a4d60d5](https://github.com/Notable-Nomads/nn-backend-api/commit/a4d60d58fe78f39f96cbd2eec9013f971674c8ad))
+
 ### [0.8.15](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.14...v0.8.15) (2025-02-09)
 
 ### Features
