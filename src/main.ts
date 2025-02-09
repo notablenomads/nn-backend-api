@@ -161,11 +161,29 @@ async function bootstrap() {
     const options = new DocumentBuilder()
       .setTitle(packageInfo.name)
       .setVersion(packageInfo.version)
-      .setDescription(packageInfo.description)
+      .setDescription(packageInfo.description + (environment === 'production' ? ' (Read-only mode)' : ''))
       .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, options);
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+
+    // Configure Swagger UI options
+    const customOptions = {
+      swaggerOptions: {
+        persistAuthorization: true,
+        tryItOutEnabled: environment !== 'production', // Disable in production only
+        supportedSubmitMethods:
+          environment === 'production' ? [] : ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'],
+        displayRequestDuration: true,
+        docExpansion: 'list',
+        filter: true,
+        showExtensions: true,
+      },
+      customSiteTitle: `${packageInfo.name} API Documentation`,
+      customfavIcon: 'https://notablenomads.com/favicon.ico',
+      customCss: environment === 'production' ? '.swagger-ui .try-out { display: none }' : '', // Hide "Try it out" section in production
+    };
+
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document, customOptions);
   }
 
   await app.listen(config.get('app.port'), config.get('app.host'));
