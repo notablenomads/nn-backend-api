@@ -32,7 +32,7 @@ export class CreateUserTable1710864000000 implements MigrationInterface {
           {
             name: 'roles',
             type: 'text',
-            array: true,
+            isArray: true,
             default: "'{user}'",
           },
           {

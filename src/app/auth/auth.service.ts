@@ -56,17 +56,28 @@ export class AuthService {
     return user;
   }
 
-  async refreshTokens(refreshToken: string): Promise<ITokens> {
+  async refreshTokens(refreshToken: string, accessTokenUserId: string): Promise<ITokens> {
     if (!refreshToken || typeof refreshToken !== 'string') {
       throw new UnauthorizedException('Missing or invalid refresh token format');
     }
+
     const validToken = await this.refreshTokenService.validateToken(refreshToken);
     if (!validToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.user.id);
-    const accessToken = this.generateAccessToken(validToken.user as User);
+    // Verify that the user from the access token matches the refresh token's user
+    if (validToken.userId !== accessTokenUserId) {
+      throw new UnauthorizedException('Token mismatch - possible security breach detected');
+    }
+
+    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.userId);
+    const user = await this.userService.findById(validToken.userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const accessToken = this.generateAccessToken(user);
 
     return {
       accessToken,
