@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.15](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.14...v0.8.15) (2025-02-09)
+
+### Features
+
+- update Node.js version to 22 and configure Corepack and Yarn in workflows ([f24f526](https://github.com/Notable-Nomads/nn-backend-api/commit/f24f52688dd898623d2d64b50d7f5136b0733964))
+
 ### [0.8.14](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.13...v0.8.14) (2025-02-09)
 
 ### Features
