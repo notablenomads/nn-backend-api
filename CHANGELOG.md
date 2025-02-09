@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.9](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.8...v0.8.9) (2025-02-09)
+
+
+### Features
+
+* **docker:** add Sentry DSN and monitoring memory threshold to docker-compose ([ef7b69c](https://github.com/Notable-Nomads/nn-backend-api/commit/ef7b69ca6b4d6fb8fcadc55c01f1ce3c45c1dccc))
+
 ### [0.8.8](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.7...v0.8.8) (2025-02-09)
 
 
