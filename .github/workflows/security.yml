@@ -20,11 +20,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'yarn'
+          node-version: '22'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Yarn
+        run: corepack prepare yarn@4.6.0 --activate
+
+      - name: Create .yarnrc.yml file
+        run: |
+          cp .yarnrc.yml-example .yarnrc.yml
+          echo "Created .yarnrc.yml file from example"
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Run SAST scan
         uses: github/codeql-action/init@v2
@@ -42,7 +52,7 @@ jobs:
           args: --severity-threshold=high
 
       - name: Run npm audit
-        run: yarn audit
+        run: yarn npm audit
 
       - name: Check for secrets in code
         uses: gitleaks/gitleaks-action@v2
