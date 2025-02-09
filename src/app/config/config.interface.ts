@@ -8,6 +8,13 @@ export interface IAppConfig {
   corsRestrict: boolean;
 }
 
+export interface IJwtConfig {
+  secret: string;
+  refreshSecret: string;
+  expiresIn: string;
+  refreshExpiresIn: string;
+}
+
 export interface IAiConfig {
   geminiApiKey: string;
 }
@@ -42,6 +49,7 @@ export interface IMonitoringConfig {
 
 export interface IConfig {
   app: IAppConfig;
+  jwt: IJwtConfig;
   ai: IAiConfig;
   aws: IAwsConfig;
   email: IEmailConfig;
