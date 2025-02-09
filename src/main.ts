@@ -93,7 +93,7 @@ async function bootstrap() {
     // Feature-Policy header
     res.setHeader(
       'Permissions-Policy',
-      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
     );
 
     // Expect-CT header for certificate transparency
@@ -103,6 +103,18 @@ async function bootstrap() {
 
     // Cross-Origin-Resource-Policy header
     res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+
+    // Additional security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Download-Options', 'noopen');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+
+    // Clear site data on logout (optional, add to logout route)
+    if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
+      res.setHeader('Clear-Site-Data', '"cache","cookies","storage"');
+    }
 
     next();
   });

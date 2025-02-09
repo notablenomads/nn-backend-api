@@ -9,6 +9,7 @@ import { LeadModule } from './lead/lead.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { SecurityMiddleware } from './core/middleware/security.middleware';
+import { RequestSizeMiddleware } from './core/middleware/request-size.middleware';
 
 const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, AuthModule];
 
@@ -18,6 +19,6 @@ const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, 
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(SecurityMiddleware).forRoutes('*');
+    consumer.apply(SecurityMiddleware, RequestSizeMiddleware).forRoutes('*');
   }
 }
