@@ -7,8 +7,8 @@ export default (): IConfig => ({
     host: process.env.HOST || '0.0.0.0',
     apiPrefix: process.env.API_PREFIX || 'api',
     enableSwagger: process.env.ENABLE_SWAGGER !== 'false',
-    corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',') || [],
-    corsRestrict: process.env.CORS_RESTRICT !== 'false',
+    corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',').map((domain) => domain.trim()) || [],
+    corsRestrict: process.env.NODE_ENV === 'production' ? true : process.env.CORS_RESTRICT !== 'false',
   },
   jwt: {
     secret: process.env.JWT_SECRET,
