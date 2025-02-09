@@ -4,6 +4,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../../user/user.service';
+import { CryptoService } from '../../core/services/crypto.service';
 import { IJwtPayload } from '../interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UserService,
+    private readonly cryptoService: CryptoService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
