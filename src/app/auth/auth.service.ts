@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { User } from '../user/entities/user.entity';
 import { IJwtPayload, ITokens } from './interfaces/jwt-payload.interface';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,11 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  async register(registerDto: RegisterDto): Promise<ITokens> {
+    const user = await this.userService.register(registerDto);
+    return this.login(user);
+  }
 
   async validateUser(email: string, password: string): Promise<User> {
     const user = await this.userService.findByEmail(email);
