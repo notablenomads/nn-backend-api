@@ -5,8 +5,3 @@ export interface IJwtPayload {
   iat?: number;
   exp?: number;
 }
-
-export interface ITokens {
-  accessToken: string;
-  refreshToken: string;
-}

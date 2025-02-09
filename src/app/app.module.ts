@@ -1,5 +1,4 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
 import { AiChatModule } from './ai-chat/ai-chat.module';
@@ -15,7 +14,6 @@ const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, 
 
 @Module({
   imports: [CoreModule, HealthModule, ...modules],
-  controllers: [AppController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
