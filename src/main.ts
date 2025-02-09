@@ -16,11 +16,11 @@ import { CustomThrottlerGuard } from './app/core/guards/throttler.guard';
 import { PerformanceInterceptor } from './app/core/interceptors/performance.interceptor';
 
 async function bootstrap() {
+  // Initialize app and core services
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
   const corsService = app.get(CorsService);
   const packageInfoService = app.get(PackageInfoService);
-
   const environment = config.get('app.nodeEnv');
   const apiPrefix = config.get('app.apiPrefix');
   const appName = config.get('app.name');
@@ -28,7 +28,7 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  // Basic helmet configuration - Cloudflare and Nginx handle most security headers
+  // Security configurations (with Cloudflare and Nginx as primary security layers)
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -42,13 +42,13 @@ async function bootstrap() {
         },
         reportOnly: environment !== 'production',
       },
-      crossOriginEmbedderPolicy: false, // Handled by Cloudflare
-      crossOriginOpenerPolicy: false, // Handled by Cloudflare
-      crossOriginResourcePolicy: false, // Handled by Cloudflare
+      crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
     }),
   );
 
-  // Only essential headers not handled by Cloudflare/Nginx
+  // Session cleanup on logout
   app.use((req, res, next) => {
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
       res.setHeader('Clear-Site-Data', '"cache","cookies","storage"');
@@ -56,28 +56,28 @@ async function bootstrap() {
     next();
   });
 
-  // Configure CORS - Note: Cloudflare also handles CORS, this is a backup
+  // CORS configuration (backup to Cloudflare CORS)
   app.enableCors({
     origin: corsService.createOriginValidator(),
     credentials: true,
   });
 
-  logger.log(
-    `CORS ${corsService.getStatus().isRestricted ? 'restricted to specific domains' : 'allowing all origins'}`,
-  );
-
+  // API configuration
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  // Global pipes and interceptors
   app.useGlobalPipes(new CustomValidationPipe());
-  app.useGlobalFilters(new AllExceptionsFilter(config));
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalInterceptors(app.get(PerformanceInterceptor));
+
+  // Global filters and guards
+  app.useGlobalFilters(new AllExceptionsFilter(config));
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalGuards(app.get(CustomThrottlerGuard));
 
-  // Swagger documentation setup
+  // Swagger documentation
   const isSwaggerEnabled = config.get('app.enableSwagger');
   if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
@@ -105,11 +105,17 @@ async function bootstrap() {
     SwaggerModule.setup(`${apiPrefix}/docs`, app, document, uiConfig);
   }
 
+  // Start server
   await app.listen(config.get('app.port'), config.get('app.host'));
+
+  // Log application status
   const appUrl = await app.getUrl();
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
-  logger.log(`Swagger documentation is ${isSwaggerEnabled ? 'enabled' : 'disabled'}`);
+  logger.log(
+    `CORS ${corsService.getStatus().isRestricted ? 'restricted to specific domains' : 'allowing all origins'}`,
+  );
+
   if (isSwaggerEnabled) {
     logger.log(`API Documentation available at: ${appUrl}/${apiPrefix}/docs`);
   }
