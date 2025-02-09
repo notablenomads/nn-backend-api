@@ -30,4 +30,7 @@ export default (): IConfig => ({
     database: process.env.DATABASE_NAME || 'notablenomads',
     schema: process.env.DATABASE_SCHEMA || 'public',
   },
+  sentry: {
+    dsn: process.env.SENTRY_DSN || '',
+  },
 });
