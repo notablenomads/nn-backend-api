@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface IPerformanceMetric {
@@ -23,12 +24,32 @@ export interface IPerformanceMetric {
 }
 
 @Injectable()
-export class MonitoringService {
+export class MonitoringService implements OnModuleInit {
   private readonly logger = new Logger(MonitoringService.name);
   private readonly environment: string;
 
   constructor(private readonly configService: ConfigService) {
     this.environment = this.configService.get<string>('app.nodeEnv', 'development');
+  }
+
+  onModuleInit() {
+    const dsn = this.configService.get<string>('sentry.dsn');
+    if (dsn && this.environment === 'production') {
+      Sentry.init({
+        dsn,
+        environment: this.environment,
+        tracesSampleRate: 1.0,
+        enabled: this.environment === 'production',
+        beforeSend(event) {
+          // Sanitize error events in non-production environments
+          if (event.environment !== 'production') {
+            delete event.user;
+            event.request = {};
+          }
+          return event;
+        },
+      });
+    }
   }
 
   logPerformanceMetric(metric: Omit<IPerformanceMetric, 'timestamp'>) {
@@ -40,7 +61,7 @@ export class MonitoringService {
     // Log in JSON format for easier parsing
     this.logger.log(JSON.stringify(enrichedMetric));
 
-    // In production, you might want to send this to an external monitoring service
+    // Send to external monitoring services in production
     if (this.environment === 'production') {
       this.sendToExternalMonitoring(enrichedMetric);
     }
@@ -68,6 +89,19 @@ export class MonitoringService {
       metadata,
       correlationId,
     });
+
+    // Send error to Sentry in production
+    if (this.environment === 'production') {
+      Sentry.withScope((scope) => {
+        if (correlationId) {
+          scope.setTag('correlationId', correlationId);
+        }
+        if (metadata) {
+          scope.setExtras(metadata);
+        }
+        Sentry.captureException(error);
+      });
+    }
   }
 
   logRequest(
@@ -92,9 +126,16 @@ export class MonitoringService {
   }
 
   private sendToExternalMonitoring(metric: IPerformanceMetric) {
-    // TODO: Implement sending to external monitoring service
-    // This could be New Relic, Datadog, etc.
-    // For now, we'll just log that we would send it
-    this.logger.debug(`Would send metric to external monitoring: ${JSON.stringify(metric)}`);
+    if (metric.type === 'performance' && metric.duration) {
+      Sentry.addBreadcrumb({
+        category: 'performance',
+        message: `${metric.className}.${metric.methodName}`,
+        data: {
+          duration: metric.duration,
+          path: metric.metadata?.path,
+          method: metric.metadata?.method,
+        },
+      });
+    }
   }
 }

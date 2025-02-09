@@ -22,4 +22,7 @@ export const validationSchema = Joi.object({
   // Email Configuration
   EMAIL_FROM_ADDRESS: Joi.string().email().default('noreply@notablenomads.com'),
   EMAIL_TO_ADDRESS: Joi.string().email().default('contact@notablenomads.com'),
+
+  // Sentry Configuration
+  SENTRY_DSN: Joi.string().uri().allow('').default(''),
 });
