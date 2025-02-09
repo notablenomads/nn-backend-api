@@ -1,4 +1,4 @@
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, MoreThan } from 'typeorm';
 import { Request } from 'express';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,6 +8,8 @@ import { CryptoService } from '../../core/services/crypto.service';
 
 @Injectable()
 export class RefreshTokenService {
+  private readonly MAX_ACTIVE_SESSIONS = 5;
+
   constructor(
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
@@ -16,6 +18,14 @@ export class RefreshTokenService {
   ) {}
 
   async createRefreshToken(userId: string, req: Request): Promise<RefreshToken> {
+    // Check active sessions count
+    const activeTokensCount = await this.countActiveTokens(userId);
+
+    if (activeTokensCount >= this.MAX_ACTIVE_SESSIONS) {
+      // Remove oldest token
+      await this.removeOldestToken(userId);
+    }
+
     const token = this.cryptoService.generateSecureToken();
     const expiresIn = this.configService.get<string>('jwt.refreshExpiresIn', '7d');
     const expiresAt = new Date(Date.now() + this.parseDuration(expiresIn));
@@ -91,6 +101,34 @@ export class RefreshTokenService {
     await this.refreshTokenRepository.delete({
       expiresAt: LessThan(new Date()),
     });
+  }
+
+  private async countActiveTokens(userId: string): Promise<number> {
+    return this.refreshTokenRepository.count({
+      where: {
+        userId,
+        isValid: true,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+  }
+
+  private async removeOldestToken(userId: string): Promise<void> {
+    const oldestToken = await this.refreshTokenRepository.findOne({
+      where: {
+        userId,
+        isValid: true,
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    if (oldestToken) {
+      oldestToken.isValid = false;
+      oldestToken.revokedAt = new Date();
+      await this.refreshTokenRepository.save(oldestToken);
+    }
   }
 
   private parseDuration(duration: string): number {
