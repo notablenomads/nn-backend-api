@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 import {
   ServiceType,
   ProjectType,
@@ -11,6 +11,7 @@ import {
   ContactMethod,
 } from '../enums/lead.enum';
 import { ILead } from '../interfaces/lead.interface';
+import { User } from '../../user/entities/user.entity';
 
 @Entity('leads')
 export class Lead implements ILead {
@@ -81,7 +82,7 @@ export class Lead implements ILead {
   @Column('text')
   email: string;
 
-  @Column('text', { nullable: true })
+  @Column({ nullable: true })
   company?: string;
 
   @Column({
@@ -95,6 +96,12 @@ export class Lead implements ILead {
 
   @Column('text', { nullable: true })
   additionalNotes?: string;
+
+  @ManyToOne(() => User, (user) => user.leads)
+  user: User;
+
+  @Column({ type: 'uuid', nullable: true })
+  userId: string;
 
   @CreateDateColumn()
   createdAt: Date;
