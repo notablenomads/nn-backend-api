@@ -1,24 +1,14 @@
 import { Request } from 'express';
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Req,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus, Req, UnauthorizedException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { GetUser } from './decorators/get-user.decorator';
 import { User } from '../user/entities/user.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { ITokens } from './interfaces/tokens.interface';
+import { RefreshTokensDto } from './dto/refresh-tokens.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -51,16 +41,18 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @UseGuards(JwtRefreshGuard)
-  @Get('refresh')
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Token refresh successful',
-  })
-  async refreshTokens(@Req() req: Request): Promise<ITokens> {
-    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
-    return this.authService.refreshTokens(refreshToken);
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired tokens' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async refreshTokens(
+    @Body() refreshTokenDto: RefreshTokensDto,
+    @Req() req: { user: { sub: string } },
+  ): Promise<ITokens> {
+    // Validate that the user from the access token matches the refresh token's user
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.sub);
   }
 
   @UseGuards(JwtAuthGuard)
