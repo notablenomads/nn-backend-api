@@ -40,7 +40,7 @@ export class User {
   @OneToMany(() => Lead, (lead) => lead.user)
   leads: Lead[];
 
-  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
+  @OneToMany('RefreshToken', 'user', { cascade: true })
   refreshTokens: RefreshToken[];
 
   @CreateDateColumn()
