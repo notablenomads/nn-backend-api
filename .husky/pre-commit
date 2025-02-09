@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Increase memory limit for Node.js
 export NODE_OPTIONS="--max-old-space-size=4096"
 
