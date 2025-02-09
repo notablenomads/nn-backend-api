@@ -7,7 +7,9 @@ export class CreateRefreshTokensTable1710864200000 implements MigrationInterface
     await queryRunner.query(`
       CREATE TABLE "refresh_tokens" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-        "token" character varying NOT NULL,
+        "token" character varying(1000) NOT NULL,
+        "iv" character varying(32) NOT NULL,
+        "authTag" character varying(64) NOT NULL,
         "expiresAt" TIMESTAMP NOT NULL,
         "userAgent" character varying,
         "ipAddress" character varying,
@@ -22,11 +24,6 @@ export class CreateRefreshTokensTable1710864200000 implements MigrationInterface
         CONSTRAINT "FK_refresh_tokens_user" FOREIGN KEY ("userId") 
           REFERENCES "users"("id") ON DELETE CASCADE
       )
-    `);
-
-    // Add index for faster token lookups
-    await queryRunner.query(`
-      CREATE INDEX "IDX_refresh_tokens_token" ON "refresh_tokens" ("token")
     `);
 
     // Add index for user relationship
@@ -48,7 +45,6 @@ export class CreateRefreshTokensTable1710864200000 implements MigrationInterface
 
     // Drop indexes
     await queryRunner.query('DROP INDEX "IDX_refresh_tokens_userId"');
-    await queryRunner.query('DROP INDEX "IDX_refresh_tokens_token"');
 
     // Drop refresh_tokens table
     await queryRunner.query('DROP TABLE "refresh_tokens"');

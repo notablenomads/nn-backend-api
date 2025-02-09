@@ -47,6 +47,10 @@ export interface IMonitoringConfig {
   memoryThresholdMs: number;
 }
 
+export interface IEncryptionConfig {
+  key: string;
+}
+
 export interface IConfig {
   app: IAppConfig;
   jwt: IJwtConfig;
@@ -56,4 +60,5 @@ export interface IConfig {
   database: IDatabaseConfig;
   sentry: ISentryConfig;
   monitoring: IMonitoringConfig;
+  encryption: IEncryptionConfig;
 }

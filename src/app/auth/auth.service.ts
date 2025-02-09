@@ -1,4 +1,3 @@
-import { Request } from 'express';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -25,15 +24,15 @@ export class AuthService {
     private readonly cryptoService: CryptoService,
   ) {}
 
-  async register(registerDto: RegisterDto, req: Request): Promise<ITokens> {
+  async register(registerDto: RegisterDto): Promise<ITokens> {
     const user = await this.userService.register(registerDto);
-    return this.generateTokens(user, req);
+    return this.generateTokens(user);
   }
 
-  async login(loginDto: LoginDto, req: Request): Promise<ITokens> {
+  async login(loginDto: LoginDto): Promise<ITokens> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
     await this.resetFailedAttempts(loginDto.email);
-    return this.generateTokens(user, req);
+    return this.generateTokens(user);
   }
 
   async validateUser(email: string, password: string): Promise<User> {
@@ -57,13 +56,16 @@ export class AuthService {
     return user;
   }
 
-  async refreshTokens(refreshToken: string, req: Request): Promise<ITokens> {
+  async refreshTokens(refreshToken: string): Promise<ITokens> {
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      throw new UnauthorizedException('Missing or invalid refresh token format');
+    }
     const validToken = await this.refreshTokenService.validateToken(refreshToken);
     if (!validToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.user.id, req);
+    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.user.id);
     const accessToken = this.generateAccessToken(validToken.user as User);
 
     return {
@@ -72,17 +74,17 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string, req: Request): Promise<void> {
-    await this.refreshTokenService.revokeToken(refreshToken, req.ip);
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokenService.revokeToken(refreshToken);
   }
 
-  async logoutAll(userId: string, req: Request): Promise<void> {
-    await this.refreshTokenService.revokeAllUserTokens(userId, req.ip);
+  async logoutAll(userId: string): Promise<void> {
+    await this.refreshTokenService.revokeAllUserTokens(userId);
   }
 
-  private async generateTokens(user: User, req: Request): Promise<ITokens> {
+  private async generateTokens(user: User): Promise<ITokens> {
     const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.refreshTokenService.createRefreshToken(user.id, req);
+    const refreshToken = await this.refreshTokenService.createRefreshToken(user.id);
 
     return {
       accessToken,
