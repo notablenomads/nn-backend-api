@@ -17,12 +17,12 @@ export default (): IConfig => ({
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   ai: {
-    geminiApiKey: process.env.***REMOVED*** || '',
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
   },
   aws: {
-    region: process.env.***REMOVED*** || 'us-east-1',
-    accessKeyId: process.env.***REMOVED*** || '',
-    secretAccessKey: process.env.***REMOVED*** || '',
+    region: process.env.AWS_REGION || 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
   email: {
     fromAddress: process.env.EMAIL_FROM_ADDRESS || 'noreply@example.com',

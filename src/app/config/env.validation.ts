@@ -27,20 +27,20 @@ export const validationSchema = Joi.object({
     .description('JWT refresh token expiration time (e.g., 15m, 1h, 7d)'),
 
   // AI Configuration
-  ***REMOVED***: Joi.string().required().description('AI API key').when('NODE_ENV', {
+  GEMINI_API_KEY: Joi.string().required().description('AI API key').when('NODE_ENV', {
     is: 'production',
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
 
   // AWS Configuration
-  ***REMOVED***: Joi.string().default('eu-central-1'),
-  ***REMOVED***: Joi.string().required().when('NODE_ENV', {
+  AWS_REGION: Joi.string().default('eu-central-1'),
+  AWS_ACCESS_KEY_ID: Joi.string().required().when('NODE_ENV', {
     is: 'production',
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
-  ***REMOVED***: Joi.string().required().when('NODE_ENV', {
+  AWS_SECRET_ACCESS_KEY: Joi.string().required().when('NODE_ENV', {
     is: 'production',
     then: Joi.required(),
     otherwise: Joi.optional(),

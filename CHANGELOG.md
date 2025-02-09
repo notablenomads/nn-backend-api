@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.19](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.18...v0.8.19) (2025-02-09)
+
+### Features
+
+- Improve CORS configuration with domain trimming, production checks, and centralized options ([2f8ae29](https://github.com/Notable-Nomads/nn-backend-api/commit/2f8ae29b36eac9d7898d8f76e883c8061cd2aea0))
+
 ### [0.8.18](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.17...v0.8.18) (2025-02-09)
 
 ### [0.8.17](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.15...v0.8.17) (2025-02-09)
@@ -435,7 +441,7 @@ All notable changes to this project will be documented in this file. See [standa
 - add AWS SDK for SES and update dependencies ([a8b6d34](https://github.com/Notable-Nomads/nn-backend-api/commit/a8b6d3463d6ff5d4f2058b8707be0a960de74812))
 - add buildspec and manifest for nn-backend-api-main pipeline ([938744b](https://github.com/Notable-Nomads/nn-backend-api/commit/938744beed1d4a218cd5a1ce26d16ae9ccd920b0))
 - add email module and AWS configuration ([f7f10cd](https://github.com/Notable-Nomads/nn-backend-api/commit/f7f10cdf412ce315a063978527a10028326ddc2b))
-- add ***REMOVED*** to platform manifest for AI integration ([2a0ff58](https://github.com/Notable-Nomads/nn-backend-api/commit/2a0ff5805a39810a484cf793a3acd5ded1445bea))
+- add GEMINI_API_KEY to platform manifest for AI integration ([2a0ff58](https://github.com/Notable-Nomads/nn-backend-api/commit/2a0ff5805a39810a484cf793a3acd5ded1445bea))
 - add health check module with axios and terminus dependencies ([38ec24a](https://github.com/Notable-Nomads/nn-backend-api/commit/38ec24a3768a7b7790d8989017a715ab74f26f2b))
 - add HTML client for AI chat with WebSocket and SSE support ([84bf364](https://github.com/Notable-Nomads/nn-backend-api/commit/84bf364e2f6d33924c627f721570c7aed8569dfd))
 - add initial Copilot workspace and service manifest for nn-backend-ms-service ([4101b6d](https://github.com/Notable-Nomads/nn-backend-api/commit/4101b6db4f6194d9cd6096e2ef4b9b0d85ce7fb5))
