@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
@@ -8,6 +8,7 @@ import { BlogModule } from './blog/blog.module';
 import { LeadModule } from './lead/lead.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { SecurityMiddleware } from './core/middleware/security.middleware';
 
 const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, AuthModule];
 
@@ -15,4 +16,8 @@ const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, 
   imports: [CoreModule, HealthModule, ...modules],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SecurityMiddleware).forRoutes('*');
+  }
+}

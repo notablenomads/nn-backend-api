@@ -27,6 +27,17 @@ async function bootstrap() {
   const logger = new Logger(appName);
 
   app.enableShutdownHooks();
+
+  // Add Cache-Control header middleware for production
+  if (environment === 'production') {
+    app.use((req, res, next) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      next();
+    });
+  }
+
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -72,6 +83,7 @@ async function bootstrap() {
       permittedCrossDomainPolicies: { permittedPolicies: 'none' },
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       xssFilter: true,
+      hidePoweredBy: true,
     }),
   );
 
