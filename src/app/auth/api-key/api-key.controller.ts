@@ -14,9 +14,9 @@ export class ApiKeyController {
 
   @Post('generate')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate a new API key (Admin only)' })
+  @ApiOperation({ summary: 'Generate a new API key (Super Admin only)' })
   async generateApiKey(@Body('description') description?: string) {
     return this.apiKeyService.generateNewApiKey(description);
   }
@@ -32,9 +32,9 @@ export class ApiKeyController {
 
   @Post('deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Deactivate an API key (Admin only)' })
+  @ApiOperation({ summary: 'Deactivate an API key (Super Admin only)' })
   async deactivateApiKey(@Headers('authorization') authHeader: string) {
     const apiKey = authHeader.split(' ')[1];
     return this.apiKeyService.deactivateApiKey(apiKey);
