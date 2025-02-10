@@ -1,4 +1,5 @@
 import { IConfig } from './config.interface';
+import { defaultSecurityConfig } from './security.config';
 
 export default (): IConfig => ({
   app: {
@@ -9,12 +10,15 @@ export default (): IConfig => ({
     enableSwagger: process.env.ENABLE_SWAGGER !== 'false',
     corsEnabledDomains: process.env.CORS_ENABLED_DOMAINS?.split(',').map((domain) => domain.trim()) || [],
     corsRestrict: process.env.NODE_ENV === 'production' ? true : process.env.CORS_RESTRICT !== 'false',
+    trustedProxies: process.env.TRUSTED_PROXIES?.split(',').map((proxy) => proxy.trim()) || [],
   },
   jwt: {
     secret: process.env.JWT_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    clockTolerance: parseInt(process.env.JWT_CLOCK_TOLERANCE || '30', 10), // 30 seconds
+    issuer: process.env.JWT_ISSUER || 'notablenomads',
   },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
@@ -44,5 +48,24 @@ export default (): IConfig => ({
   },
   encryption: {
     key: process.env.ENCRYPTION_KEY || '',
+  },
+  security: {
+    ...defaultSecurityConfig,
+    rateLimit: {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || (15 * 60 * 1000).toString(), 10),
+      max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+    },
+    helmet: {
+      ...defaultSecurityConfig.helmet,
+      enabled: process.env.SECURITY_HELMET_ENABLED !== 'false',
+    },
+    cookie: {
+      ...defaultSecurityConfig.cookie,
+      secure: process.env.NODE_ENV === 'production' ? true : process.env.COOKIE_SECURE !== 'false',
+    },
+    inputValidation: {
+      ...defaultSecurityConfig.inputValidation,
+      maxPayloadSize: process.env.MAX_PAYLOAD_SIZE || '10mb',
+    },
   },
 });

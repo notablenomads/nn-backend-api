@@ -1,6 +1,7 @@
 import helmet from 'helmet';
+import compression from 'compression';
 import { NestFactory, Reflector } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ClassSerializerInterceptor, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -10,13 +11,16 @@ import { AllExceptionsFilter } from './app/core/filters/all-exceptions.filter';
 import { CorsService } from './app/core/services/cors.service';
 import { PackageInfoService } from './app/core/services/package-info.service';
 import { HttpExceptionFilter } from './app/core/filters/http-exception.filter';
-import { CustomValidationPipe } from './app/core/pipes/validation.pipe';
 import { TransformInterceptor } from './app/core/interceptors/transform.interceptor';
 import { CustomThrottlerGuard } from './app/core/guards/throttler.guard';
 import { PerformanceInterceptor } from './app/core/interceptors/performance.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: ['error', 'warn', 'log'],
+    cors: false, // We'll configure this explicitly
+  });
+
   const config = app.get(ConfigService);
   const corsService = app.get(CorsService);
   const packageInfoService = app.get(PackageInfoService);
@@ -26,33 +30,26 @@ async function bootstrap() {
   const appName = config.get('app.name');
   const logger = new Logger(appName);
 
+  // Enable shutdown hooks for graceful shutdown
   app.enableShutdownHooks();
 
-  // Add Cache-Control header middleware for production
-  if (environment === 'production') {
-    app.use((req, res, next) => {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      next();
-    });
-  }
+  // Enable compression
+  app.use(compression());
 
+  // Configure Helmet with strict CSP
   app.use(
     helmet({
       contentSecurityPolicy: {
+        useDefaults: true,
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
           connectSrc: [
             "'self'",
-            'ws://localhost:*',
-            'wss://localhost:*',
-            'ws://api.notablenomads.com',
+            ...(environment === 'development' ? ['ws://localhost:*', 'wss://localhost:*'] : []),
             'wss://api.notablenomads.com',
             'https://api.notablenomads.com',
             'https://*.notablenomads.com',
-            'ws://*.notablenomads.com',
             'wss://*.notablenomads.com',
           ],
           styleSrc: ["'self'", "'unsafe-inline'"],
@@ -64,13 +61,13 @@ async function bootstrap() {
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
           baseUri: ["'self'"],
-          upgradeInsecureRequests: [],
+          upgradeInsecureRequests: environment === 'production' ? [] : null,
         },
-        reportOnly: environment !== 'production', // Enable report-only mode in non-production
+        reportOnly: false,
       },
-      crossOriginEmbedderPolicy: false,
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: environment === 'production',
+      crossOriginOpenerPolicy: { policy: 'same-origin' },
+      crossOriginResourcePolicy: { policy: 'same-origin' },
       dnsPrefetchControl: { allow: false },
       frameguard: { action: 'deny' },
       hsts: {
@@ -88,39 +85,41 @@ async function bootstrap() {
     }),
   );
 
-  // Add custom security headers
+  // Additional security headers not covered by Helmet
   app.use((req, res, next) => {
-    // Feature-Policy header
+    // Permissions Policy (not handled by Helmet)
     res.setHeader(
       'Permissions-Policy',
-      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()',
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), ambient-light-sensor=(), autoplay=(), battery=(), display-capture=(), document-domain=(), encrypted-media=(), execution-while-not-rendered=(), execution-while-out-of-viewport=(), fullscreen=(), gamepad=(), midi=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), xr-spatial-tracking=()',
     );
 
-    // Expect-CT header for certificate transparency
+    // Production-specific headers
     if (environment === 'production') {
+      // Cache control headers
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+
+      // Certificate Transparency
       res.setHeader('Expect-CT', 'enforce, max-age=86400');
     }
 
-    // Cross-Origin-Resource-Policy header
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-
-    // Additional security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Download-Options', 'noopen');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-
-    // Clear site data on logout (optional, add to logout route)
+    // Clear site data on logout (not handled by Helmet)
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
-      res.setHeader('Clear-Site-Data', '"cache","cookies","storage"');
+      res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts"');
     }
 
     next();
   });
 
-  // Configure CORS
-  app.enableCors(corsService.getCorsOptions());
+  // Strict CORS configuration
+  const corsOptions = corsService.getCorsOptions();
+  if (environment === 'production' && !corsOptions.origin) {
+    logger.error('CORS configuration is required in production!');
+    process.exit(1);
+  }
+  app.enableCors(corsOptions);
 
   // Log CORS configuration
   const corsStatus = corsService.getStatus();
@@ -134,28 +133,38 @@ async function bootstrap() {
     logger.warn('CORS restrictions disabled - allowing all origins (non-production only)');
   }
 
+  // API versioning and global prefix
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
+  // Global pipes and interceptors
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Strip properties not in DTO
+      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+      transform: true, // Transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: false, // Require explicit type declarations
+      },
+    }),
+  );
+
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.useGlobalPipes(new CustomValidationPipe());
-
-  app.useGlobalFilters(new AllExceptionsFilter(config));
-  app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Global transform interceptor
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // Global performance interceptor
   const performanceInterceptor = app.get(PerformanceInterceptor);
   app.useGlobalInterceptors(performanceInterceptor);
 
-  // Global throttler guard
+  // Global exception filters
+  app.useGlobalFilters(new AllExceptionsFilter(config));
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Rate limiting
   const throttlerGuard = app.get(CustomThrottlerGuard);
   app.useGlobalGuards(throttlerGuard);
 
-  // Swagger documentation setup
-  const isSwaggerEnabled = config.get('app.enableSwagger');
+  // Swagger documentation (only in non-production)
+  const isSwaggerEnabled = config.get('app.enableSwagger') && environment !== 'production';
   if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
@@ -163,19 +172,30 @@ async function bootstrap() {
       .setVersion(packageInfo.version)
       .setDescription(packageInfo.description)
       .addBearerAuth()
+      .addSecurityRequirements('bearer')
       .build();
     const document = SwaggerModule.createDocument(app, options);
-    SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+    SwaggerModule.setup(`${apiPrefix}/docs`, app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        docExpansion: 'none',
+        filter: true,
+        showRequestDuration: true,
+      },
+    });
   }
 
+  // Start the application
   await app.listen(config.get('app.port'), config.get('app.host'));
   const appUrl = await app.getUrl();
+
+  // Log startup information
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
-  logger.log(`Swagger documentation is ${isSwaggerEnabled ? 'enabled' : 'disabled'}`);
   if (isSwaggerEnabled) {
     logger.log(`API Documentation available at: ${appUrl}/${apiPrefix}/docs`);
   }
 }
 
+// Use process.nextTick for better error handling
 process.nextTick(bootstrap);
