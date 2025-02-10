@@ -115,6 +115,8 @@ Example:
 yarn create:super-admin admin@example.com your-secure-password
 ```
 
+**Note**: For security reasons, this script can only create one super admin user. Once a super admin exists, additional super admins must be created through the application by the existing super admin.
+
 ## Monitoring
 
 ```bash

@@ -47,6 +47,18 @@ async function createSuperAdmin() {
       process.exit(1);
     }
 
+    // Check if any super admin already exists
+    const existingSuperAdmin = await userRepository.findOne({
+      where: { roles: Role.SUPER_ADMIN },
+    });
+
+    if (existingSuperAdmin) {
+      console.error('A super admin user already exists in the system');
+      console.error('For security reasons, only one super admin can be created using this script');
+      console.error('Additional super admins can only be created by the existing super admin through the application');
+      process.exit(1);
+    }
+
     console.log('Checking if user exists...');
     const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
@@ -66,6 +78,7 @@ async function createSuperAdmin() {
 
     await userRepository.save(user);
     console.log(`Super admin created successfully: ${user.email}`);
+    console.log('IMPORTANT: Please keep these credentials safe and secure!');
   } catch (error) {
     console.error('Failed to create super admin:', error);
     if (error.stack) {
