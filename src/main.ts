@@ -46,7 +46,7 @@ async function bootstrap() {
         useDefaults: true,
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com'],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.socket.io', '*.notablenomads.com', 'nn-landing.vercel.app'],
           connectSrc: [
             "'self'",
             ...(environment === 'development' ? ['ws://localhost:*', 'wss://localhost:*'] : []),
@@ -54,6 +54,7 @@ async function bootstrap() {
             'https://api.notablenomads.com',
             'https://*.notablenomads.com',
             'wss://*.notablenomads.com',
+            'https://nn-landing.vercel.app',
           ],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
