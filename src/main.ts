@@ -105,9 +105,9 @@ async function bootstrap() {
       res.setHeader('Expect-CT', 'enforce, max-age=86400');
     }
 
-    // Clear site data on logout (not handled by Helmet)
+    // Enhanced Clear-Site-Data for complete cleanup during logout
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
-      res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts"');
+      res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts","clientData"');
     }
 
     next();
@@ -137,15 +137,18 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
-  // Global pipes and interceptors
+  // Global pipes and interceptors with enhanced security
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strip properties not in DTO
       forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
       transform: true, // Transform payloads to DTO instances
       transformOptions: {
-        enableImplicitConversion: false, // Require explicit type declarations
+        enableImplicitConversion: false, // Prevent implicit type coercion
       },
+      validateCustomDecorators: true, // Enable validation for custom decorators
+      forbidUnknownValues: true, // Reject payloads with unknown properties
+      stopAtFirstError: false, // Collect all validation errors
     }),
   );
 
