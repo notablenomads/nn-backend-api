@@ -21,6 +21,9 @@ async function bootstrap() {
     cors: false, // We'll configure this explicitly
   });
 
+  // Configure trust proxy settings
+  app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
+
   const config = app.get(ConfigService);
   const corsService = app.get(CorsService);
   const packageInfoService = app.get(PackageInfoService);

@@ -25,23 +25,34 @@ import { CryptoService } from './services/crypto.service';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
-        limit: 30, // Default limit
-      },
-      {
-        ttl: 60,
+        name: 'short',
+        ttl: 1000, // 1 second
         limit: 5,
-        name: 'auth', // For authentication routes
+        blockDuration: 60000, // Block for 1 minute after exceeding
       },
       {
-        ttl: 60,
+        name: 'medium',
+        ttl: 60000, // 1 minute
+        limit: 30,
+        blockDuration: 300000, // Block for 5 minutes after exceeding
+      },
+      {
+        name: 'auth',
+        ttl: 300000, // 5 minutes
+        limit: 5,
+        blockDuration: 900000, // Block for 15 minutes after exceeding
+      },
+      {
+        name: 'email',
+        ttl: 3600000, // 1 hour
         limit: 10,
-        name: 'email', // For email-related routes
+        blockDuration: 7200000, // Block for 2 hours after exceeding
       },
       {
-        ttl: 60,
-        limit: 20,
-        name: 'api', // For general API routes
+        name: 'api',
+        ttl: 60000, // 1 minute
+        limit: 50,
+        blockDuration: 300000, // Block for 5 minutes after exceeding
       },
     ]),
     DatabaseModule,

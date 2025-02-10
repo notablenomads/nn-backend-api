@@ -4,22 +4,36 @@ import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, any>): Promise<string> {
-    // Use IP address and route as the tracker
-    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    // Get the first IP from X-Forwarded-For header or fallback to direct IP
+    const ip = req.ips.length ? req.ips[0] : req.ip || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
     const route = req.route?.path || req.url;
-    return `${ip}-${route}`;
+
+    // Combine IP, route, and a hash of the user agent for more precise tracking
+    return `${ip}-${route}-${Buffer.from(userAgent).toString('base64')}`;
   }
 
   protected async throwThrottlingException(): Promise<void> {
-    throw new ThrottlerException('Too many requests. Please try again later.');
+    throw new ThrottlerException('Rate limit exceeded. Please try again later.');
   }
 
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
-    // Skip throttling for health check endpoints
     const request = context.switchToHttp().getRequest();
-    if (request.url.includes('/health')) {
+    const skipPaths = ['/health', '/metrics', '/favicon.ico'];
+
+    // Skip throttling for specific paths
+    if (skipPaths.some((path) => request.url.includes(path))) {
       return true;
     }
+
+    // Skip throttling for specific user agents (e.g., monitoring services)
+    const userAgent = request.headers['user-agent'] || '';
+    const skipUserAgents = [/health-check/i, /monitoring-service/i, /uptime-robot/i];
+
+    if (skipUserAgents.some((regex) => regex.test(userAgent))) {
+      return true;
+    }
+
     return false;
   }
 }
