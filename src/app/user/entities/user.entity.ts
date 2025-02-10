@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { Lead } from '../../lead/entities/lead.entity';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { IUser } from '../interfaces/user.interface';
+import { Role } from '../../core/enums/role.enum';
 
 @Entity('users')
 export class User implements IUser {
@@ -32,23 +33,23 @@ export class User implements IUser {
   @Exclude()
   password: string;
 
+  @Column({ type: 'enum', enum: Role, array: true, default: [Role.USER] })
+  roles: Role[];
+
   @Column({ default: true })
   isActive: boolean;
-
-  @Column('text', { array: true, default: ['user'] })
-  roles: string[];
-
-  @OneToMany(() => Lead, (lead) => lead.user)
-  leads: Lead[];
-
-  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, { cascade: true })
-  refreshTokens: RefreshToken[];
 
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => Lead, (lead) => lead.user)
+  leads: Lead[];
+
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, { cascade: true })
+  refreshTokens: RefreshToken[];
 
   @BeforeInsert()
   @BeforeUpdate()

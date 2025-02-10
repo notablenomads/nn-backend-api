@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { Role } from '../core/enums/role.enum';
 
 @Injectable()
 export class UserService {
@@ -26,7 +27,7 @@ export class UserService {
 
     const user = this.userRepository.create({
       ...userData,
-      roles: ['user'],
+      roles: [Role.USER],
       isActive: true,
     });
 
