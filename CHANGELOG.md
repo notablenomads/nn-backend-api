@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.23](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.22...v0.8.23) (2025-02-10)
+
+### Features
+
+- Enhance throttling configuration and tracking for improved rate limiting ([741f6c8](https://github.com/Notable-Nomads/nn-backend-api/commit/741f6c8a2576fd00639626e8c722e6e51f7ddf8c))
+- Update script and connect sources in security headers to include new domain ([aca3aaf](https://github.com/Notable-Nomads/nn-backend-api/commit/aca3aaf13ac03581fd445b581944eb2e94a9b02d))
+
 ### [0.8.22](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.21...v0.8.22) (2025-02-10)
 
 ### Features
