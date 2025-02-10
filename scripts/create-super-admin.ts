@@ -47,10 +47,11 @@ async function createSuperAdmin() {
       process.exit(1);
     }
 
-    // Check if any super admin already exists
-    const existingSuperAdmin = await userRepository.findOne({
-      where: { roles: Role.SUPER_ADMIN },
-    });
+    // Check if any super admin already exists using array contains operator
+    const existingSuperAdmin = await userRepository
+      .createQueryBuilder('user')
+      .where(':role = ANY(user.roles)', { role: Role.SUPER_ADMIN })
+      .getOne();
 
     if (existingSuperAdmin) {
       console.error('A super admin user already exists in the system');
