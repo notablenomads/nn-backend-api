@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.22](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.21...v0.8.22) (2025-02-10)
+
+### Features
+
+- Add compression middleware and its type definitions to enhance response performance ([ae66ff5](https://github.com/Notable-Nomads/nn-backend-api/commit/ae66ff5c103bb8e523f726aabdcfa0f800390e5d))
+- Add security configuration with rate limiting, helmet settings, and input validation ([33d4128](https://github.com/Notable-Nomads/nn-backend-api/commit/33d4128a309cd2b671a680dfd61aaaa94e498de4))
+- Refactor security headers for improved clarity and organization ([ae57f59](https://github.com/Notable-Nomads/nn-backend-api/commit/ae57f59b822646b8d115a9c6327a21cac98e2e0a))
+- Update environment configuration and enhance security measures during logout ([88cce8a](https://github.com/Notable-Nomads/nn-backend-api/commit/88cce8a28d278c314ff6d0e2c4b8dbac78bb6094))
+
 ### [0.8.21](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.20...v0.8.21) (2025-02-10)
 
 ### [0.8.20](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.19...v0.8.20) (2025-02-10)
