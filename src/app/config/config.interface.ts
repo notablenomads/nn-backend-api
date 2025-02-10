@@ -6,6 +6,7 @@ export interface IAppConfig {
   enableSwagger: boolean;
   corsEnabledDomains: string[];
   corsRestrict: boolean;
+  trustedProxies?: string[];
 }
 
 export interface IJwtConfig {
@@ -13,6 +14,8 @@ export interface IJwtConfig {
   refreshSecret: string;
   expiresIn: string;
   refreshExpiresIn: string;
+  clockTolerance: number;
+  issuer: string;
 }
 
 export interface IAiConfig {
@@ -51,6 +54,8 @@ export interface IEncryptionConfig {
   key: string;
 }
 
+import { ISecurityConfig } from './security.config';
+
 export interface IConfig {
   app: IAppConfig;
   jwt: IJwtConfig;
@@ -61,4 +66,5 @@ export interface IConfig {
   sentry: ISentryConfig;
   monitoring: IMonitoringConfig;
   encryption: IEncryptionConfig;
+  security: ISecurityConfig;
 }
