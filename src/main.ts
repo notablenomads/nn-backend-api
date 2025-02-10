@@ -36,17 +36,6 @@ async function bootstrap() {
   // Enable compression
   app.use(compression());
 
-  // Security headers for production
-  if (environment === 'production') {
-    app.use((req, res, next) => {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('Surrogate-Control', 'no-store');
-      next();
-    });
-  }
-
   // Configure Helmet with strict CSP
   app.use(
     helmet({
@@ -96,32 +85,27 @@ async function bootstrap() {
     }),
   );
 
-  // Enhanced security headers
+  // Additional security headers not covered by Helmet
   app.use((req, res, next) => {
-    // Permissions Policy (formerly Feature-Policy)
+    // Permissions Policy (not handled by Helmet)
     res.setHeader(
       'Permissions-Policy',
       'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), ambient-light-sensor=(), autoplay=(), battery=(), display-capture=(), document-domain=(), encrypted-media=(), execution-while-not-rendered=(), execution-while-out-of-viewport=(), fullscreen=(), gamepad=(), midi=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), xr-spatial-tracking=()',
     );
 
-    // Certificate Transparency in production
+    // Production-specific headers
     if (environment === 'production') {
+      // Cache control headers
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+
+      // Certificate Transparency
       res.setHeader('Expect-CT', 'enforce, max-age=86400');
     }
 
-    // Enhanced Cross-Origin headers
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', environment === 'production' ? 'require-corp' : 'unsafe-none');
-
-    // Security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Download-Options', 'noopen');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-
-    // Clear site data on logout
+    // Clear site data on logout (not handled by Helmet)
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
       res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts"');
     }
