@@ -101,6 +101,20 @@ DOCKER_HUB_TOKEN=<token> ./scripts/deploy.sh <server-ip>
 ./scripts/cleanup.sh <server-ip>
 ```
 
+## Creating a Super Admin
+
+To create a super admin user, run:
+
+```bash
+yarn create:super-admin <email> <password>
+```
+
+Example:
+
+```bash
+yarn create:super-admin admin@example.com your-secure-password
+```
+
 ## Monitoring
 
 ```bash
