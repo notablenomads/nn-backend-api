@@ -180,20 +180,43 @@ describe('LeadService', () => {
       const mockLeadWithId = { ...mockLead, id: 'test-id' } as Lead;
       jest.spyOn(leadRepository, 'create').mockReturnValue(mockLeadWithId);
       jest.spyOn(leadRepository, 'save').mockResolvedValue(mockLeadWithId);
+      jest.useFakeTimers();
+      jest.spyOn(global, 'setTimeout');
 
       const mockError = new Error('Email error');
-      const mockSuccess: SendEmailCommandOutput = { MessageId: 'test-message-id', $metadata: {} };
 
-      (mockSESClient.send as jest.Mock)
-        .mockRejectedValueOnce(mockError)
-        .mockRejectedValueOnce(mockError)
-        .mockResolvedValueOnce(mockSuccess)
-        .mockRejectedValueOnce(mockError); // User email fails
+      // Mock both admin and user email attempts
+      let callCount = 0;
+      (mockSESClient.send as jest.Mock).mockImplementation(() => {
+        callCount++;
+        switch (callCount) {
+          case 1: // First admin attempt fails
+            return Promise.reject(mockError);
+          case 2: // Second admin attempt fails
+            return Promise.reject(mockError);
+          case 3: // Third admin attempt fails
+            return Promise.reject(mockError);
+          case 4: // User email fails
+            return Promise.reject(mockError);
+          default:
+            return Promise.reject(new Error('Unexpected call'));
+        }
+      });
 
-      const result = await service.submitLead(mockLead);
+      const submitPromise = service.submitLead(mockLead);
 
-      expect(result).toBe(false); // Should be false since user email fails
-      expect(mockSESClient.send).toHaveBeenCalledTimes(3); // 3 admin attempts (user notification fails before sending)
+      // Run all timers to complete all retries
+      await jest.runAllTimersAsync();
+
+      const result = await submitPromise;
+
+      expect(result).toBe(false); // False because both admin and user emails failed
+      expect(mockSESClient.send).toHaveBeenCalledTimes(4); // 3 admin attempts + 1 user attempt
+      expect(setTimeout).toHaveBeenCalledTimes(2); // 2 retries for admin email
+      expect(setTimeout).toHaveBeenNthCalledWith(1, expect.any(Function), 1000); // First retry delay
+      expect(setTimeout).toHaveBeenNthCalledWith(2, expect.any(Function), 2000); // Second retry delay
+
+      jest.useRealTimers();
     });
   });
 

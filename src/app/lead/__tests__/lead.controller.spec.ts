@@ -129,6 +129,28 @@ describe('LeadController', () => {
         ),
       );
     });
+
+    it('should handle concurrent lead submissions', async () => {
+      jest.spyOn(leadValidationService, 'validateLeadData').mockImplementation();
+      jest
+        .spyOn(leadService, 'submitLead')
+        .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 100)));
+
+      const submissions = Array(5)
+        .fill(mockLead)
+        .map(() => controller.submitLead(mockLead));
+      const results = await Promise.all(submissions);
+
+      expect(results).toHaveLength(5);
+      results.forEach((result) => {
+        expect(result).toEqual({
+          message: 'Lead submitted successfully',
+          success: true,
+        });
+      });
+      expect(leadService.submitLead).toHaveBeenCalledTimes(5);
+      expect(leadValidationService.validateLeadData).toHaveBeenCalledTimes(5);
+    });
   });
 
   describe('getAllLeads', () => {
