@@ -297,82 +297,107 @@ jobs:
       - name: Send Telegram notification on success
         if: success()
         run: |
-          # Get the commit message
+          # Function to escape special characters for MarkdownV2
+          escape_markdown() {
+            echo "$1" | sed -E 's/([_*\[\]()~`>#+\-=|{}.!])/\\\1/g'
+          }
+
+          # Get deployment info
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
-          # Get the branch name
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          # Get deployment duration
           DURATION=$(($(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s)))
           DURATION_MIN=$((DURATION / 60))
           DURATION_SEC=$((DURATION % 60))
 
+          # Escape variables
+          ESCAPED_COMMIT_MSG=$(escape_markdown "$COMMIT_MSG")
+          ESCAPED_BRANCH=$(escape_markdown "$BRANCH_NAME")
+          ESCAPED_VERSION=$(escape_markdown "${{ env.VERSION }}")
+          ESCAPED_COMMIT_SHA=$(escape_markdown "${GITHUB_SHA::7}")
+          ESCAPED_AUTHOR=$(escape_markdown "${{ github.actor }}")
+
           # Format the message with emojis and markdown
-          MESSAGE="🚀 *Deployment Successful*%0A%0A"
+          MESSAGE="🚀 *Deployment Successful!*%0A%0A"
           MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
           MESSAGE+="*Environment:* Production%0A"
-          MESSAGE+="*Version:* \`${{ env.VERSION }}\`%0A"
-          MESSAGE+="*Branch:* \`$BRANCH_NAME\`%0A"
-          MESSAGE+="*Commit:* \`${GITHUB_SHA::7}\`%0A"
-          MESSAGE+="*Author:* ${{ github.actor }}%0A"
+          MESSAGE+="*Version:* \`${ESCAPED_VERSION}\`%0A"
+          MESSAGE+="*Branch:* \`${ESCAPED_BRANCH}\`%0A"
+          MESSAGE+="*Commit:* \`${ESCAPED_COMMIT_SHA}\`%0A"
+          MESSAGE+="*Author:* ${ESCAPED_AUTHOR}%0A"
           MESSAGE+="*Duration:* ${DURATION_MIN}m ${DURATION_SEC}s%0A%0A"
 
-          MESSAGE+="*Commit Message:*%0A\`\`\`%0A$COMMIT_MSG%0A\`\`\`%0A%0A"
+          MESSAGE+="*Commit Message:*%0A\`\`\`%0A${ESCAPED_COMMIT_MSG}%0A\`\`\`%0A%0A"
 
           MESSAGE+="*Status:*%0A"
-          MESSAGE+="✅ Pre-deployment Checks%0A"
+          MESSAGE+="✅ Pre\\-deployment Checks%0A"
           MESSAGE+="✅ Docker Image Build%0A"
           MESSAGE+="✅ Deployment%0A%0A"
 
           MESSAGE+="*Services:*%0A"
-          MESSAGE+="🌐 API: [api.notablenomads.com](https://api.notablenomads.com)%0A"
-          MESSAGE+="🌍 Frontend: [notablenomads.com](https://notablenomads.com)%0A%0A"
+          MESSAGE+="🌐 API: [api\\.notablenomads\\.com](https://api\\.notablenomads\\.com)%0A"
+          MESSAGE+="🌍 Frontend: [notablenomads\\.com](https://notablenomads\\.com)%0A%0A"
 
           MESSAGE+="*Quick Links:*%0A"
-          MESSAGE+="📊 [GitHub Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})%0A"
-          MESSAGE+="📝 [Commit Details](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})%0A"
-          MESSAGE+="📚 [API Documentation](https://api.notablenomads.com/docs)"
+          MESSAGE+="📊 [GitHub Action Run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})%0A"
+          MESSAGE+="📝 [Commit Details](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})%0A"
+          MESSAGE+="📚 [API Documentation](https://api\\.notablenomads\\.com/docs)"
 
+          # Send the notification
           curl -s -X POST \
-            https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
-            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-            -d message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }} \
-            -d text="$MESSAGE" \
-            -d parse_mode=MarkdownV2
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=MarkdownV2"
 
       - name: Send Telegram notification on failure
         if: failure()
         run: |
+          # Function to escape special characters for MarkdownV2
+          escape_markdown() {
+            echo "$1" | sed -E 's/([_*\[\]()~`>#+\-=|{}.!])/\\\1/g'
+          }
+
           # Get error context
           STEP_NAME="${{ github.job }}"
-          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          WORKFLOW_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
 
-          MESSAGE="❌ *Deployment Failed*%0A%0A"
+          # Escape variables
+          ESCAPED_STEP=$(escape_markdown "$STEP_NAME")
+          ESCAPED_COMMIT_MSG=$(escape_markdown "$COMMIT_MSG")
+          ESCAPED_BRANCH=$(escape_markdown "$BRANCH_NAME")
+          ESCAPED_VERSION=$(escape_markdown "${{ env.VERSION }}")
+          ESCAPED_COMMIT_SHA=$(escape_markdown "${GITHUB_SHA::7}")
+          ESCAPED_AUTHOR=$(escape_markdown "${{ github.actor }}")
+
+          MESSAGE="❌ *Deployment Failed!*%0A%0A"
           MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
           MESSAGE+="*Environment:* Production%0A"
-          MESSAGE+="*Failed Step:* \`$STEP_NAME\`%0A"
-          MESSAGE+="*Version:* \`${{ env.VERSION }}\`%0A"
-          MESSAGE+="*Branch:* \`$BRANCH_NAME\`%0A"
-          MESSAGE+="*Commit:* \`${GITHUB_SHA::7}\`%0A"
-          MESSAGE+="*Author:* ${{ github.actor }}%0A%0A"
+          MESSAGE+="*Failed Step:* \`${ESCAPED_STEP}\`%0A"
+          MESSAGE+="*Version:* \`${ESCAPED_VERSION}\`%0A"
+          MESSAGE+="*Branch:* \`${ESCAPED_BRANCH}\`%0A"
+          MESSAGE+="*Commit:* \`${ESCAPED_COMMIT_SHA}\`%0A"
+          MESSAGE+="*Author:* ${ESCAPED_AUTHOR}%0A%0A"
 
-          MESSAGE+="*Commit Message:*%0A\`\`\`%0A$COMMIT_MSG%0A\`\`\`%0A%0A"
+          MESSAGE+="*Commit Message:*%0A\`\`\`%0A${ESCAPED_COMMIT_MSG}%0A\`\`\`%0A%0A"
 
           MESSAGE+="*Troubleshooting:*%0A"
-          MESSAGE+="1️⃣ Check the [GitHub Actions logs]($WORKFLOW_URL) for detailed error messages%0A"
+          MESSAGE+="1️⃣ Check the [GitHub Actions logs](${WORKFLOW_URL}) for detailed error messages%0A"
           MESSAGE+="2️⃣ Verify all required secrets are properly set%0A"
           MESSAGE+="3️⃣ Ensure SSH key and Docker Hub credentials are valid%0A"
           MESSAGE+="4️⃣ Check server connectivity and resources%0A%0A"
 
           MESSAGE+="*Need Help?*%0A"
-          MESSAGE+="📎 [Deployment Guide](https://github.com/${{ github.repository }}/wiki/Deployment)%0A"
-          MESSAGE+="🔧 [Common Issues](https://github.com/${{ github.repository }}/wiki/Common-Issues)%0A"
+          MESSAGE+="📎 [Deployment Guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Deployment)%0A"
+          MESSAGE+="🔧 [Common Issues](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Common\\-Issues)%0A"
           MESSAGE+="💬 Contact: @mrdevx"
 
+          # Send the notification
           curl -s -X POST \
-            https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
-            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-            -d message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }} \
-            -d text="$MESSAGE" \
-            -d parse_mode=MarkdownV2
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=MarkdownV2"
