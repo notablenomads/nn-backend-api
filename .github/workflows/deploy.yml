@@ -12,7 +12,85 @@ env:
   NODE_ENV: production
 
 jobs:
+  pre-deployment-check:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        run: |
+          missing_secrets=()
+
+          # Check required secrets
+          [ -n "${{ secrets.SERVER_IP }}" ] || missing_secrets+=("SERVER_IP")
+          [ -n "${{ secrets.DOCKER_HUB_TOKEN }}" ] || missing_secrets+=("DOCKER_HUB_TOKEN")
+          [ -n "${{ secrets.DEPLOY_SSH_KEY }}" ] || missing_secrets+=("DEPLOY_SSH_KEY")
+          [ -n "${{ secrets.ENV_FILE }}" ] || missing_secrets+=("ENV_FILE")
+
+          # Optional but recommended secrets
+          if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] || [ -z "${{ secrets.TELEGRAM_CHAT_ID }}" ] || [ -z "${{ secrets.TELEGRAM_THREAD_ID }}" ]; then
+            echo "⚠️ Warning: Telegram notification secrets are not set. Notifications will be disabled."
+          fi
+
+          # If any required secrets are missing, fail the workflow
+          if [ ${#missing_secrets[@]} -ne 0 ]; then
+            echo "❌ Error: The following required secrets are missing:"
+            printf '%s\n' "${missing_secrets[@]}"
+            exit 1
+          fi
+
+          echo "✅ All required secrets are present"
+
+      - name: Verify SSH connection
+        run: |
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Configure SSH
+          echo "Host ${{ secrets.SERVER_IP }}" > ~/.ssh/config
+          echo "  HostName ${{ secrets.SERVER_IP }}" >> ~/.ssh/config
+          echo "  User root" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking accept-new" >> ~/.ssh/config
+
+          # Start SSH agent
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/deploy_key
+
+          # Test SSH connection with retries
+          max_retries=3
+          retry_count=0
+          while [ $retry_count -lt $max_retries ]; do
+            if ssh -o BatchMode=yes -o ConnectTimeout=10 root@${{ secrets.SERVER_IP }} "echo 'SSH connection test successful'"; then
+              echo "✅ SSH connection verified successfully"
+              exit 0
+            fi
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "⚠️ SSH connection failed, attempt $retry_count of $max_retries. Retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          echo "❌ Error: Failed to establish SSH connection after $max_retries attempts"
+          exit 1
+
+      - name: Verify Docker Hub access
+        run: |
+          echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u mrdevx --password-stdin
+          if ! docker pull ${{ env.DOCKER_IMAGE }}:latest; then
+            echo "❌ Error: Failed to pull Docker image. Please check Docker Hub access and credentials."
+            exit 1
+          fi
+          echo "✅ Docker Hub access verified successfully"
+
   deploy:
+    name: Deploy to Production
+    needs: pre-deployment-check
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
@@ -121,34 +199,82 @@ jobs:
       - name: Send Telegram notification on success
         if: success()
         run: |
-          MESSAGE="🚀 Deployment Successful!%0A%0A"
-          MESSAGE+="🏷 Version: ${{ env.VERSION }}%0A"
-          MESSAGE+="📝 Commit: ${GITHUB_SHA::7}%0A"
-          MESSAGE+="👤 Author: ${{ github.actor }}%0A"
-          MESSAGE+="🔗 Commit URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}%0A%0A"
-          MESSAGE+="🌐 API: https://api.notablenomads.com%0A"
-          MESSAGE+="🌍 Frontend: https://notablenomads.com"
+          # Get the commit message
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          # Get the branch name
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Get deployment duration
+          DURATION=$(($(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s)))
+          DURATION_MIN=$((DURATION / 60))
+          DURATION_SEC=$((DURATION % 60))
+
+          # Format the message with emojis and markdown
+          MESSAGE="🚀 *Deployment Successful*%0A%0A"
+          MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
+          MESSAGE+="*Environment:* Production%0A"
+          MESSAGE+="*Version:* \`${{ env.VERSION }}\`%0A"
+          MESSAGE+="*Branch:* \`$BRANCH_NAME\`%0A"
+          MESSAGE+="*Commit:* \`${GITHUB_SHA::7}\`%0A"
+          MESSAGE+="*Author:* ${{ github.actor }}%0A"
+          MESSAGE+="*Duration:* ${DURATION_MIN}m ${DURATION_SEC}s%0A%0A"
+
+          MESSAGE+="*Commit Message:*%0A\`\`\`%0A$COMMIT_MSG%0A\`\`\`%0A%0A"
+
+          MESSAGE+="*Status:*%0A"
+          MESSAGE+="✅ Pre-deployment Checks%0A"
+          MESSAGE+="✅ Docker Image Build%0A"
+          MESSAGE+="✅ Deployment%0A%0A"
+
+          MESSAGE+="*Services:*%0A"
+          MESSAGE+="🌐 API: [api.notablenomads.com](https://api.notablenomads.com)%0A"
+          MESSAGE+="🌍 Frontend: [notablenomads.com](https://notablenomads.com)%0A%0A"
+
+          MESSAGE+="*Quick Links:*%0A"
+          MESSAGE+="📊 [GitHub Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})%0A"
+          MESSAGE+="📝 [Commit Details](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})%0A"
+          MESSAGE+="📚 [API Documentation](https://api.notablenomads.com/docs)"
 
           curl -s -X POST \
             https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }} \
             -d text="$MESSAGE" \
-            -d parse_mode=HTML
+            -d parse_mode=MarkdownV2
 
       - name: Send Telegram notification on failure
         if: failure()
         run: |
-          MESSAGE="❌ Deployment Failed!%0A%0A"
-          MESSAGE+="🏷 Version: ${{ env.VERSION }}%0A"
-          MESSAGE+="📝 Commit: ${GITHUB_SHA::7}%0A"
-          MESSAGE+="👤 Author: ${{ github.actor }}%0A"
-          MESSAGE+="🔗 Action URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A"
-          MESSAGE+="Please check the GitHub Actions logs for more details."
+          # Get error context
+          STEP_NAME="${{ github.job }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+
+          MESSAGE="❌ *Deployment Failed*%0A%0A"
+          MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
+          MESSAGE+="*Environment:* Production%0A"
+          MESSAGE+="*Failed Step:* \`$STEP_NAME\`%0A"
+          MESSAGE+="*Version:* \`${{ env.VERSION }}\`%0A"
+          MESSAGE+="*Branch:* \`$BRANCH_NAME\`%0A"
+          MESSAGE+="*Commit:* \`${GITHUB_SHA::7}\`%0A"
+          MESSAGE+="*Author:* ${{ github.actor }}%0A%0A"
+
+          MESSAGE+="*Commit Message:*%0A\`\`\`%0A$COMMIT_MSG%0A\`\`\`%0A%0A"
+
+          MESSAGE+="*Troubleshooting:*%0A"
+          MESSAGE+="1️⃣ Check the [GitHub Actions logs]($WORKFLOW_URL) for detailed error messages%0A"
+          MESSAGE+="2️⃣ Verify all required secrets are properly set%0A"
+          MESSAGE+="3️⃣ Ensure SSH key and Docker Hub credentials are valid%0A"
+          MESSAGE+="4️⃣ Check server connectivity and resources%0A%0A"
+
+          MESSAGE+="*Need Help?*%0A"
+          MESSAGE+="📎 [Deployment Guide](https://github.com/${{ github.repository }}/wiki/Deployment)%0A"
+          MESSAGE+="🔧 [Common Issues](https://github.com/${{ github.repository }}/wiki/Common-Issues)%0A"
+          MESSAGE+="💬 Contact: @mrdevx"
 
           curl -s -X POST \
             https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d message_thread_id=${{ secrets.TELEGRAM_THREAD_ID }} \
             -d text="$MESSAGE" \
-            -d parse_mode=HTML
+            -d parse_mode=MarkdownV2
