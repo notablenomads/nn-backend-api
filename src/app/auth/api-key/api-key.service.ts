@@ -47,28 +47,30 @@ export class ApiKeyService {
     }
 
     try {
-      // Find the key directly using a database query
-      const key = await this.apiKeyRepository.findOne({
+      // Find all active and non-expired keys
+      const activeKeys = await this.apiKeyRepository.find({
         where: {
           isActive: true,
           expiresAt: MoreThan(new Date()),
         },
-        select: ['id', 'hashedKey'], // Only select needed fields
+        select: ['id', 'hashedKey'],
       });
 
-      if (!key) {
-        this.logger.warn('No matching active API key found');
+      if (!activeKeys || activeKeys.length === 0) {
+        this.logger.warn('No active API keys found');
         return false;
       }
 
-      const isValid = await bcrypt.compare(apiKey, key.hashedKey);
-
-      if (isValid) {
-        // Update last used timestamp only if key is valid
-        await this.apiKeyRepository.update(key.id, {
-          lastUsedAt: new Date(),
-        });
-        return true;
+      // Check each key until we find a match
+      for (const key of activeKeys) {
+        const isValid = await bcrypt.compare(apiKey, key.hashedKey);
+        if (isValid) {
+          // Update last used timestamp
+          await this.apiKeyRepository.update(key.id, {
+            lastUsedAt: new Date(),
+          });
+          return true;
+        }
       }
 
       this.logger.warn('Invalid API key attempt');
