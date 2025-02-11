@@ -86,17 +86,41 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          # Decode the base64 encoded key if needed
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key || {
+            echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          }
+
+          # Ensure proper line endings
+          sed -i 's/\r$//' ~/.ssh/deploy_key
+
+          # Set correct permissions
           chmod 600 ~/.ssh/deploy_key
+
+          # Start SSH agent
           eval $(ssh-agent -s)
-          ssh-add ~/.ssh/deploy_key
+
+          # Add key with verbose output
+          ssh-add -v ~/.ssh/deploy_key
+
+          # Test key content
+          ssh-keygen -l -f ~/.ssh/deploy_key || {
+            echo "Invalid SSH key format"
+            cat ~/.ssh/deploy_key | od -c
+            exit 1
+          }
 
       - name: Add known hosts
         run: |
           # Remove old host key if exists
           ssh-keygen -R ${{ secrets.SERVER_IP }} || true
-          # Add new host key
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          # Add new host key with verification
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} 2>/dev/null | tee -a ~/.ssh/known_hosts
+          # Verify the key was added
+          ssh-keygen -F ${{ secrets.SERVER_IP }} || {
+            echo "Failed to add host key"
+            exit 1
+          }
           # Ensure proper permissions
           chmod 600 ~/.ssh/known_hosts
 
