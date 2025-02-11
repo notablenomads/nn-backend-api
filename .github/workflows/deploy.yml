@@ -49,15 +49,14 @@ jobs:
           }
 
           # Test message with common special characters
-          MESSAGE="🔔 *Deployment Started!*%0A%0A"
+          MESSAGE="🔔 *Deployment Started\\\!*%0A%0A"
           MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
           MESSAGE+="*Environment:* Production%0A"
           MESSAGE+="*Branch:* \`$(escape_markdown "${GITHUB_REF#refs/heads/}")\`%0A"
           MESSAGE+="*Commit:* \`$(escape_markdown "${GITHUB_SHA::7}")\`%0A"
           MESSAGE+="*Author:* $(escape_markdown "${{ github.actor }}")%0A%0A"
 
-          MESSAGE+="*Status:* Starting pre\\-deployment checks\\.\\.\\.%0A"
-          MESSAGE+="[View Progress]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"))"
+          MESSAGE+="*Status:* Starting pre\\-deployment checks\\.\\.\\."
 
           # Send test notification
           curl -s -X POST \
@@ -378,7 +377,7 @@ jobs:
           DURATION_SEC=$((DURATION % 60))
 
           # Format the message with emojis and markdown
-          MESSAGE="🚀 *Deployment Successful!*%0A%0A"
+          MESSAGE="🚀 *Deployment Successful\\\!*%0A%0A"
           MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
           MESSAGE+="*Environment:* Production%0A"
           MESSAGE+="*Version:* \`$(escape_markdown "${{ env.VERSION }}")\`%0A"
@@ -399,9 +398,9 @@ jobs:
           MESSAGE+="🌍 Frontend: [notablenomads\\.com](https://notablenomads\\.com)%0A%0A"
 
           MESSAGE+="*Quick Links:*%0A"
-          MESSAGE+="📊 [GitHub Action Run]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"))%0A"
-          MESSAGE+="📝 [Commit Details]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"))%0A"
-          MESSAGE+="📚 [API Documentation](https://api\\.notablenomads\\.com/docs)"
+          MESSAGE+="📊 [View Logs]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"))%0A"
+          MESSAGE+="📝 [View Commit]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"))%0A"
+          MESSAGE+="📚 [API Docs](https://api\\.notablenomads\\.com/docs)"
 
           # Send the notification
           curl -s -X POST \
@@ -446,34 +445,26 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
 
-          # Escape variables
-          ESCAPED_STEP=$(escape_markdown "$STEP_NAME")
-          ESCAPED_COMMIT_MSG=$(escape_markdown "$COMMIT_MSG")
-          ESCAPED_BRANCH=$(escape_markdown "$BRANCH_NAME")
-          ESCAPED_VERSION=$(escape_markdown "${{ env.VERSION }}")
-          ESCAPED_COMMIT_SHA=$(escape_markdown "${GITHUB_SHA::7}")
-          ESCAPED_AUTHOR=$(escape_markdown "${{ github.actor }}")
-
-          MESSAGE="❌ *Deployment Failed!*%0A%0A"
+          MESSAGE="❌ *Deployment Failed\\\!*%0A%0A"
           MESSAGE+="*Project:* \`Notable Nomads API\`%0A"
           MESSAGE+="*Environment:* Production%0A"
-          MESSAGE+="*Failed Step:* \`${ESCAPED_STEP}\`%0A"
-          MESSAGE+="*Version:* \`${ESCAPED_VERSION}\`%0A"
-          MESSAGE+="*Branch:* \`${ESCAPED_BRANCH}\`%0A"
-          MESSAGE+="*Commit:* \`${ESCAPED_COMMIT_SHA}\`%0A"
-          MESSAGE+="*Author:* ${ESCAPED_AUTHOR}%0A%0A"
+          MESSAGE+="*Failed Step:* \`$(escape_markdown "$STEP_NAME")\`%0A"
+          MESSAGE+="*Version:* \`$(escape_markdown "${{ env.VERSION }}")\`%0A"
+          MESSAGE+="*Branch:* \`$(escape_markdown "$BRANCH_NAME")\`%0A"
+          MESSAGE+="*Commit:* \`$(escape_markdown "${GITHUB_SHA::7}")\`%0A"
+          MESSAGE+="*Author:* $(escape_markdown "${{ github.actor }}")%0A%0A"
 
-          MESSAGE+="*Commit Message:*%0A\`\`\`%0A${ESCAPED_COMMIT_MSG}%0A\`\`\`%0A%0A"
+          MESSAGE+="*Commit Message:*%0A\`\`\`%0A$(escape_markdown "$COMMIT_MSG")%0A\`\`\`%0A%0A"
 
           MESSAGE+="*Troubleshooting:*%0A"
-          MESSAGE+="1️⃣ Check the [GitHub Actions logs](${WORKFLOW_URL}) for detailed error messages%0A"
+          MESSAGE+="1️⃣ [View Logs]($(escape_markdown "$WORKFLOW_URL"))%0A"
           MESSAGE+="2️⃣ Verify all required secrets are properly set%0A"
           MESSAGE+="3️⃣ Ensure SSH key and Docker Hub credentials are valid%0A"
           MESSAGE+="4️⃣ Check server connectivity and resources%0A%0A"
 
-          MESSAGE+="*Need Help?*%0A"
-          MESSAGE+="📎 [Deployment Guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Deployment)%0A"
-          MESSAGE+="🔧 [Common Issues](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Common\\-Issues)%0A"
+          MESSAGE+="*Need Help\\?*%0A"
+          MESSAGE+="📎 [Deployment Guide]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Deployment"))%0A"
+          MESSAGE+="🔧 [Common Issues]($(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/wiki/Common\\-Issues"))%0A"
           MESSAGE+="💬 Contact: @mrdevx"
 
           # Send the notification
