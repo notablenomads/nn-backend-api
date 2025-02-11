@@ -64,13 +64,6 @@ logs/
 *password*
 *credential*
 
-# Test files
-*.spec.ts
-*.test.ts
-coverage/
-.nyc_output/
-test-results/
-
 # Build and Deploy
 build/
 dist/
