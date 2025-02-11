@@ -13,10 +13,12 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
+import { ApiKeyModule } from './api-key/api-key.module';
 
 @Module({
   imports: [
     UserModule,
+    ApiKeyModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
@@ -30,7 +32,6 @@ import { TokenBlacklistService } from './services/token-blacklist.service';
     TypeOrmModule.forFeature([RefreshToken]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [AuthController],
   providers: [
     AuthService,
     JwtStrategy,
@@ -39,6 +40,7 @@ import { TokenBlacklistService } from './services/token-blacklist.service';
     TokenCleanupService,
     TokenBlacklistService,
   ],
-  exports: [AuthService, JwtModule],
+  controllers: [AuthController],
+  exports: [AuthService, JwtStrategy, JwtRefreshStrategy, ApiKeyModule],
 })
 export class AuthModule {}

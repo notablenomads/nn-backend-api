@@ -1,5 +1,6 @@
 import { Lead } from '../../lead/entities/lead.entity';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
+import { Role } from '../../core/enums/role.enum';
 
 export interface IUser {
   id: string;
@@ -8,7 +9,7 @@ export interface IUser {
   firstName: string;
   lastName: string;
   isActive: boolean;
-  roles: string[];
+  roles: Role[];
   leads: Lead[];
   refreshTokens: RefreshToken[];
   createdAt: Date;
