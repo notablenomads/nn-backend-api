@@ -49,10 +49,11 @@ jobs:
           }
 
           # Test message with minimal special characters
-          MESSAGE="🔔 *Deployment Started*%0A%0A"
-          MESSAGE+="*Branch:* \`$(escape_markdown "${GITHUB_REF#refs/heads/}")\`%0A"
-          MESSAGE+="*Commit:* \`$(escape_markdown "${GITHUB_SHA::7}")\`%0A"
-          MESSAGE+="Starting checks\\.\\.\\."
+          MESSAGE="🚀 *Deployment Started*%0A%0A"
+          MESSAGE+="🌿 *Branch:* \`$(escape_markdown "${GITHUB_REF#refs/heads/}")\`%0A"
+          MESSAGE+="📌 *Version:* \`$(escape_markdown "${{ env.VERSION }}")\`%0A"
+          MESSAGE+="👤 *By:* $(escape_markdown "${{ github.actor }}")%0A%0A"
+          MESSAGE+="⏳ Running deployment checks\\.\\.\\."
 
           # Send test notification
           curl -s -X POST \
@@ -365,26 +366,38 @@ jobs:
             echo "$text"
           }
 
-          # Get deployment info
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          DURATION=$(($(date +%s) - $(date -d "${{ github.event.head_commit.timestamp }}" +%s)))
-          DURATION_MIN=$((DURATION / 60))
-          DURATION_SEC=$((DURATION % 60))
+          # Get deployment info and last 5 commits
+          COMMIT_HISTORY=$(git log -n 5 --pretty=format:"%h | %an | %s" | while IFS='|' read hash author msg; do
+            echo "${hash} | ${author} | ${msg}"
+          done)
 
           # Format the message with minimal special characters
-          MESSAGE="🚀 *Deployment Complete*%0A%0A"
-          MESSAGE+="*Branch:* \`$(escape_markdown "$BRANCH_NAME")\`%0A"
-          MESSAGE+="*Commit:* \`$(escape_markdown "${GITHUB_SHA::7}")\`%0A"
-          MESSAGE+="*Duration:* ${DURATION_MIN}m ${DURATION_SEC}s%0A%0A"
+          MESSAGE="✨ *Deployment Complete*%0A%0A"
 
-          MESSAGE+="✅ Checks%0A"
-          MESSAGE+="✅ Build%0A"
-          MESSAGE+="✅ Deploy%0A%0A"
+          # Header with version and branch
+          MESSAGE+="📌 *Version:* \`$(escape_markdown "${{ env.VERSION }}")\`%0A"
+          MESSAGE+="🌿 *Branch:* \`$(escape_markdown "$BRANCH_NAME")\`%0A"
+          MESSAGE+="👤 *By:* $(escape_markdown "${{ github.actor }}")%0A"
+          MESSAGE+="⏱️ *Duration:* ${DURATION_MIN}m ${DURATION_SEC}s%0A%0A"
 
-          MESSAGE+="*Links:*%0A"
-          MESSAGE+="📊 $(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")%0A"
-          MESSAGE+="📚 api\\.notablenomads\\.com/docs"
+          # Status section
+          MESSAGE+="📊 *Status:*%0A"
+          MESSAGE+="✅ Tests passed%0A"
+          MESSAGE+="✅ Build successful%0A"
+          MESSAGE+="✅ Deployment complete%0A%0A"
+
+          # Recent changes section
+          MESSAGE+="📝 *Recent Changes:*%0A\`\`\`%0A"
+          while IFS='|' read -r hash author msg; do
+            ESCAPED_MSG=$(echo "$msg" | sed 's/[_*[\]()~`>#+\-=|{}.!]/\\&/g')
+            MESSAGE+="○ ${hash} ${author} ${ESCAPED_MSG}%0A"
+          done <<< "$COMMIT_HISTORY"
+          MESSAGE+="\`\`\`%0A%0A"
+
+          # Links section
+          MESSAGE+="🔗 *Quick Access:*%0A"
+          MESSAGE+="📊 Logs: $(escape_markdown "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")%0A"
+          MESSAGE+="🌐 API: api\\.notablenomads\\.com/docs"
 
           # Send the notification
           curl -s -X POST \
@@ -423,20 +436,30 @@ jobs:
             echo "$text"
           }
 
-          # Get error context
-          STEP_NAME="${{ github.job }}"
-          WORKFLOW_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Get error context and last commit
+          LAST_COMMIT=$(git log -n 1 --pretty=format:"%h | %an | %s")
+          IFS='|' read -r hash author msg <<< "$LAST_COMMIT"
+          ESCAPED_MSG=$(echo "$msg" | sed 's/[_*[\]()~`>#+\-=|{}.!]/\\&/g')
 
-          MESSAGE="❌ *Deployment Failed*%0A%0A"
-          MESSAGE+="*Branch:* \`$(escape_markdown "$BRANCH_NAME")\`%0A"
-          MESSAGE+="*Commit:* \`$(escape_markdown "${GITHUB_SHA::7}")\`%0A"
-          MESSAGE+="*Step:* \`$(escape_markdown "$STEP_NAME")\`%0A%0A"
+          MESSAGE="⚠️ *Deployment Failed*%0A%0A"
 
-          MESSAGE+="*Error:*%0A"
-          MESSAGE+="Check logs: $(escape_markdown "$WORKFLOW_URL")%0A"
-          MESSAGE+="Contact: @mrdevx"
+          # Header with version and branch
+          MESSAGE+="📌 *Version:* \`$(escape_markdown "${{ env.VERSION }}")\`%0A"
+          MESSAGE+="🌿 *Branch:* \`$(escape_markdown "$BRANCH_NAME")\`%0A"
+          MESSAGE+="👤 *By:* $(escape_markdown "${{ github.actor }}")%0A%0A"
+
+          # Error details
+          MESSAGE+="❌ *Failed Step:* \`$(escape_markdown "$STEP_NAME")\`%0A%0A"
+
+          # Last commit info
+          MESSAGE+="📝 *Last Commit:*%0A\`\`\`%0A"
+          MESSAGE+="○ ${hash} ${author} ${ESCAPED_MSG}%0A"
+          MESSAGE+="\`\`\`%0A%0A"
+
+          # Help section
+          MESSAGE+="🔍 *Debug:*%0A"
+          MESSAGE+="📊 Logs: $(escape_markdown "$WORKFLOW_URL")%0A"
+          MESSAGE+="💬 Contact: @mrdevx"
 
           # Send the notification
           curl -s -X POST \
