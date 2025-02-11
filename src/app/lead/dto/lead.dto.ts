@@ -62,7 +62,7 @@ export class LeadDto {
   })
   @IsOptional()
   @IsString({ message: 'Project description must be a string' })
-  @MinLength(50, { message: 'Project description must be at least 50 characters long' })
+  @MinLength(10, { message: 'Project description must be at least 10 characters long' })
   @MaxLength(2000, { message: 'Project description cannot exceed 2000 characters' })
   projectDescription: string;
 
