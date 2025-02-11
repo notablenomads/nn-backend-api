@@ -105,10 +105,16 @@ describe('AuthService', () => {
     beforeEach(() => {
       // Reset the failed login attempts for each test
       mockServices.configService.get.mockImplementation((key) => {
-        if (key === 'auth.maxLoginAttempts') return 3;
+        if (key === 'auth.maxLoginAttempts') return 5;
         if (key === 'auth.loginBlockDuration') return '15m';
         return null;
       });
+
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
     it('should login successfully and return tokens', async () => {
@@ -136,7 +142,7 @@ describe('AuthService', () => {
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should block login after too many failed attempts', async () => {
+    it('should block login after too many failed attempts and respect block duration', async () => {
       mockServices.userService.findByEmail.mockResolvedValue(mockUser);
       validatePasswordMock.mockResolvedValue(false);
 
@@ -149,7 +155,7 @@ describe('AuthService', () => {
         }
       }
 
-      // Next attempt should be blocked
+      // Verify account is blocked
       try {
         await service.login(loginDto);
         fail('Expected login to be blocked');
@@ -157,6 +163,23 @@ describe('AuthService', () => {
         expect(error).toBeInstanceOf(UnauthorizedException);
         expect(error.message).toBe('Too many failed attempts. Please try again later.');
       }
+
+      // Advance time by 14 minutes - account should still be blocked
+      jest.advanceTimersByTime(14 * 60 * 1000);
+      try {
+        await service.login(loginDto);
+        fail('Expected login to still be blocked');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(error.message).toBe('Too many failed attempts. Please try again later.');
+      }
+
+      // Advance time by 2 more minutes (total 16 minutes) - account should be unblocked
+      jest.advanceTimersByTime(2 * 60 * 1000);
+      validatePasswordMock.mockResolvedValue(true);
+      const result = await service.login(loginDto);
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
     });
   });
 
@@ -199,14 +222,34 @@ describe('AuthService', () => {
   });
 
   describe('logout', () => {
-    it('should logout successfully', async () => {
+    it('should logout successfully and blacklist token', async () => {
       const refreshToken = 'valid-refresh-token';
+      const tokenExpiration = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+
       mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUser.id });
+      mockServices.jwtService.decode.mockReturnValue({ exp: tokenExpiration });
       mockServices.refreshTokenService.revokeToken.mockResolvedValue(undefined);
 
       await service.logout(refreshToken);
 
       expect(refreshTokenService.revokeToken).toHaveBeenCalledWith(refreshToken);
+      expect(mockServices.tokenBlacklistService.blacklistToken).toHaveBeenCalledWith(
+        refreshToken,
+        tokenExpiration * 1000,
+      );
+    });
+
+    it('should handle token blacklisting even if token has no expiration', async () => {
+      const refreshToken = 'valid-refresh-token';
+
+      mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUser.id });
+      mockServices.jwtService.decode.mockReturnValue({});
+      mockServices.refreshTokenService.revokeToken.mockResolvedValue(undefined);
+
+      await service.logout(refreshToken);
+
+      expect(refreshTokenService.revokeToken).toHaveBeenCalledWith(refreshToken);
+      expect(mockServices.tokenBlacklistService.blacklistToken).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for invalid refresh token', async () => {
@@ -217,17 +260,37 @@ describe('AuthService', () => {
   });
 
   describe('logoutAll', () => {
-    it('should logout all sessions for a user', async () => {
+    it('should logout all sessions and blacklist all tokens', async () => {
       const userId = mockUser.id;
       const mockTokens = [{ token: 'token1' }, { token: 'token2' }];
+      const tokenExpiration = Math.floor(Date.now() / 1000) + 3600;
 
       mockServices.refreshTokenService.findValidTokensByUserId.mockResolvedValue(mockTokens);
+      mockServices.jwtService.decode.mockReturnValue({ exp: tokenExpiration });
       mockServices.refreshTokenService.revokeAllUserTokens.mockResolvedValue(undefined);
 
       await service.logoutAll(userId);
 
       expect(refreshTokenService.findValidTokensByUserId).toHaveBeenCalledWith(userId);
       expect(refreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(userId);
+      expect(mockServices.tokenBlacklistService.blacklistToken).toHaveBeenCalledTimes(2);
+      expect(mockServices.tokenBlacklistService.blacklistToken).toHaveBeenCalledWith('token1', tokenExpiration * 1000);
+      expect(mockServices.tokenBlacklistService.blacklistToken).toHaveBeenCalledWith('token2', tokenExpiration * 1000);
+    });
+
+    it('should handle tokens without expiration during logoutAll', async () => {
+      const userId = mockUser.id;
+      const mockTokens = [{ token: 'token1' }];
+
+      mockServices.refreshTokenService.findValidTokensByUserId.mockResolvedValue(mockTokens);
+      mockServices.jwtService.decode.mockReturnValue({});
+      mockServices.refreshTokenService.revokeAllUserTokens.mockResolvedValue(undefined);
+
+      await service.logoutAll(userId);
+
+      expect(refreshTokenService.findValidTokensByUserId).toHaveBeenCalledWith(userId);
+      expect(refreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(userId);
+      expect(mockServices.tokenBlacklistService.blacklistToken).not.toHaveBeenCalled();
     });
   });
 });
