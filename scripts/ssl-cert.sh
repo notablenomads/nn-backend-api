@@ -148,27 +148,37 @@ verify_certs() {
 # Function to stop services
 stop_services() {
     log_info "Stopping services..."
-    docker compose stop nginx frontend || true
     
-    # Wait for services to stop
+    # Stop all Docker containers using ports 80 and 443
+    if docker ps -q -f "publish=80" -f "publish=443" | grep -q .; then
+        log_info "Stopping Docker containers using ports 80/443..."
+        docker stop $(docker ps -q -f "publish=80" -f "publish=443") || true
+    fi
+    
+    # Wait for ports to be free
     local retries=0
     while [ $retries -lt 5 ]; do
-        if ! docker compose ps | grep -q "Up"; then
-            log_success "Services stopped"
+        if ! lsof -i:80 -i:443 > /dev/null 2>&1; then
+            log_success "Ports 80 and 443 are free"
             return 0
         fi
-        log_info "Waiting for services to stop..."
+        log_info "Waiting for ports to be free..."
         sleep 2
         ((retries++))
     done
     
-    log_warn "Services may not have stopped properly"
+    log_warn "Ports may not be completely free"
 }
 
 # Function to start services
 start_services() {
     log_info "Starting services..."
-    docker compose up -d nginx frontend
+    
+    # Start Docker containers
+    if ! docker compose up -d nginx certbot; then
+        log_error "Failed to start Docker containers"
+        return 1
+    fi
     
     # Wait for services to be healthy
     local retries=0
@@ -219,6 +229,43 @@ copy_certs_to_volume() {
     log_success "Certificates copied successfully"
 }
 
+# Function to generate new certificates
+generate_certs() {
+    log_info "Generating new certificates for $DOMAIN..."
+    
+    # Stop services to free up ports
+    stop_services
+    
+    # Ensure ports are available
+    if lsof -i:80 -i:443 > /dev/null 2>&1; then
+        log_error "Ports 80/443 are still in use"
+        return 1
+    fi
+    
+    # Prepare certbot command
+    local certbot_cmd="certbot certonly --standalone --preferred-challenges http"
+    
+    # Add staging flag if requested
+    if [ "$USE_STAGING" = true ]; then
+        certbot_cmd="$certbot_cmd --test-cert"
+    fi
+    
+    # Add domain and email
+    certbot_cmd="$certbot_cmd -d $DOMAIN --email $EMAIL --agree-tos --non-interactive"
+    
+    # Run certbot
+    if $certbot_cmd; then
+        log_success "Certificate generation successful"
+        copy_certs_to_volume
+        verify_certs
+        start_services
+    else
+        log_error "Certificate generation failed"
+        start_services
+        return 1
+    fi
+}
+
 # Handle cleanup if requested
 if [ "$CLEANUP" = true ]; then
     cleanup_certs "$DOMAIN"
@@ -226,81 +273,25 @@ if [ "$CLEANUP" = true ]; then
     exit 0
 fi
 
-case $ACTION in
+case "$ACTION" in
     "check")
-        if [ -d "$CERT_DIR" ]; then
-            log_info "Found existing certificates, checking expiry..."
-            certbot certificates
-            verify_certs && copy_certs_to_volume
-        else
-            log_warn "No existing certificates found"
-            exit 1
-        fi
+        verify_certs
         ;;
-        
     "renew")
-        if [ -d "$CERT_DIR" ]; then
-            log_info "Attempting to renew existing certificates..."
-            backup_certs
-            stop_services
-            
-            # Attempt renewal
-            if certbot renew --force-renewal --non-interactive; then
-                if verify_certs && copy_certs_to_volume; then
-                    start_services
-                    log_success "Certificate renewal completed successfully"
-                else
-                    log_error "Certificate renewal failed during verification"
-                    start_services
-                    exit 1
-                fi
-            else
-                log_error "Certificate renewal failed"
-                start_services
-                exit 1
-            fi
-        else
-            log_warn "No existing certificates found to renew"
-            exit 1
-        fi
+        certbot renew --force-renewal
+        copy_certs_to_volume
+        verify_certs
         ;;
-        
     "new")
-        log_info "Generating new SSL certificates..."
-        STAGING_FLAG=""
-        if [ "$USE_STAGING" = true ]; then
-            STAGING_FLAG="--test-cert"
-            log_warn "Using staging environment"
-        fi
-        
-        backup_certs
-        stop_services
-        
-        # Ensure port 80 is available
-        if lsof -i:80 > /dev/null 2>&1; then
-            log_warn "Port 80 is in use, attempting to free it..."
-            fuser -k 80/tcp || true
-            sleep 2
-        fi
-        
-        certbot certonly --standalone \
-            --preferred-challenges http \
-            --email "$EMAIL" \
-            --agree-tos \
-            --no-eff-email \
-            -d "$DOMAIN" \
-            $STAGING_FLAG \
-            --non-interactive
-            
-        if verify_certs && copy_certs_to_volume; then
-            start_services
-            log_success "Successfully generated new certificates"
-        else
-            start_services
-            log_error "Failed to generate or copy certificates"
-            exit 1
-        fi
+        generate_certs
+        ;;
+    *)
+        log_error "Unknown action: $ACTION"
+        exit 1
         ;;
 esac
 
-log_success "SSL certificate operation completed successfully!" 
+# Start services
+start_services
+
+log_success "SSL certificate management completed!"

@@ -183,7 +183,9 @@ scp scripts/ssl-cert.sh "$SERVER_USER@$SERVER_IP:$REMOTE_WORKSPACE/"
 check_remote_requirements
 
 # Execute SSL management on remote server
-ssh "$SERVER_USER@$SERVER_IP" << SSLSETUP
+log_info "Saving debug information to $DEBUG_LOG..."
+
+ssh "$SERVER_USER@$SERVER_IP" << 'SSLSETUP'
 #!/bin/bash
 
 # Colors for output
@@ -193,201 +195,96 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Helper functions for remote execution
-log_info() { echo -e "\${BLUE}[INFO]\${NC} \$1"; }
-log_warn() { echo -e "\${YELLOW}[WARN]\${NC} \$1"; }
-log_error() { echo -e "\${RED}[ERROR]\${NC} \$1" >&2; }
-log_success() { echo -e "\${GREEN}[SUCCESS]\${NC} \$1"; }
+# Helper functions
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
-cd "$REMOTE_WORKSPACE"
-
-# Create SSL backup directory
-mkdir -p /root/ssl_backup
-
-# Save debug information
-log_info "Saving debug information to $DEBUG_LOG..."
-{
-    echo "=== System Information ==="
-    uname -a
-    echo
-    echo "=== Docker Version ==="
-    docker --version
-    docker compose version
-    echo
-    echo "=== Docker Status ==="
-    docker ps -a
-    echo
-    echo "=== Docker Compose Status ==="
-    docker compose ps
-    echo
-    echo "=== Certificate Status ==="
-    certbot certificates || true
-    echo
-    echo "=== Port Status ==="
-    ss -tlnp | grep -E ':80|:443' || true
-    echo
-    echo "=== Disk Space ==="
-    df -h /etc/letsencrypt /root/certbot
-    echo
-    echo "=== SSL Permissions ==="
-    ls -lR /etc/letsencrypt/{live,archive} 2>/dev/null || true
-} > "$DEBUG_LOG" 2>&1
+# Save debug info
+exec 1> >(tee -a "$DEBUG_LOG") 2>&1
 
 # Install required packages
 log_info "Installing required packages..."
 apt-get update
-apt-get install -y certbot openssl netcat-openbsd lsof
+DEBIAN_FRONTEND=noninteractive apt-get install -y lsof netcat-openbsd certbot openssl
 
 # Make SSL script executable
 chmod +x ssl-cert.sh
 
-# Handle cleanup if requested
-if [ "${CLEANUP}" = "true" ]; then
-    log_info "Performing cleanup for all domains..."
-    for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-        export DOMAIN
-        ./ssl-cert.sh --cleanup
-    done
+# Stop all Docker containers first
+log_info "Stopping all Docker containers..."
+docker compose down || true
+docker ps -q | xargs -r docker stop || true
+
+# Clean up any existing certificates if requested
+if [ "$CLEANUP" = true ]; then
+    log_info "Cleaning up existing certificates..."
+    rm -rf /etc/letsencrypt/live/* /etc/letsencrypt/archive/* /etc/letsencrypt/renewal/*
 fi
 
-# Function to fix SSL permissions
-fix_ssl_permissions() {
-    log_info "Fixing SSL certificate permissions..."
+# Manage SSL certificates for each domain
+for domain in api.notablenomads.com notablenomads.com; do
+    log_info "Managing SSL certificates for $domain..."
     
-    # Create ssl-cert group if it doesn't exist
-    groupadd -f ssl-cert
-
-    # Set base directory permissions
-    chmod 755 /etc/letsencrypt
-
-    # Set directory permissions
-    chmod 755 /etc/letsencrypt/archive /etc/letsencrypt/live
-    chmod 755 /etc/letsencrypt/archive/*/ /etc/letsencrypt/live/*/
-
-    # Set file permissions
-    chmod 644 /etc/letsencrypt/archive/*/cert*.pem
-    chmod 644 /etc/letsencrypt/archive/*/chain*.pem
-    chmod 644 /etc/letsencrypt/archive/*/fullchain*.pem
-    chmod 640 /etc/letsencrypt/archive/*/privkey*.pem
-
-    # Set ownership
-    chown -R root:ssl-cert /etc/letsencrypt/archive /etc/letsencrypt/live
-
-    log_success "SSL permissions have been fixed"
-}
-
-# Function to verify SSL permissions
-verify_ssl_permissions() {
-    local domain="$1"
-    log_info "Verifying SSL permissions for $domain..."
-    
-    # Check if certificates exist and have correct permissions
-    if [ ! -d "/etc/letsencrypt/live/$domain" ]; then
-        log_warn "Certificate directory for $domain does not exist"
-        return 1
-    fi
-
-    local errors=0
-    
-    # Check directory permissions
-    if [ "$(stat -c '%a' "/etc/letsencrypt/live/$domain")" != "755" ]; then
-        log_warn "Incorrect permissions on /etc/letsencrypt/live/$domain"
-        errors=$((errors + 1))
-    fi
-
-    if [ "$(stat -c '%a' "/etc/letsencrypt/archive/$domain")" != "755" ]; then
-        log_warn "Incorrect permissions on /etc/letsencrypt/archive/$domain"
-        errors=$((errors + 1))
-    fi
-
-    # Check group ownership
-    if [ "$(stat -c '%G' "/etc/letsencrypt/live/$domain")" != "ssl-cert" ]; then
-        log_warn "Incorrect group ownership on /etc/letsencrypt/live/$domain"
-        errors=$((errors + 1))
-    fi
-
-    # Check private key permissions
-    if [ "$(stat -c '%a' "/etc/letsencrypt/archive/$domain/privkey1.pem")" != "640" ]; then
-        log_warn "Incorrect permissions on private key for $domain"
-        errors=$((errors + 1))
-    fi
-
-    if [ $errors -eq 0 ]; then
-        log_success "SSL permissions are correct for $domain"
-        return 0
+    # Check for existing certificates
+    if [ -d "/etc/letsencrypt/live/$domain" ]; then
+        log_info "Found existing certificates for $domain"
     else
-        log_warn "Found $errors permission issues for $domain"
-        return 1
+        log_warn "No existing certificates found"
     fi
-}
-
-# Handle SSL certificates for each domain
-for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-    log_info "Managing SSL certificates for $DOMAIN..."
-    export DOMAIN
-    export USE_STAGING
-    export FORCE_RENEW
-    ./ssl-cert.sh
-
-    # Verify and fix permissions after each certificate operation
-    if ! verify_ssl_permissions "$DOMAIN"; then
-        log_info "Fixing permissions for $DOMAIN..."
-        fix_ssl_permissions
+    
+    # Generate/renew certificates
+    export DOMAIN="$domain"
+    if [ "$USE_STAGING" = "true" ]; then
+        ./ssl-cert.sh --staging --new
+    else
+        ./ssl-cert.sh --new
     fi
 done
-
-# Final permission verification
-log_info "Performing final SSL permission verification..."
-PERMISSIONS_OK=true
-for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-    if ! verify_ssl_permissions "$DOMAIN"; then
-        PERMISSIONS_OK=false
-    fi
-done
-
-if [ "$PERMISSIONS_OK" = false ]; then
-    log_warn "Some SSL permissions are still incorrect. Attempting one final fix..."
-    fix_ssl_permissions
-fi
 
 # Final verification
 log_info "Performing final verification..."
-{
-    echo "=== Final Docker Status ==="
-    docker compose ps
-    echo
-    echo "=== Final Certificate Status ==="
-    certbot certificates
-    echo
-    echo "=== Final SSL Permissions ==="
-    ls -lR /etc/letsencrypt/{live,archive}
-    echo
-    echo "=== Service Health Check ==="
-    for DOMAIN in "${API_DOMAIN}" "${FRONTEND_DOMAIN}"; do
-        echo "Checking $DOMAIN..."
-        curl -sI "https://$DOMAIN" || true
-    done
-} >> "$DEBUG_LOG" 2>&1
+for domain in api.notablenomads.com notablenomads.com; do
+    export DOMAIN="$domain"
+    ./ssl-cert.sh --check
+done
 
-log_success "SSL certificate management completed!"
+# Start Docker containers
+log_info "Starting Docker containers..."
+docker compose up -d
+
+exit 0
 SSLSETUP
 
+# Check if the remote script succeeded
+if [ $? -ne 0 ]; then
+    log_error "Failed to manage SSL certificates on remote server"
+    exit 1
+fi
+
 log_success "SSL certificates have been configured on the remote server!"
-echo -e "\n📝 Next steps:"
-for DOMAIN in "${DOMAINS[@]}"; do
-    echo "1. Verify SSL certificate for $DOMAIN:"
-    echo "   curl -v https://$DOMAIN"
+
+# Print next steps
+echo
+echo "📝 Next steps:"
+for domain in "${DOMAINS[@]}"; do
+    echo "1. Verify SSL certificate for $domain:"
+    echo "   curl -v https://$domain"
     echo "2. Check certificate details:"
-    echo "   echo | openssl s_client -connect $DOMAIN:443 -servername $DOMAIN 2>/dev/null | openssl x509 -text"
+    echo "   echo | openssl s_client -connect $domain:443 -servername $domain 2>/dev/null | openssl x509 -text"
     echo "3. Verify certificate expiry:"
-    echo "   echo | openssl s_client -connect $DOMAIN:443 -servername $DOMAIN 2>/dev/null | openssl x509 -noout -dates"
+    echo "   echo | openssl s_client -connect $domain:443 -servername $domain 2>/dev/null | openssl x509 -noout -dates"
 done
 
 if [ "$USE_STAGING" = true ]; then
-    echo -e "\n${YELLOW}Note: SSL certificates are in staging mode. Run with --production for valid certificates.${NC}"
+    echo
+    echo "Note: SSL certificates are in staging mode. Run with --production for valid certificates."
 fi
 
-echo -e "\n💡 Troubleshooting:"
+# Print troubleshooting steps
+echo
+echo "💡 Troubleshooting:"
 echo "1. Check logs: ssh $SERVER_USER@$SERVER_IP 'cat $DEBUG_LOG'"
 echo "2. View service status: ssh $SERVER_USER@$SERVER_IP 'docker compose ps'"
-echo "3. View service logs: ssh $SERVER_USER@$SERVER_IP 'docker compose logs'" 
+echo "3. View service logs: ssh $SERVER_USER@$SERVER_IP 'docker compose logs'"
