@@ -83,11 +83,22 @@ jobs:
             ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
             ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
 
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/deploy_key
+
+      - name: Add known hosts
+        run: |
+          # Remove old host key if exists
+          ssh-keygen -R ${{ secrets.SERVER_IP }} || true
+          # Add new host key
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          # Ensure proper permissions
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Run full deployment
         env:
