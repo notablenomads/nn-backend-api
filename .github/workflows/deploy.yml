@@ -88,6 +88,87 @@ jobs:
           fi
           echo "✅ Docker Hub access verified successfully"
 
+      - name: Verify environment file
+        run: |
+          # Create temporary .env.production file for verification
+          echo "${{ secrets.ENV_FILE }}" > .env.production.tmp
+
+          # Verify file was created and has content
+          if [ ! -s .env.production.tmp ]; then
+            echo "❌ Error: ENV_FILE secret is empty or invalid"
+            exit 1
+          fi
+
+          # Verify required environment variables
+          required_vars=(
+            "NODE_ENV"
+            "PORT"
+            "HOST"
+            "API_PREFIX"
+            "DATABASE_HOST"
+            "DATABASE_PORT"
+            "DATABASE_USERNAME"
+            "DATABASE_PASSWORD"
+            "DATABASE_NAME"
+            "JWT_SECRET"
+            "JWT_REFRESH_SECRET"
+            "ENCRYPTION_KEY"
+          )
+
+          missing_vars=()
+          invalid_vars=()
+
+          echo "🔍 Checking environment variables..."
+
+          for var in "${required_vars[@]}"; do
+            if ! grep -q "^${var}=" .env.production.tmp; then
+              missing_vars+=("$var")
+            else
+              # Check if variable has a non-empty value
+              value=$(grep "^${var}=" .env.production.tmp | cut -d'=' -f2-)
+              if [ -z "$value" ]; then
+                invalid_vars+=("$var")
+              fi
+            fi
+          done
+
+          # Special checks for specific variables
+          if grep "^NODE_ENV=" .env.production.tmp | grep -qv "production"; then
+            echo "⚠️ Warning: NODE_ENV should be set to 'production'"
+          fi
+
+          if grep "^DATABASE_HOST=" .env.production.tmp | grep -q "localhost"; then
+            echo "⚠️ Warning: DATABASE_HOST is set to 'localhost'. In Docker environment, it should be 'postgres'"
+          fi
+
+          # Report any issues
+          if [ ${#missing_vars[@]} -ne 0 ] || [ ${#invalid_vars[@]} -ne 0 ]; then
+            echo "❌ Environment file validation failed!"
+            
+            if [ ${#missing_vars[@]} -ne 0 ]; then
+              echo "Missing variables:"
+              printf '  - %s\n' "${missing_vars[@]}"
+            fi
+            
+            if [ ${#invalid_vars[@]} -ne 0 ]; then
+              echo "Variables with empty values:"
+              printf '  - %s\n' "${invalid_vars[@]}"
+            fi
+            
+            echo "Current .env.production content (sanitized):"
+            grep -v "_KEY\|_SECRET\|PASSWORD" .env.production.tmp || true
+            
+            # Cleanup
+            rm -f .env.production.tmp
+            exit 1
+          fi
+
+          echo "✅ Environment file verified successfully"
+          echo "Found all required environment variables with valid values"
+
+          # Cleanup
+          rm -f .env.production.tmp
+
   deploy:
     name: Deploy to Production
     needs: pre-deployment-check
@@ -132,10 +213,27 @@ jobs:
         id: package_version
         run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
+      - name: Verify Docker Hub access
+        run: |
+          echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u mrdevx --password-stdin
+          if ! docker pull ${{ env.DOCKER_IMAGE }}:latest; then
+            echo "❌ Error: Failed to pull Docker image. Please check Docker Hub access and credentials."
+            exit 1
+          fi
+          echo "✅ Docker Hub access verified successfully"
+
       - name: Create .env.production file
         run: |
+          # Write environment file
           echo "${{ secrets.ENV_FILE }}" > .env.production
-          echo "Created .env.production file"
+
+          # Double-check file was created
+          if [ ! -s .env.production ]; then
+            echo "❌ Error: Failed to create .env.production or file is empty"
+            exit 1
+          fi
+
+          echo "✅ Created .env.production file"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
