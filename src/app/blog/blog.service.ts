@@ -24,6 +24,11 @@ export class BlogService {
         name: 'Mahdi Rashidi',
         mediumUrl: 'https://mrdevx.medium.com',
       },
+      {
+        username: 'milad.ghamati',
+        name: 'Milad Ghamati',
+        mediumUrl: 'https://medium.com/@milad.ghamati',
+      },
     ];
   }
 
