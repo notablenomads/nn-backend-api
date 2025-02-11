@@ -39,11 +39,16 @@ async function createSuperAdmin() {
     const userRepository = dataSource.getRepository(User);
 
     const email = process.argv[2];
-    const password = process.argv[3];
 
-    if (!email || !password) {
-      console.error('Please provide email and password as arguments');
-      console.error('Usage: ts-node scripts/create-super-admin.ts <email> <password>');
+    if (!email) {
+      console.error('Please provide email as argument');
+      console.error('Usage: ts-node scripts/create-super-admin.ts <email>');
+      process.exit(1);
+    }
+
+    const password = process.env.ADMIN_PASSWORD;
+    if (!password) {
+      console.error('Please set ADMIN_PASSWORD environment variable');
       process.exit(1);
     }
 

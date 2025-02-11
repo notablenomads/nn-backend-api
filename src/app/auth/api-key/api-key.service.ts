@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { MoreThan } from 'typeorm';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ApiKey } from './api-key.entity';
@@ -45,18 +46,20 @@ export class ApiKeyService {
       throw new UnauthorizedException('API key is required');
     }
 
-    const apiKeys = await this.apiKeyRepository.find({
-      where: { isActive: true },
+    const hashedKey = await bcrypt.hash(apiKey, this.SALT_ROUNDS);
+    const key = await this.apiKeyRepository.findOne({
+      where: {
+        hashedKey,
+        isActive: true,
+        expiresAt: MoreThan(new Date()),
+      },
     });
 
-    for (const key of apiKeys) {
-      if ((await bcrypt.compare(apiKey, key.hashedKey)) && key.expiresAt > new Date() && key.isActive) {
-        // Update last used timestamp
-        await this.apiKeyRepository.update(key.id, {
-          lastUsedAt: new Date(),
-        });
-        return true;
-      }
+    if (key) {
+      await this.apiKeyRepository.update(key.id, {
+        lastUsedAt: new Date(),
+      });
+      return true;
     }
 
     this.logger.warn('Invalid or expired API key used');
