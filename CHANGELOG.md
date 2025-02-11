@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.31](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.30...v0.8.31) (2025-02-11)
+
+### Features
+
+- Add ApiKeyController to manage API key operations ([09531c8](https://github.com/Notable-Nomads/nn-backend-api/commit/09531c8a6eecd0086b314a69624045b3a50c566c))
+- Add CLI command to create super admin and update user roles to use enum ([6deae80](https://github.com/Notable-Nomads/nn-backend-api/commit/6deae802bbc70d3faa385eece88a79dfe80173a9))
+- Add migration to implement roles as enum for users ([6dee7ab](https://github.com/Notable-Nomads/nn-backend-api/commit/6dee7ab65e2ee3944e2440be16233d4ce3f223bd))
+- Add new author profile for Milad Ghamati in blog service ([55eb7e5](https://github.com/Notable-Nomads/nn-backend-api/commit/55eb7e5442dc0fa0196450f5f5bf2802aed33a38))
+- Enhance API key validation by allowing multiple active keys and apply API key guard to Lead controller ([45b3e28](https://github.com/Notable-Nomads/nn-backend-api/commit/45b3e285416ffdbbda41a96d7145225e6832601e))
+- Enhance super admin existence check using array contains operator ([0c3f6b9](https://github.com/Notable-Nomads/nn-backend-api/commit/0c3f6b9214861efebd8a79467b80361e70ecccfc))
+- Implement API key management with generation, rotation, and deactivation functionalities ([62507d6](https://github.com/Notable-Nomads/nn-backend-api/commit/62507d6908c7b6b7045bf21f11027fd81f519738))
+- Implement role-based access control for API key management ([887d49b](https://github.com/Notable-Nomads/nn-backend-api/commit/887d49bbf0d5b1df0c8eda0f2f2318ad8f49bd85))
+- Improve API key validation logic by optimizing database queries and enhancing error handling ([99392f2](https://github.com/Notable-Nomads/nn-backend-api/commit/99392f2bd21ddb7bfc5beab49f4ede62ab09c075))
+- Refactor API key extraction to use custom header and apply API key guard to email controller ([088b70d](https://github.com/Notable-Nomads/nn-backend-api/commit/088b70d140b970a5ef9c671b4386382e4e60a529))
+- Refactor super admin creation to a standalone script and remove CLI command ([0370fbe](https://github.com/Notable-Nomads/nn-backend-api/commit/0370fbe88897b2adfb2df73f870b70884d20fa76))
+- Restrict API key generation and deactivation to Super Admin only; enhance JWT guard for user role validation ([137f3e6](https://github.com/Notable-Nomads/nn-backend-api/commit/137f3e6804a732fbb45a0c0093cb0097943eac03))
+- Update migration scripts to specify output directory for generated migrations ([6a6161d](https://github.com/Notable-Nomads/nn-backend-api/commit/6a6161d3ba14322d8b50535239249ff8f627cb80))
+- Update super admin creation script to enforce single super admin policy and enhance security notes ([fcc3d45](https://github.com/Notable-Nomads/nn-backend-api/commit/fcc3d45ae28c81ad72dd5c8abc002ad3f2a39241))
+- Update super admin creation script to require email argument and use environment variable for password; enhance API key validation logic ([07f5fc6](https://github.com/Notable-Nomads/nn-backend-api/commit/07f5fc6aa9bb0098d48379cf6fe6cc82616cbfb8))
+
 ### [0.8.30](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.29...v0.8.30) (2025-02-11)
 
 ### [0.8.29](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.28...v0.8.29) (2025-02-11)
