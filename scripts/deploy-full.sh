@@ -64,13 +64,38 @@ echo
 
 confirm_step "Step 1: Cleanup"
 
+# Function to test SSH connection
+test_ssh_connection() {
+    local retries=3
+    local wait_time=5
+    
+    log_info "Testing SSH connection to $SERVER_USER@$SERVER_IP..."
+    
+    for ((i=1; i<=retries; i++)); do
+        if ssh -o ConnectTimeout=10 \
+           -o BatchMode=yes \
+           -o StrictHostKeyChecking=accept-new \
+           "$SERVER_USER@$SERVER_IP" "echo 'SSH connection successful'" &> /dev/null; then
+            log_success "SSH connection established successfully"
+            return 0
+        else
+            log_warn "SSH connection attempt $i of $retries failed"
+            if [ $i -lt $retries ]; then
+                log_info "Waiting $wait_time seconds before retrying..."
+                sleep $wait_time
+            fi
+        fi
+    done
+    
+    log_error "Could not establish SSH connection to $SERVER_USER@$SERVER_IP after $retries attempts"
+    return 1
+}
+
 # Step 1: Cleanup
 log_info "Step 1: Cleaning up existing deployment..."
-log_info "Checking SSH connection..."
-if ! ssh -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$SERVER_USER@$SERVER_IP" "echo 'SSH connection successful'" &> /dev/null; then
-    log_error "Could not establish SSH connection to $SERVER_USER@$SERVER_IP"
-    exit 1
-fi
+
+# Test SSH connection with retries
+test_ssh_connection || exit 1
 
 log_info "Starting cleanup process on $SERVER_IP..."
 

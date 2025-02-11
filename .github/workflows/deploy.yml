@@ -86,42 +86,27 @@ jobs:
       - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          # Decode the base64 encoded key if needed
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key || {
-            echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          }
-
-          # Ensure proper line endings
-          sed -i 's/\r$//' ~/.ssh/deploy_key
-
-          # Set correct permissions
+          # Write the SSH key directly (no base64 decoding needed)
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
+          # Configure SSH to use the key for our server
+          echo "Host ${{ secrets.SERVER_IP }}" > ~/.ssh/config
+          echo "  HostName ${{ secrets.SERVER_IP }}" >> ~/.ssh/config
+          echo "  User root" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking accept-new" >> ~/.ssh/config
 
           # Start SSH agent
           eval $(ssh-agent -s)
+          ssh-add ~/.ssh/deploy_key
 
-          # Add key with verbose output
-          ssh-add -v ~/.ssh/deploy_key
-
-          # Test key content
-          ssh-keygen -l -f ~/.ssh/deploy_key || {
-            echo "Invalid SSH key format"
-            cat ~/.ssh/deploy_key | od -c
-            exit 1
-          }
+          # Test SSH connection
+          ssh -o BatchMode=yes -o ConnectTimeout=10 root@${{ secrets.SERVER_IP }} "echo 'SSH connection test successful'"
 
       - name: Add known hosts
         run: |
-          # Remove old host key if exists
-          ssh-keygen -R ${{ secrets.SERVER_IP }} || true
-          # Add new host key with verification
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} 2>/dev/null | tee -a ~/.ssh/known_hosts
-          # Verify the key was added
-          ssh-keygen -F ${{ secrets.SERVER_IP }} || {
-            echo "Failed to add host key"
-            exit 1
-          }
-          # Ensure proper permissions
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Run full deployment
