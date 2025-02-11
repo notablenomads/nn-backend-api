@@ -146,14 +146,15 @@ describe('AuthService', () => {
       mockServices.userService.findByEmail.mockResolvedValue(mockUser);
       validatePasswordMock.mockResolvedValue(false);
 
-      // Simulate multiple failed login attempts
-      for (let i = 0; i < 5; i++) {
-        try {
-          await service.login(loginDto);
-        } catch (error) {
-          expect(error).toBeInstanceOf(UnauthorizedException);
-        }
-      }
+      // Simulate multiple concurrent failed login attempts
+      const loginAttempts = Array(5)
+        .fill(null)
+        .map(() => service.login(loginDto));
+      await Promise.all(
+        loginAttempts.map(async (attempt) => {
+          await expect(attempt).rejects.toThrow(UnauthorizedException);
+        }),
+      );
 
       // Verify account is blocked
       try {
@@ -176,6 +177,45 @@ describe('AuthService', () => {
 
       // Advance time by 2 more minutes (total 16 minutes) - account should be unblocked
       jest.advanceTimersByTime(2 * 60 * 1000);
+      validatePasswordMock.mockResolvedValue(true);
+      const result = await service.login(loginDto);
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
+    });
+
+    it('should handle concurrent login attempts correctly', async () => {
+      mockServices.userService.findByEmail.mockResolvedValue(mockUser);
+      validatePasswordMock.mockResolvedValue(false);
+
+      // Create multiple concurrent login attempts
+      const concurrentAttempts = 10; // More than MAX_LOGIN_ATTEMPTS
+      const loginAttempts = Array(concurrentAttempts)
+        .fill(null)
+        .map(() => service.login(loginDto));
+
+      // Wait for all attempts to complete and verify they all fail
+      const results = await Promise.allSettled(loginAttempts);
+
+      // Verify all attempts failed
+      results.forEach((result) => {
+        expect(result.status).toBe('rejected');
+        if (result.status === 'rejected') {
+          expect(result.reason).toBeInstanceOf(UnauthorizedException);
+        }
+      });
+
+      // Verify the account is now blocked
+      validatePasswordMock.mockResolvedValue(true); // Even with correct password
+      try {
+        await service.login(loginDto);
+        fail('Expected login to be blocked after concurrent attempts');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect(error.message).toBe('Too many failed attempts. Please try again later.');
+      }
+
+      // Verify the block is properly tracked even with concurrent attempts
+      jest.advanceTimersByTime(15 * 60 * 1000); // Advance past block duration
       validatePasswordMock.mockResolvedValue(true);
       const result = await service.login(loginDto);
       expect(result).toHaveProperty('accessToken');
