@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.27](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.25...v0.8.27) (2025-02-11)
+
+### Bug Fixes
+
+- Update minimum length requirement for project description to 10 characters ([be9863f](https://github.com/Notable-Nomads/nn-backend-api/commit/be9863f1f73aa95bdfeb87f72d598de1cd407abe))
+
 ### [0.8.26](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.25...v0.8.26) (2025-02-11)
 
 ### Bug Fixes
