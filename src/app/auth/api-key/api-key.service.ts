@@ -46,57 +46,79 @@ export class ApiKeyService {
       throw new UnauthorizedException('API key is required');
     }
 
-    const hashedKey = await bcrypt.hash(apiKey, this.SALT_ROUNDS);
-    const key = await this.apiKeyRepository.findOne({
-      where: {
-        hashedKey,
-        isActive: true,
-        expiresAt: MoreThan(new Date()),
-      },
-    });
-
-    if (key) {
-      await this.apiKeyRepository.update(key.id, {
-        lastUsedAt: new Date(),
+    try {
+      // Find the key directly using a database query
+      const key = await this.apiKeyRepository.findOne({
+        where: {
+          isActive: true,
+          expiresAt: MoreThan(new Date()),
+        },
+        select: ['id', 'hashedKey'], // Only select needed fields
       });
-      return true;
-    }
 
-    this.logger.warn('Invalid or expired API key used');
-    return false;
+      if (!key) {
+        this.logger.warn('No matching active API key found');
+        return false;
+      }
+
+      const isValid = await bcrypt.compare(apiKey, key.hashedKey);
+
+      if (isValid) {
+        // Update last used timestamp only if key is valid
+        await this.apiKeyRepository.update(key.id, {
+          lastUsedAt: new Date(),
+        });
+        return true;
+      }
+
+      this.logger.warn('Invalid API key attempt');
+      return false;
+    } catch (error) {
+      this.logger.error('Error validating API key', { error: error.message });
+      return false;
+    }
   }
 
   async rotateApiKey(currentApiKey: string): Promise<{ apiKey: string; expiresAt: Date }> {
-    const apiKeys = await this.apiKeyRepository.find({
-      where: { isActive: true },
-    });
+    try {
+      // Find the key directly using a database query
+      const key = await this.apiKeyRepository.findOne({
+        where: { isActive: true },
+        select: ['id', 'hashedKey', 'description'],
+      });
 
-    for (const key of apiKeys) {
-      if (await bcrypt.compare(currentApiKey, key.hashedKey)) {
-        // Deactivate the current key
-        await this.apiKeyRepository.update(key.id, { isActive: false });
-
-        // Generate a new key
-        return this.generateNewApiKey(key.description);
+      if (!key || !(await bcrypt.compare(currentApiKey, key.hashedKey))) {
+        throw new UnauthorizedException('Invalid API key');
       }
-    }
 
-    throw new UnauthorizedException('Invalid API key');
+      // Deactivate the current key
+      await this.apiKeyRepository.update(key.id, { isActive: false });
+
+      // Generate a new key
+      return this.generateNewApiKey(key.description);
+    } catch (error) {
+      this.logger.error('Error rotating API key', { error: error.message });
+      throw new UnauthorizedException('Failed to rotate API key');
+    }
   }
 
   async deactivateApiKey(apiKey: string): Promise<void> {
-    const apiKeys = await this.apiKeyRepository.find({
-      where: { isActive: true },
-    });
+    try {
+      // Find the key directly using a database query
+      const key = await this.apiKeyRepository.findOne({
+        where: { isActive: true },
+        select: ['id', 'hashedKey'],
+      });
 
-    for (const key of apiKeys) {
-      if (await bcrypt.compare(apiKey, key.hashedKey)) {
-        await this.apiKeyRepository.update(key.id, { isActive: false });
-        this.logger.log(`API key deactivated: ${key.id}`);
-        return;
+      if (!key || !(await bcrypt.compare(apiKey, key.hashedKey))) {
+        throw new UnauthorizedException('Invalid API key');
       }
-    }
 
-    throw new UnauthorizedException('Invalid API key');
+      await this.apiKeyRepository.update(key.id, { isActive: false });
+      this.logger.log(`API key deactivated: ${key.id}`);
+    } catch (error) {
+      this.logger.error('Error deactivating API key', { error: error.message });
+      throw new UnauthorizedException('Failed to deactivate API key');
+    }
   }
 }

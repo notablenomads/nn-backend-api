@@ -10,13 +10,7 @@ import { ApiKey } from '../src/app/auth/api-key/api-key.entity';
 // Load environment variables
 config();
 
-console.log('Database config:', {
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '5432'),
-  username: process.env.DATABASE_USERNAME,
-  database: process.env.DATABASE_NAME,
-  schema: process.env.DATABASE_SCHEMA || 'public',
-});
+console.log('Initializing database connection...');
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -32,7 +26,6 @@ const dataSource = new DataSource({
 
 async function createSuperAdmin() {
   try {
-    console.log('Initializing database connection...');
     await dataSource.initialize();
     console.log('Database connection initialized successfully');
 
