@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.34](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.33...v0.8.34) (2025-02-12)
+
+### Bug Fixes
+
+- Simplify Swagger documentation enabling logic in main.ts ([3fe3980](https://github.com/Notable-Nomads/nn-backend-api/commit/3fe398014e4fce8d2f682ed58131b4d85a68e34c))
+- Update environment variable handling in manage-env script and configuration ([33b1863](https://github.com/Notable-Nomads/nn-backend-api/commit/33b18633e6a15a6b4b5756d93324f7ae9b73aa30))
+
 ### [0.8.33](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.32...v0.8.33) (2025-02-12)
 
 ### Features
