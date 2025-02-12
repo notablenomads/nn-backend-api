@@ -328,6 +328,9 @@ jobs:
             echo "$text"
           }
 
+          # Get branch name from GitHub context
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's/refs\/heads\///')
+
           # Calculate duration properly using workflow start time
           START_TIME=$(date -d "${{ github.event.head_commit.timestamp }}" +%s)
           END_TIME=$(date +%s)
