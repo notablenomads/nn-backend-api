@@ -64,9 +64,9 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root
 
-# Stop all running containers
+# Stop containers but keep volumes
 log_info "Stopping all containers..."
-docker compose down || true
+docker compose down
 
 # Remove all containers except postgres
 log_info "Removing containers (except postgres)..."

@@ -61,9 +61,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_USER: ${DATABASE_USERNAME:-nn-postgres-admin}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      POSTGRES_DB: ${DATABASE_NAME:-nn-backend-db}
+      POSTGRES_DB: ${DATABASE_NAME:-nn-backend-db-production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:

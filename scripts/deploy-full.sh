@@ -118,21 +118,21 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 
 cd /root || exit 1
 
-# Stop and remove containers
+# Stop containers but keep volumes
 log_info "Stopping all containers..."
-docker compose down -v
+docker compose down
 
-# Remove all containers
-log_info "Removing all containers..."
-docker rm -f $(docker ps -aq) 2>/dev/null || true
+# Remove all containers except postgres
+log_info "Removing containers (except postgres)..."
+docker ps -a | grep -v "postgres" | awk 'NR>1 {print $1}' | xargs -r docker rm -f
 
 # Remove networks
 log_info "Removing docker networks..."
 docker network prune -f
 
-# Remove volumes
-log_info "Removing docker volumes..."
-docker volume prune -f
+# Remove volumes except postgres data
+log_info "Removing docker volumes (except postgres data)..."
+docker volume ls -q | grep -v "nn_postgres_data" | xargs -r docker volume rm 2>/dev/null || true
 
 # Remove unused images
 log_info "Removing unused images..."
