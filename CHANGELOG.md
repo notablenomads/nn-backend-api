@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.37](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.36...v0.8.37) (2025-02-12)
+
 ### [0.8.36](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.35...v0.8.36) (2025-02-12)
 
 ### Features
