@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.33](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.32...v0.8.33) (2025-02-12)
+
+### Features
+
+- Add SSH tunnel script for production database access and enhance migration for refresh tokens ([3c06503](https://github.com/Notable-Nomads/nn-backend-api/commit/3c06503039946f2424ec49e1f886a76fdf865284))
+
 ### [0.8.32](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.31...v0.8.32) (2025-02-12)
 
 ### Features
