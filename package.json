@@ -35,7 +35,8 @@
     "prerelease": "git add .",
     "release": "npx standard-version --commit-all",
     "prepare": "husky",
-    "create:super-admin": "ts-node scripts/create-super-admin.ts"
+    "create:super-admin": "ts-node scripts/create-super-admin.ts",
+    "cli": "node dist/cli.js"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.744.0",
@@ -66,6 +67,7 @@
     "dotenv": "^16.4.7",
     "helmet": "^8.0.0",
     "joi": "^17.13.3",
+    "nest-commander": "^3.16.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.13.1",
