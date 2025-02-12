@@ -2,8 +2,10 @@ import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { MoreThan } from 'typeorm';
-import { Injectable, Logger, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
+import { Cache } from 'cache-manager';
+import { Injectable, Logger, UnauthorizedException, InternalServerErrorException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ApiKey } from './api-key.entity';
 
 @Injectable()
@@ -12,10 +14,14 @@ export class ApiKeyService {
   private readonly KEY_LENGTH = 32;
   private readonly SALT_ROUNDS = 10;
   private readonly DEFAULT_EXPIRY_DAYS = 30;
+  private readonly MAX_VALIDATION_ATTEMPTS = 5;
+  private readonly MAX_BACKOFF_TIME = 30000; // 30 seconds
 
   constructor(
     @InjectRepository(ApiKey)
     private readonly apiKeyRepository: Repository<ApiKey>,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) {}
 
   async generateNewApiKey(description?: string): Promise<{ apiKey: string; expiresAt: Date }> {
@@ -53,7 +59,7 @@ export class ApiKeyService {
       // Find all active keys and compare with the provided key
       const activeKeys = await this.apiKeyRepository.find({
         where: { isActive: true },
-        select: ['id', 'hashedKey', 'description'],
+        select: ['id', 'hashedKey', 'description', 'lastUsedAt'],
       });
 
       // Find the matching key
@@ -63,10 +69,20 @@ export class ApiKeyService {
         throw new UnauthorizedException('Invalid API key');
       }
 
-      // Deactivate the current key
+      // Track rotation for security monitoring
+      const rotationRecord = {
+        oldKeyId: matchingKey.id,
+        rotatedAt: new Date(),
+        lastUsed: matchingKey.lastUsedAt,
+      };
+      await this.logKeyRotation(rotationRecord);
+
+      // Deactivate the current key with grace period
+      const gracePeriod = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
       await this.apiKeyRepository.update(matchingKey.id, {
         isActive: false,
         updatedAt: new Date(),
+        expiresAt: gracePeriod,
       });
 
       // Generate a new key with the same description
@@ -116,6 +132,16 @@ export class ApiKeyService {
     }
 
     try {
+      const cacheKey = `api_key_attempts_${apiKey}`;
+      const attempts = (await this.cacheManager.get<number>(cacheKey)) || 0;
+
+      if (attempts >= this.MAX_VALIDATION_ATTEMPTS) {
+        const backoffTime = Math.min(Math.pow(2, attempts) * 1000, this.MAX_BACKOFF_TIME);
+        await this.cacheManager.set(cacheKey, attempts + 1, backoffTime);
+        this.logger.warn(`API key validation blocked due to too many attempts: ${apiKey}`);
+        return false;
+      }
+
       // Find all active and non-expired keys
       const activeKeys = await this.apiKeyRepository.find({
         where: {
@@ -129,8 +155,13 @@ export class ApiKeyService {
       const matchingKey = await this.findMatchingKey(activeKeys, apiKey);
 
       if (!matchingKey) {
+        await this.cacheManager.set(cacheKey, attempts + 1, 3600); // 1 hour
+        this.logger.warn(`Invalid API key attempt: ${apiKey}`);
         return false;
       }
+
+      // Reset attempts on successful validation
+      await this.cacheManager.del(cacheKey);
 
       // Update last used timestamp
       await this.apiKeyRepository.update(matchingKey.id, {
@@ -152,5 +183,14 @@ export class ApiKeyService {
       }
     }
     return null;
+  }
+
+  private async logKeyRotation(record: { oldKeyId: string; rotatedAt: Date; lastUsed: Date }): Promise<void> {
+    this.logger.log('API key rotation', {
+      oldKeyId: record.oldKeyId,
+      rotatedAt: record.rotatedAt,
+      lastUsed: record.lastUsed,
+      timeSinceLastUse: record.lastUsed ? Date.now() - record.lastUsed.getTime() : null,
+    });
   }
 }

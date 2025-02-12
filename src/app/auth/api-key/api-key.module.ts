@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ApiKeyController } from './api-key.controller';
 import { ApiKeyService } from './api-key.service';
 import { ApiKey } from './api-key.entity';
@@ -10,6 +11,10 @@ import { AuthGuard } from '../../core/guards/auth.guard';
 @Module({
   imports: [
     TypeOrmModule.forFeature([ApiKey]),
+    CacheModule.register({
+      ttl: 3600, // 1 hour default TTL
+      max: 100, // maximum number of items in cache
+    }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
