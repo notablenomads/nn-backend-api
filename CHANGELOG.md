@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.36](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.35...v0.8.36) (2025-02-12)
+
+### Features
+
+- Add CLI module and command to create super admin user ([43a9531](https://github.com/Notable-Nomads/nn-backend-api/commit/43a9531c4c5982766a81c7b7deb201e263c1871e))
+
 ### [0.8.35](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.34...v0.8.35) (2025-02-12)
 
 ### Bug Fixes
