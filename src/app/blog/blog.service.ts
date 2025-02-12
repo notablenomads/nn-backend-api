@@ -97,7 +97,11 @@ export class BlogService {
         return [];
       }
 
-      return feed.rss.channel.item.map((item) => ({
+      const items = Array.isArray(feed.rss.channel.item) ? feed.rss.channel.item : [feed.rss.channel.item];
+
+      this.logger.debug(`Found ${items.length} posts for author ${author.username}`);
+
+      return items.map((item) => ({
         title: item.title || 'Untitled',
         content: this.cleanHtmlContent(item['content:encoded'] || ''),
         url: item.link,
