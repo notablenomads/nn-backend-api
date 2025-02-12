@@ -178,8 +178,8 @@ async function bootstrap() {
   const throttlerGuard = app.get(CustomThrottlerGuard);
   app.useGlobalGuards(throttlerGuard);
 
-  // Swagger documentation (only in non-production)
-  const isSwaggerEnabled = config.get('app.enableSwagger') && environment !== 'production';
+  // Swagger documentation
+  const isSwaggerEnabled = config.get('app.enableSwagger');
   if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
