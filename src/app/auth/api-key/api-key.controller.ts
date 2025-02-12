@@ -1,42 +1,52 @@
-import { Controller, Post, Body, UseGuards, Headers } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
+import { Controller, Post, Put, Delete, Body, UseGuards, Headers } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { UnauthorizedException } from '@nestjs/common';
 import { ApiKeyService } from './api-key.service';
-import { ApiKeyGuard } from './api-key.guard';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from '../../core/guards/roles.guard';
+import { AuthGuard } from '../../core/guards/auth.guard';
+import { Auth, AuthType } from '../../core/decorators/auth.decorator';
 import { Roles } from '../../core/decorators/roles.decorator';
 import { Role } from '../../core/enums/role.enum';
 
 @ApiTags('API Keys')
-@Controller('api-keys')
+@Controller('auth/api-keys')
+@UseGuards(AuthGuard)
 export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
   @Post('generate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Auth(AuthType.JWT)
   @Roles(Role.SUPER_ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate a new API key (Super Admin only)' })
+  @ApiOperation({ summary: 'Generate a new API key' })
   async generateApiKey(@Body('description') description?: string) {
     return this.apiKeyService.generateNewApiKey(description);
   }
 
-  @Post('rotate')
-  @UseGuards(ApiKeyGuard)
-  @ApiSecurity('api-key')
+  @Put('rotate')
+  @Auth(AuthType.API_KEY)
+  @ApiHeader({
+    name: 'x-api-key',
+    description: 'API Key for authentication',
+    required: true,
+  })
   @ApiOperation({ summary: 'Rotate the current API key' })
-  async rotateApiKey(@Headers('authorization') authHeader: string) {
-    const apiKey = authHeader.split(' ')[1];
+  async rotateApiKey(@Headers('x-api-key') apiKey: string) {
+    if (!apiKey) {
+      throw new UnauthorizedException('API key is required');
+    }
     return this.apiKeyService.rotateApiKey(apiKey);
   }
 
-  @Post('deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete()
+  @Auth(AuthType.JWT)
   @Roles(Role.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Deactivate an API key (Super Admin only)' })
-  async deactivateApiKey(@Headers('authorization') authHeader: string) {
-    const apiKey = authHeader.split(' ')[1];
-    return this.apiKeyService.deactivateApiKey(apiKey);
+  async deactivateApiKey(@Body('apiKey') apiKey: string) {
+    if (!apiKey) {
+      throw new UnauthorizedException('API key is required');
+    }
+    await this.apiKeyService.deactivateApiKey(apiKey);
+    return { message: 'API key deactivated successfully' };
   }
 }

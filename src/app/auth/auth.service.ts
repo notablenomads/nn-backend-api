@@ -73,31 +73,23 @@ export class AuthService {
       throw new UnauthorizedException('Token mismatch - possible security breach detected');
     }
 
-    const newRefreshToken = await this.refreshTokenService.replaceToken(refreshToken, validToken.userId);
     const user = await this.userService.findById(validToken.userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    const accessToken = this.generateAccessToken(user);
+    const newTokens = await this.generateTokens(user);
 
-    return {
-      accessToken,
-      refreshToken: newRefreshToken.token,
-    };
+    // Revoke the old refresh token
+    await this.refreshTokenService.revokeToken(refreshToken);
+
+    return newTokens;
   }
 
   async logout(refreshToken: string): Promise<void> {
     const validToken = await this.refreshTokenService.validateToken(refreshToken);
     if (!validToken) {
       throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Get the JWT expiration time
-    const decoded = this.jwtService.decode(refreshToken) as { exp: number };
-    if (decoded?.exp) {
-      // Add token to blacklist until its expiration
-      await this.tokenBlacklistService.blacklistToken(refreshToken, decoded.exp * 1000);
     }
 
     await this.refreshTokenService.revokeToken(refreshToken);
@@ -107,17 +99,6 @@ export class AuthService {
     const user = await this.userService.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
-    }
-
-    // Get all valid refresh tokens for the user
-    const tokens = await this.refreshTokenService.findValidTokensByUserId(userId);
-
-    // Blacklist all tokens
-    for (const token of tokens) {
-      const decoded = this.jwtService.decode(token.token) as { exp: number };
-      if (decoded?.exp) {
-        await this.tokenBlacklistService.blacklistToken(token.token, decoded.exp * 1000);
-      }
     }
 
     await this.refreshTokenService.revokeAllUserTokens(userId);

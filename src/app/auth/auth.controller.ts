@@ -47,13 +47,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async refreshTokens(
     @Body() refreshTokenDto: RefreshTokensDto,
-    @Req() req: { user: { sub: string; exp: number } },
+    @Req() req: { user: { id: string; exp: number } },
   ): Promise<ITokens> {
     // Validate access token expiration
     if (Date.now() >= req.user.exp * 1000) {
       throw new UnauthorizedException('Access token has expired');
     }
-    return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.sub);
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.id);
   }
 
   @Post('logout')
@@ -74,7 +74,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async logoutAll(@Req() req: { user: { sub: string } }): Promise<void> {
-    await this.authService.logoutAll(req.user.sub);
+  async logoutAll(@Req() req: { user: { id: string } }): Promise<void> {
+    await this.authService.logoutAll(req.user.id);
   }
 }

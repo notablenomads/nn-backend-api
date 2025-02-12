@@ -8,9 +8,8 @@ import {
   HttpException,
   UsePipes,
   ValidationPipe,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LeadService } from './lead.service';
 import { LeadValidationService } from './services/lead-validation.service';
@@ -18,7 +17,9 @@ import { LeadDto } from './dto/lead.dto';
 import { LeadResponseDto } from './interfaces/lead-response.dto';
 import { LeadOptionsDto } from './interfaces/lead-options.dto';
 import { createLeadProcessingError, createLeadNotFoundError } from './constants/lead.errors';
-import { ApiKeyGuard } from '../auth/api-key/api-key.guard';
+import { Auth, AuthType } from '../core/decorators/auth.decorator';
+import { Roles } from '../core/decorators/roles.decorator';
+import { Role } from '../core/enums/role.enum';
 
 @ApiTags('Lead')
 @Controller('leads')
@@ -91,18 +92,15 @@ export class LeadController {
   }
 
   @Get()
-  @UseGuards(ApiKeyGuard)
-  @ApiHeader({
-    name: 'x-api-key',
-    description: 'API key for authentication',
-    required: true,
-  })
   @ApiOperation({ summary: 'Get all leads' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Retrieved all leads successfully',
     type: [LeadResponseDto],
   })
+  @Auth(AuthType.JWT)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiBearerAuth()
   async getAllLeads(): Promise<LeadResponseDto[]> {
     return this.leadService.findAll();
   }
@@ -133,6 +131,9 @@ export class LeadController {
     status: HttpStatus.NOT_FOUND,
     description: 'Lead not found',
   })
+  @Auth(AuthType.JWT)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @ApiBearerAuth()
   async getLeadById(@Param('id') id: string): Promise<LeadResponseDto> {
     try {
       return await this.leadService.findOne(id);

@@ -1,8 +1,9 @@
 import { Repository } from 'typeorm';
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Role } from '../core/enums/role.enum';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -31,6 +32,24 @@ export class UserService {
       isActive: true,
     });
 
+    return this.userRepository.save(user);
+  }
+
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const user = this.userRepository.create({
+      ...createUserDto,
+      roles: [Role.USER], // Default role
+    });
+    return this.userRepository.save(user);
+  }
+
+  async update(id: string, updateData: Partial<User>): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    Object.assign(user, updateData);
     return this.userRepository.save(user);
   }
 }

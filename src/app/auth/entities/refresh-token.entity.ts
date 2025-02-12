@@ -18,10 +18,10 @@ export class RefreshToken {
   @Column({ length: 1000 })
   token: string;
 
-  @Column({ length: 32 })
+  @Column({ length: 32, nullable: true })
   iv: string;
 
-  @Column({ length: 64 })
+  @Column({ length: 64, nullable: true })
   authTag: string;
 
   @Column({ type: 'timestamp' })
