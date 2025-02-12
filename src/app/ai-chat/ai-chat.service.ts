@@ -21,7 +21,7 @@ export class AiChatService {
     const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
     const genAI = new GoogleGenerativeAI(apiKey);
     this.model = genAI.getGenerativeModel({
-      model: 'tunedModels/notablenomadv12-2p7hzyok3t78',
+      model: 'gemini-2.0-flash-001',
     });
   }
 
