@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.32](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.31...v0.8.32) (2025-02-12)
+
+### Features
+
+- Add API header documentation for x-api-key in rotateApiKey endpoint ([4b591be](https://github.com/Notable-Nomads/nn-backend-api/commit/4b591be568ad77c9d3d2fbf701d0cd1059dedf70))
+- Add branch name extraction to deployment workflow ([de90f38](https://github.com/Notable-Nomads/nn-backend-api/commit/de90f38157e871a6eaf4bb90b3f42c5a80067c1f))
+- Add JWT authentication and role-based access control to lead retrieval endpoints ([a5d1414](https://github.com/Notable-Nomads/nn-backend-api/commit/a5d1414b29784aa875880dfd52d0cf5d0799a98a))
+- Implement user creation and update functionality with DTOs and authentication guards ([2d7f8fa](https://github.com/Notable-Nomads/nn-backend-api/commit/2d7f8fa7a3490396e29dd26cc45cce31021d399d))
+- Integrate caching for API key validation and enhance key rotation logging ([d0d3955](https://github.com/Notable-Nomads/nn-backend-api/commit/d0d395598c41822d76315aa649210db0e57c4bbb))
+- Update API key controller path and add Postman environment files for development and production ([f9e105f](https://github.com/Notable-Nomads/nn-backend-api/commit/f9e105fd8708574b413c32b3cf1f5201571d3a56))
+- Update refresh token entity to allow nullable fields and add migration for schema changes ([8cfd336](https://github.com/Notable-Nomads/nn-backend-api/commit/8cfd33657d07a3a8e7d8dd807ce44a4f6a4dc00b))
+
+### Bug Fixes
+
+- Correct username and medium URL format for Milad Ghamati in BlogService ([c96ef0c](https://github.com/Notable-Nomads/nn-backend-api/commit/c96ef0c44229bf8063df22c829a3b0a81a156b38))
+
 ### [0.8.31](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.30...v0.8.31) (2025-02-11)
 
 ### Features
