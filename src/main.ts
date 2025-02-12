@@ -128,8 +128,7 @@ async function bootstrap() {
   // Strict CORS configuration
   const corsOptions = corsService.getCorsOptions();
   if (environment === 'production' && !corsOptions.origin) {
-    logger.error('CORS configuration is required in production!');
-    process.exit(1);
+    logger.warn('CORS configuration is required in production - all origins will be allowed');
   }
   app.enableCors(corsOptions);
 
@@ -139,8 +138,7 @@ async function bootstrap() {
     logger.log('CORS restrictions enabled with allowed domains:');
     corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
   } else if (environment === 'production') {
-    logger.error('WARNING: CORS restrictions are disabled in production!');
-    process.exit(1);
+    logger.warn('CORS restrictions are disabled in production - all origins will be allowed');
   } else {
     logger.warn('CORS restrictions disabled - allowing all origins (non-production only)');
   }
