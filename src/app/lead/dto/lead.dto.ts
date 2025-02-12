@@ -5,7 +5,6 @@ import {
   IsArray,
   IsOptional,
   IsBoolean,
-  IsUrl,
   MinLength,
   MaxLength,
   ArrayMinSize,
@@ -90,15 +89,17 @@ export class LeadDto {
   hasCompetitors: boolean;
 
   @ApiProperty({
-    description: 'Competitor URLs',
+    description: 'Competitor URLs or names',
     required: false,
     type: [String],
+    example: ['www.competitor.com', 'Competitor Name Inc.'],
   })
   @ValidateIf((o) => o.hasCompetitors === true)
-  @IsArray({ message: 'Competitor URLs must be provided as an array' })
-  @ArrayMinSize(1, { message: 'At least one competitor URL must be provided when hasCompetitors is true' })
-  @ArrayMaxSize(5, { message: 'Maximum of 5 competitor URLs allowed' })
-  @IsUrl({}, { each: true, message: 'Invalid URL format for competitor website' })
+  @IsArray({ message: 'Competitors must be provided as an array' })
+  @ArrayMinSize(1, { message: 'At least one competitor must be provided when hasCompetitors is true' })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 competitors allowed' })
+  @IsString({ each: true, message: 'Each competitor must be a string' })
+  @MaxLength(200, { each: true, message: 'Each competitor cannot exceed 200 characters' })
   competitorUrls?: string[];
 
   @ApiProperty({
