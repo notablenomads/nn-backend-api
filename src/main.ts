@@ -53,6 +53,7 @@ async function bootstrap() {
             '*.notablenomads.com',
             'https://nn-landing.vercel.app',
             'http://localhost:3000',
+            'http://localhost:8080',
           ],
           connectSrc: [
             "'self'",
@@ -63,6 +64,9 @@ async function bootstrap() {
             'wss://*.notablenomads.com',
             'https://nn-landing.vercel.app',
             'http://localhost:3000',
+            'http://localhost:8080',
+            'ws://localhost:3000',
+            'ws://localhost:8080',
           ],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],

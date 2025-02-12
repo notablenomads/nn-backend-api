@@ -10,7 +10,7 @@ services:
       APP_DESCRIPTION: ${APP_DESCRIPTION:-Notable Nomads Backend API}
       APP_VERSION: ${APP_VERSION:-v0.0.30}
       API_PREFIX: ${API_PREFIX:-v1}
-      CORS_ENABLED_DOMAINS: ${CORS_ENABLED_DOMAINS:-*.notablenomads.com,notablenomads.com}
+      CORS_ENABLED_DOMAINS: ${CORS_ENABLED_DOMAINS:-*.notablenomads.com,notablenomads.com,nn-landing.vercel.app,localhost:3000,localhost:8080}
       CORS_RESTRICT: ${CORS_RESTRICT:-true}
       # JWT Configuration
       JWT_SECRET: ${JWT_SECRET}
