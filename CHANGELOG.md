@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.35](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.34...v0.8.35) (2025-02-12)
+
+### Bug Fixes
+
+- Update CORS logging in production to warn instead of error ([c27f31a](https://github.com/Notable-Nomads/nn-backend-api/commit/c27f31a803dfa1fd507c97fa760d5950642fde3c))
+
 ### [0.8.34](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.33...v0.8.34) (2025-02-12)
 
 ### Bug Fixes
