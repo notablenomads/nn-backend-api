@@ -1,5 +1,5 @@
 import { Controller, Post, Put, Delete, Body, UseGuards, Headers } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { UnauthorizedException } from '@nestjs/common';
 import { ApiKeyService } from './api-key.service';
 import { AuthGuard } from '../../core/guards/auth.guard';
@@ -24,6 +24,11 @@ export class ApiKeyController {
 
   @Put('rotate')
   @Auth(AuthType.API_KEY)
+  @ApiHeader({
+    name: 'x-api-key',
+    description: 'API Key for authentication',
+    required: true,
+  })
   @ApiOperation({ summary: 'Rotate the current API key' })
   async rotateApiKey(@Headers('x-api-key') apiKey: string) {
     if (!apiKey) {
