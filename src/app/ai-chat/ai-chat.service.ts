@@ -19,13 +19,28 @@ export class AiChatService {
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
+
+    if (!apiKey) {
+      this.logger.error('GEMINI_API_KEY is not configured');
+      throw new Error('GEMINI_API_KEY is required');
+    }
+
+    this.logger.log('Initializing Gemini AI with API key');
     const genAI = new GoogleGenerativeAI(apiKey);
-    this.model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-001',
-    });
+
+    try {
+      this.model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-001',
+      });
+      this.logger.log('Gemini AI model initialized successfully');
+    } catch (error) {
+      this.logger.error(`Failed to initialize Gemini AI model: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   private convertToGeminiHistory(chatHistory: IChatMessage[] = []): Content[] {
+    this.logger.debug(`Converting chat history: ${JSON.stringify(chatHistory)}`);
     return chatHistory.map((msg) => ({
       role: msg.role,
       parts: [{ text: msg.content }],
@@ -33,22 +48,34 @@ export class AiChatService {
   }
 
   async generateResponse(prompt: string, chatHistory: IChatMessage[] = []) {
+    this.logger.log(`Generating response for prompt: ${prompt}`);
+    this.logger.debug(`Chat history length: ${chatHistory.length}`);
+
     try {
       const chat = this.model.startChat({
         history: this.convertToGeminiHistory(chatHistory),
         generationConfig: this.generationConfig,
       });
 
+      this.logger.debug('Chat started, sending message...');
       const result = await chat.sendMessage([{ text: prompt }]);
       const response = await result.response;
-      return response.text();
+      const text = response.text();
+
+      this.logger.log(`Generated response length: ${text.length}`);
+      this.logger.debug(`Response preview: ${text.substring(0, 100)}...`);
+
+      return text;
     } catch (error) {
-      this.logger.error(ERRORS.CHAT.PROCESSING.MESSAGE_FAILED({ reason: error.message }).message, error.stack);
-      throw error;
+      this.logger.error(`Failed to generate response: ${error.message}`, error.stack);
+      throw ERRORS.CHAT.PROCESSING.MESSAGE_FAILED({ reason: error.message });
     }
   }
 
   streamResponse(prompt: string, chatHistory: IChatMessage[] = []): Observable<string> {
+    this.logger.log(`Starting stream response for prompt: ${prompt}`);
+    this.logger.debug(`Chat history length: ${chatHistory.length}`);
+
     return new Observable((subscriber) => {
       let isFirstChunk = true;
       let accumulatedText = '';
@@ -60,6 +87,7 @@ export class AiChatService {
             generationConfig: this.generationConfig,
           });
 
+          this.logger.debug('Chat started, sending message stream...');
           const result = await chat.sendMessageStream([{ text: prompt }]);
 
           for await (const chunk of result.stream) {
@@ -67,8 +95,10 @@ export class AiChatService {
 
             if (chunkText) {
               accumulatedText += chunkText;
+              this.logger.debug(`Received chunk: ${chunkText}`);
 
               if (isFirstChunk) {
+                this.logger.debug('Sending first chunk');
                 subscriber.next(accumulatedText);
                 isFirstChunk = false;
                 accumulatedText = '';
@@ -76,6 +106,7 @@ export class AiChatService {
               }
 
               if (this.isCompleteSentence(accumulatedText)) {
+                this.logger.debug(`Sending complete sentence: ${accumulatedText}`);
                 subscriber.next(accumulatedText);
                 accumulatedText = '';
               }
@@ -83,13 +114,15 @@ export class AiChatService {
           }
 
           if (accumulatedText) {
+            this.logger.debug(`Sending final chunk: ${accumulatedText}`);
             subscriber.next(accumulatedText);
           }
 
+          this.logger.log('Stream completed successfully');
           subscriber.complete();
         } catch (error) {
+          this.logger.error(`Stream error: ${error.message}`, error.stack);
           const errorMessage = ERRORS.CHAT.PROCESSING.STREAM_ERROR({ reason: error.message });
-          this.logger.error(errorMessage.message, error.stack);
           subscriber.error(errorMessage);
         }
       })();
