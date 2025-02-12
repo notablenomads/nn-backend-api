@@ -1,14 +1,28 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiKey } from './api-key.entity';
-import { ApiKeyService } from './api-key.service';
-import { ApiKeyGuard } from './api-key.guard';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ApiKeyController } from './api-key.controller';
+import { ApiKeyService } from './api-key.service';
+import { ApiKey } from './api-key.entity';
+import { AuthGuard } from '../../core/guards/auth.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ApiKey])],
-  providers: [ApiKeyService, ApiKeyGuard],
+  imports: [
+    TypeOrmModule.forFeature([ApiKey]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') || '1d',
+        },
+      }),
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [ApiKeyController],
-  exports: [ApiKeyService, ApiKeyGuard],
+  providers: [ApiKeyService, AuthGuard],
+  exports: [ApiKeyService, AuthGuard],
 })
 export class ApiKeyModule {}
