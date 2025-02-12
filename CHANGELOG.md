@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.40](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.39...v0.8.40) (2025-02-12)
+
+### Features
+
+- Enhance logging and error handling in AI chat service and gateway ([2aa59cb](https://github.com/Notable-Nomads/nn-backend-api/commit/2aa59cbd7149b4c998906d1c9ff0ddf312f4d7d8))
+- Improve blog service to handle single and multiple RSS items and add debug logging ([e776a0e](https://github.com/Notable-Nomads/nn-backend-api/commit/e776a0e06f7fe26584c3dd7a2ec53ce656d6940e))
+- Update CORS settings to allow additional domains for development ([a8b90cc](https://github.com/Notable-Nomads/nn-backend-api/commit/a8b90cc3b2bb731f99631f27f142b55893c05513))
+
 ### [0.8.39](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.38...v0.8.39) (2025-02-12)
 
 ### [0.8.38](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.37...v0.8.38) (2025-02-12)
