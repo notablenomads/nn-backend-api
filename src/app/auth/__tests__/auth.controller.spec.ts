@@ -90,7 +90,7 @@ describe('AuthController', () => {
       refreshToken: 'valid-refresh-token',
     };
     const mockReq = {
-      user: { sub: 'user-id', exp: Math.floor(Date.now() / 1000) + 3600 },
+      user: { id: 'user-id', exp: Math.floor(Date.now() / 1000) + 3600 },
     };
 
     it('should refresh tokens successfully', async () => {
@@ -100,12 +100,12 @@ describe('AuthController', () => {
       const result = await controller.refreshTokens(refreshTokenDto, mockReq);
 
       expect(result).toBe(expectedResult);
-      expect(authService.refreshTokens).toHaveBeenCalledWith(refreshTokenDto.refreshToken, mockReq.user.sub);
+      expect(authService.refreshTokens).toHaveBeenCalledWith(refreshTokenDto.refreshToken, mockReq.user.id);
     });
 
     it('should throw UnauthorizedException for expired access token', async () => {
       const expiredReq = {
-        user: { sub: 'user-id', exp: Math.floor(Date.now() / 1000) - 3600 },
+        user: { id: 'user-id', exp: Math.floor(Date.now() / 1000) - 3600 },
       };
 
       await expect(controller.refreshTokens(refreshTokenDto, expiredReq)).rejects.toThrow(UnauthorizedException);
@@ -134,7 +134,7 @@ describe('AuthController', () => {
 
   describe('logoutAll', () => {
     const mockReq = {
-      user: { sub: 'user-id' },
+      user: { id: 'user-id' },
     };
 
     it('should logout from all sessions successfully', async () => {
@@ -142,7 +142,7 @@ describe('AuthController', () => {
 
       await controller.logoutAll(mockReq);
 
-      expect(authService.logoutAll).toHaveBeenCalledWith(mockReq.user.sub);
+      expect(authService.logoutAll).toHaveBeenCalledWith(mockReq.user.id);
     });
 
     it('should throw UnauthorizedException when logout all fails', async () => {

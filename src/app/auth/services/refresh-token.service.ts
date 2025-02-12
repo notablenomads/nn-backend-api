@@ -39,18 +39,56 @@ export class RefreshTokenService {
       userId,
       expiresAt,
       isValid: true,
-      wasUsed: false, // Initialize wasUsed to false
+      wasUsed: false,
     };
 
     const savedToken = await this.refreshTokenRepository.save(this.refreshTokenRepository.create(tokenData));
 
     return {
       id: savedToken.id,
-      token: plainToken, // Return plain token in response
+      token: plainToken,
       expiresAt: savedToken.expiresAt,
       isValid: savedToken.isValid,
       userId: savedToken.userId,
     };
+  }
+
+  async validateToken(plainToken: string): Promise<RefreshToken | null> {
+    const tokens = await this.refreshTokenRepository.find({
+      where: {
+        isValid: true,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+
+    for (const token of tokens) {
+      try {
+        const decryptedToken = this.cryptoService.decryptToken(token.token, token.iv, token.authTag);
+
+        if (this.cryptoService.compareTokens(decryptedToken, plainToken)) {
+          if (token.wasUsed) {
+            this.logger.warn(`Refresh token reuse detected for user ${token.userId}`);
+            await this.revokeAllUserTokens(token.userId);
+            token.isValid = false;
+            await this.refreshTokenRepository.save(token);
+            throw new UnauthorizedException('Token reuse detected. All sessions have been invalidated.');
+          }
+
+          token.wasUsed = true;
+          await this.refreshTokenRepository.save(token);
+
+          return token;
+        }
+      } catch (error) {
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
+        this.logger.error(`Error validating token: ${error.message}`);
+        continue;
+      }
+    }
+
+    return null;
   }
 
   async revokeToken(token: string): Promise<void> {
@@ -92,45 +130,6 @@ export class RefreshTokenService {
     }
 
     return newToken;
-  }
-
-  async validateToken(plainToken: string): Promise<RefreshToken | null> {
-    // Find all valid tokens first
-    const tokens = await this.refreshTokenRepository.find({
-      where: {
-        isValid: true,
-        expiresAt: MoreThan(new Date()),
-      },
-    });
-
-    // Try to find a matching token by decrypting and comparing
-    for (const token of tokens) {
-      try {
-        const decryptedToken = this.cryptoService.decryptToken(token.token, token.iv, token.authTag);
-
-        if (decryptedToken === plainToken) {
-          // Token reuse detection - if token was already used, revoke all tokens for the user
-          if (token.wasUsed) {
-            this.logger.warn(`Refresh token reuse detected for user ${token.userId}`);
-            await this.revokeAllUserTokens(token.userId);
-            token.isValid = false;
-            await this.refreshTokenRepository.save(token);
-            throw new UnauthorizedException('Token reuse detected. All sessions have been invalidated.');
-          }
-
-          // Mark token as used
-          token.wasUsed = true;
-          await this.refreshTokenRepository.save(token);
-
-          return { ...token, userId: token.userId };
-        }
-      } catch (error) {
-        this.logger.error(`Error decrypting token: ${error.message}`);
-        continue;
-      }
-    }
-
-    return null;
   }
 
   async cleanupExpiredTokens(): Promise<void> {
