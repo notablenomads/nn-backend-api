@@ -20,9 +20,9 @@ services:
       # Database
       DATABASE_HOST: ${DATABASE_HOST:-postgres}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-postgres}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-nn-postgres-admin}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_NAME: ${DATABASE_NAME:-nn-backend-db}
+      DATABASE_NAME: ${DATABASE_NAME:-nn-backend-db-production}
       DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
       # AWS SES
       AWS_REGION: ${AWS_REGION:-eu-central-1}
