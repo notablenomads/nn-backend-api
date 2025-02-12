@@ -8,7 +8,7 @@ import { Roles } from '../../core/decorators/roles.decorator';
 import { Role } from '../../core/enums/role.enum';
 
 @ApiTags('API Keys')
-@Controller('api-keys')
+@Controller('auth/api-keys')
 export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
