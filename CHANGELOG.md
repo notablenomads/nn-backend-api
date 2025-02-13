@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.44](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.43...v0.8.44) (2025-02-13)
+
+### Features
+
+- Add Docker Compose configurations for local and production environments ([3cd57e5](https://github.com/Notable-Nomads/nn-backend-api/commit/3cd57e58aa2f147b64887773fbc3de977e92e6e2))
+
 ### [0.8.43](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.42...v0.8.43) (2025-02-13)
 
 ### Features
