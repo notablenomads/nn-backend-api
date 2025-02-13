@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.45](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.44...v0.8.45) (2025-02-13)
+
+### Features
+
+- Enable global cache in Yarn configuration for improved performance ([06366d2](https://github.com/Notable-Nomads/nn-backend-api/commit/06366d2121d9779ae59d2e4c0057da04f44451e4))
+- Enhance health checks with database, disk, and memory indicators ([27037db](https://github.com/Notable-Nomads/nn-backend-api/commit/27037dbdb9709e12b54b1b8d7bef2ed492ca900b))
+- Enhance nginx configuration for improved SSL handling and proxy settings ([65575d2](https://github.com/Notable-Nomads/nn-backend-api/commit/65575d2467f2a3a730d821f5163cedec78a78102))
+- Update nginx configuration for production deployment and improve volume management ([86ffde4](https://github.com/Notable-Nomads/nn-backend-api/commit/86ffde4f285b9333ddbfed3d9da2f2e0722acfae))
+- Update PostgreSQL configuration in Docker Compose for improved health checks ([178c3d3](https://github.com/Notable-Nomads/nn-backend-api/commit/178c3d3f90d27f5382a71bb7151aae00a98f5317))
+
+### Bug Fixes
+
+- Update nginx configuration script to escape variables for proper parsing ([702031d](https://github.com/Notable-Nomads/nn-backend-api/commit/702031ddb56e6f16a92cd0a85b8f701d2d129763))
+
 ### [0.8.44](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.43...v0.8.44) (2025-02-13)
 
 ### Features
