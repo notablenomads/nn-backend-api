@@ -58,4 +58,12 @@ export const validationSchema = Joi.object({
 
   // Monitoring Configuration
   MONITORING_MEMORY_THRESHOLD_MS: Joi.number().default(1000).description('Memory logging threshold in milliseconds'),
+
+  // Database Configuration
+  DATABASE_HOST: Joi.string().required().description('Database host'),
+  DATABASE_PORT: Joi.number().default(5432).description('Database port'),
+  DATABASE_USERNAME: Joi.string().required().description('Database username'),
+  DATABASE_PASSWORD: Joi.string().required().description('Database password'),
+  DATABASE_NAME: Joi.string().required().description('Database name'),
+  DATABASE_SCHEMA: Joi.string().default('public').description('Database schema'),
 });
