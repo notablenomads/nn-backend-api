@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.43](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.42...v0.8.43) (2025-02-13)
+
+### Features
+
+- Add database configuration validation to environment schema ([9d8ea2d](https://github.com/Notable-Nomads/nn-backend-api/commit/9d8ea2d497f74de2b7e35cb2ee3ac5e922b2c4b8))
+
 ### [0.8.42](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.41...v0.8.42) (2025-02-13)
 
 ### Features
