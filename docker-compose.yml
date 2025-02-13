@@ -93,10 +93,6 @@ services:
     restart: unless-stopped
     ports:
       - '80:80'
-    volumes:
-      - ${NGINX_CONFIG:-./nginx.dev.conf}:/etc/nginx/conf.d/default.conf:ro
-      - ${SSL_CERT_PATH:-/dev/null}:/dev/null
-      - ${SSL_WWW_PATH:-/dev/null}:/dev/null
     depends_on:
       api:
         condition: service_healthy
