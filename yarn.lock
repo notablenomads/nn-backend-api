@@ -6037,7 +6037,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"check-disk-space@npm:3.4.0":
+"check-disk-space@npm:3.4.0, check-disk-space@npm:^3.4.0":
   version: 3.4.0
   resolution: "check-disk-space@npm:3.4.0"
   checksum: 10/73130c32e26aaa1eda359706d9cbcde21785285dd829ec2b850c59e88ce99d8ebf830d6849315b2d4bc7eed9082aaea7c5f065f1ace591f49d3851f0c21157f9
@@ -10813,6 +10813,7 @@ __metadata:
     axios: "npm:^1.7.9"
     bcrypt: "npm:^5.1.1"
     cache-manager: "npm:^6.4.0"
+    check-disk-space: "npm:^3.4.0"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.14.1"
     compression: "npm:^1.7.5"
