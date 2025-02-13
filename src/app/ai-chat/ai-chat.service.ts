@@ -30,7 +30,7 @@ export class AiChatService {
 
     try {
       this.model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-001',
+        model: 'tunedModels/notablenomadv11-kdwedlxam0zp',
       });
       this.logger.log('Gemini AI model initialized successfully');
     } catch (error) {
