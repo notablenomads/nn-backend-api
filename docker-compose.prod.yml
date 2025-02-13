@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  nginx:
+    ports:
+      - '443:443'
+    environment:
+      - NGINX_CONFIG=./nginx.prod.conf
+      - SSL_CERT_PATH=/etc/letsencrypt
+      - SSL_WWW_PATH=/var/www/certbot

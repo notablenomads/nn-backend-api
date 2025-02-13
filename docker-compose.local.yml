@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  nginx:
+    environment:
+      - NGINX_CONFIG=./nginx.dev.conf
+      - SSL_PORT=
+      - SSL_CERT_PATH=/dev/null
+      - SSL_WWW_PATH=/dev/null

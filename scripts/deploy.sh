@@ -329,7 +329,7 @@ docker pull "$DOCKER_HUB_USERNAME/$FRONTEND_APP_NAME:latest"
 # Step 4: Prepare nginx configuration
 log_info "Step 4: Preparing nginx configuration"
 generate_nginx_config
-scp nginx.conf "$SERVER_USER@$SERVER_IP:/root/nginx.conf"
+scp nginx.conf nginx.prod.conf "$SERVER_USER@$SERVER_IP:/root/
 
 # Step 5: Prepare server environment
 log_info "Step 5: Preparing server environment"
@@ -337,7 +337,7 @@ ensure_remote_dir "/root/secrets"
 
 # Step 6: Deploy to server
 log_info "Step 6: Deploying to server"
-scp docker-compose.yml "$SERVER_USER@$SERVER_IP:/root/"
+scp docker-compose.yml docker-compose.prod.yml "$SERVER_USER@$SERVER_IP:/root/"
 scp "$ENV_FILE" "$SERVER_USER@$SERVER_IP:$REMOTE_ENV_PATH"
 ssh "$SERVER_USER@$SERVER_IP" "chmod 600 $REMOTE_ENV_PATH && ln -sf $REMOTE_ENV_PATH /root/.env"
 
@@ -358,7 +358,10 @@ verify_ssl_certificates "$FRONTEND_DOMAIN" || {
 
 # Step 9: Start services
 log_info "Step 9: Starting services"
-ssh "$SERVER_USER@$SERVER_IP" "cd /root && docker compose pull && docker compose up -d"
+ssh "$SERVER_USER@$SERVER_IP" "cd /root && \
+    export DOCKER_HUB_TOKEN='$DOCKER_HUB_TOKEN' && \
+    $DOCKER_COMPOSE_CMD -f docker-compose.yml -f docker-compose.prod.yml pull && \
+    $DOCKER_COMPOSE_CMD -f docker-compose.yml -f docker-compose.prod.yml up -d"
 
 # Step 10: Verify deployment
 log_info "Step 10: Verifying deployment"

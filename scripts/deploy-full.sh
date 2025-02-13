@@ -120,7 +120,7 @@ cd /root || exit 1
 
 # Stop containers but keep volumes
 log_info "Stopping all containers..."
-docker compose down
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 # Remove all containers except postgres
 log_info "Removing containers (except postgres)..."

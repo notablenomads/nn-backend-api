@@ -66,7 +66,7 @@ cd /root
 
 # Stop containers but keep volumes
 log_info "Stopping all containers..."
-docker compose down
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 # Remove all containers except postgres
 log_info "Removing containers (except postgres)..."
@@ -98,7 +98,7 @@ fi
 
 # Remove nginx configuration
 log_info "Removing nginx configuration..."
-rm -rf /etc/nginx/conf.d/*
+rm -f /root/nginx.prod.conf /root/nginx.conf
 
 log_success "Cleanup completed!"
 EOF
