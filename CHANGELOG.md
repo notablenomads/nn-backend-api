@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.42](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.41...v0.8.42) (2025-02-13)
+
+### Features
+
+- Update AI model to use tuned version for improved performance ([37703f7](https://github.com/Notable-Nomads/nn-backend-api/commit/37703f7770e132c586b2a27e6b385df0b5187224))
+
 ### [0.8.41](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.40...v0.8.41) (2025-02-12)
 
 ### [0.8.40](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.39...v0.8.40) (2025-02-12)
