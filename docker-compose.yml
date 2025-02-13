@@ -64,6 +64,7 @@ services:
       POSTGRES_USER: ${DATABASE_USERNAME:-nn-postgres-admin}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME:-nn-backend-db-production}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:
@@ -72,7 +73,11 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME:-postgres} -h localhost']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DATABASE_USERNAME:-nn-postgres-admin} -d ${DATABASE_NAME:-nn-backend-db-production}',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
