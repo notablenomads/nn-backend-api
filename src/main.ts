@@ -52,21 +52,14 @@ async function bootstrap() {
             'cdn.socket.io',
             '*.notablenomads.com',
             'https://nn-landing.vercel.app',
-            'http://localhost:3000',
-            'http://localhost:8080',
           ],
           connectSrc: [
             "'self'",
-            ...(environment === 'development' ? ['ws://localhost:*', 'wss://localhost:*'] : []),
             'wss://api.notablenomads.com',
             'https://api.notablenomads.com',
             'https://*.notablenomads.com',
             'wss://*.notablenomads.com',
             'https://nn-landing.vercel.app',
-            'http://localhost:3000',
-            'http://localhost:8080',
-            'ws://localhost:3000',
-            'ws://localhost:8080',
           ],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:', '*.notablenomads.com', '*.amazonaws.com'],
@@ -77,11 +70,11 @@ async function bootstrap() {
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
           baseUri: ["'self'"],
-          upgradeInsecureRequests: environment === 'production' ? [] : null,
+          upgradeInsecureRequests: [],
         },
         reportOnly: false,
       },
-      crossOriginEmbedderPolicy: environment === 'production',
+      crossOriginEmbedderPolicy: true,
       crossOriginOpenerPolicy: { policy: 'same-origin' },
       crossOriginResourcePolicy: { policy: 'same-origin' },
       dnsPrefetchControl: { allow: false },
@@ -110,20 +103,21 @@ async function bootstrap() {
     );
 
     // Production-specific headers
-    if (environment === 'production') {
-      // Cache control headers
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('Surrogate-Control', 'no-store');
+    // Cache control headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
 
-      // Certificate Transparency
-      res.setHeader('Expect-CT', 'enforce, max-age=86400');
-    }
+    // Certificate Transparency
+    res.setHeader('Expect-CT', 'enforce, max-age=86400');
+
+    // Cross-Origin-Resource-Policy
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
     // Enhanced Clear-Site-Data for complete cleanup during logout
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
-      res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts","clientData"');
+      res.setHeader('Clear-Site-Data', '"cache","cookies","storage","executionContexts"');
     }
 
     next();
@@ -131,10 +125,17 @@ async function bootstrap() {
 
   // Strict CORS configuration
   const corsOptions = corsService.getCorsOptions();
-  if (environment === 'production' && !corsOptions.origin) {
-    logger.warn('CORS configuration is required in production - all origins will be allowed');
+  if (!corsOptions.origin && environment === 'production') {
+    throw new Error('CORS configuration is required in production - all origins will be blocked');
   }
-  app.enableCors(corsOptions);
+  app.enableCors({
+    ...corsOptions,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
+    exposedHeaders: ['Content-Disposition'],
+    maxAge: 3600,
+  });
 
   // Log CORS configuration
   const corsStatus = corsService.getStatus();
@@ -142,9 +143,9 @@ async function bootstrap() {
     logger.log('CORS restrictions enabled with allowed domains:');
     corsStatus.allowedDomains.forEach((domain) => logger.log(`- ${domain}`));
   } else if (environment === 'production') {
-    logger.warn('CORS restrictions are disabled in production - all origins will be allowed');
+    throw new Error('CORS restrictions must be enabled in production');
   } else {
-    logger.warn('CORS restrictions disabled - allowing all origins (non-production only)');
+    logger.warn('CORS restrictions disabled - allowing all origins (development only)');
   }
 
   // API versioning and global prefix
@@ -162,15 +163,18 @@ async function bootstrap() {
       },
       validateCustomDecorators: true, // Enable validation for custom decorators
       forbidUnknownValues: true, // Reject payloads with unknown properties
-      stopAtFirstError: false, // Collect all validation errors
+      stopAtFirstError: environment === 'production', // In production, fail fast
+      disableErrorMessages: environment === 'production', // Hide detailed errors in production
     }),
   );
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const performanceInterceptor = app.get(PerformanceInterceptor);
-  app.useGlobalInterceptors(performanceInterceptor);
+  if (environment !== 'production') {
+    const performanceInterceptor = app.get(PerformanceInterceptor);
+    app.useGlobalInterceptors(performanceInterceptor);
+  }
 
   // Global exception filters
   app.useGlobalFilters(new AllExceptionsFilter(config));
@@ -180,8 +184,8 @@ async function bootstrap() {
   const throttlerGuard = app.get(CustomThrottlerGuard);
   app.useGlobalGuards(throttlerGuard);
 
-  // Swagger documentation
-  const isSwaggerEnabled = config.get('app.enableSwagger');
+  // Swagger documentation - only enable in non-production
+  const isSwaggerEnabled = config.get('app.enableSwagger') && environment !== 'production';
   if (isSwaggerEnabled) {
     const packageInfo = packageInfoService.getPackageInfo();
     const options = new DocumentBuilder()
@@ -203,13 +207,31 @@ async function bootstrap() {
   }
 
   // Start the application
-  await app.listen(config.get('app.port'), config.get('app.host'));
+  const port = config.get('app.port');
+  const host = environment === 'production' ? '0.0.0.0' : config.get('app.host');
+
+  // Production-specific startup checks
+  if (environment === 'production') {
+    // Verify essential environment variables
+    const requiredEnvVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'CORS_ENABLED_DOMAINS'];
+
+    for (const envVar of requiredEnvVars) {
+      if (!config.get(envVar)) {
+        throw new Error(`Required environment variable ${envVar} is not set`);
+      }
+    }
+
+    logger.log('Production security checks passed');
+  }
+
+  await app.listen(port, host);
   const appUrl = await app.getUrl();
 
   // Log startup information
   logger.log(`Application is running on: ${appUrl}`);
   logger.log(`Environment: ${environment}`);
   if (isSwaggerEnabled) {
+    logger.warn('API Documentation is enabled - this should be disabled in production');
     logger.log(`API Documentation available at: ${appUrl}/${apiPrefix}/docs`);
   }
 }
