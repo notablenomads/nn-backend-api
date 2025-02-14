@@ -3,10 +3,16 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { LoggingService } from '../services/logging.service';
 import { LogLevel, LogActionType } from '../entities/log-entry.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Auth, AuthType } from '../../core/decorators/auth.decorator';
+import { Roles } from '../../core/decorators/roles.decorator';
+import { Role } from '../../core/enums/role.enum';
+import { GetLogsDto } from '../dto/get-logs.dto';
 
 @ApiTags('logging')
 @Controller('logs')
 @UseGuards(JwtAuthGuard)
+@Auth(AuthType.JWT)
+@Roles(Role.SUPER_ADMIN)
 @ApiBearerAuth()
 export class LoggingController {
   constructor(private readonly loggingService: LoggingService) {}
@@ -19,23 +25,11 @@ export class LoggingController {
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getLogs(
-    @Query('userId') userId?: string,
-    @Query('level') level?: LogLevel,
-    @Query('actionType') actionType?: LogActionType,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
+  async getLogs(@Query() query: GetLogsDto) {
     return this.loggingService.getLogs({
-      userId,
-      level,
-      actionType,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      page: page ? parseInt(page.toString(), 10) : undefined,
-      limit: limit ? parseInt(limit.toString(), 10) : undefined,
+      ...query,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
     });
   }
 }
