@@ -9,6 +9,8 @@ import { ITokens } from './interfaces/tokens.interface';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { CryptoService } from '../core/services/crypto.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
+import { LoggingService } from '../logging/services/logging.service';
+import { LogActionType } from '../logging/entities/log-entry.entity';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -24,17 +26,42 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly cryptoService: CryptoService,
     private readonly tokenBlacklistService: TokenBlacklistService,
+    private readonly loggingService: LoggingService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<ITokens> {
-    const user = await this.userService.register(registerDto);
-    return this.generateTokens(user);
+    try {
+      const user = await this.userService.register(registerDto);
+      await this.loggingService.logUserAction(
+        LogActionType.USER_REGISTRATION,
+        `User registered successfully: ${registerDto.email}`,
+        { userId: user.id },
+      );
+      return this.generateTokens(user);
+    } catch (error) {
+      await this.loggingService.logError(`Failed to register user: ${registerDto.email}`, error, {
+        metadata: { email: registerDto.email },
+      });
+      throw error;
+    }
   }
 
   async login(loginDto: LoginDto): Promise<ITokens> {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    await this.resetFailedAttempts(loginDto.email);
-    return this.generateTokens(user);
+    try {
+      const user = await this.validateUser(loginDto.email, loginDto.password);
+      await this.resetFailedAttempts(loginDto.email);
+      await this.loggingService.logUserAction(
+        LogActionType.USER_LOGIN,
+        `User logged in successfully: ${loginDto.email}`,
+        { userId: user.id },
+      );
+      return this.generateTokens(user);
+    } catch (error) {
+      await this.loggingService.logError(`Failed login attempt for user: ${loginDto.email}`, error, {
+        metadata: { email: loginDto.email },
+      });
+      throw error;
+    }
   }
 
   async validateUser(email: string, password: string): Promise<User> {
@@ -87,12 +114,18 @@ export class AuthService {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const validToken = await this.refreshTokenService.validateToken(refreshToken);
-    if (!validToken) {
-      throw new UnauthorizedException('Invalid refresh token');
+    try {
+      const token = await this.refreshTokenService.validateToken(refreshToken);
+      if (token) {
+        await this.loggingService.logUserAction(LogActionType.USER_LOGOUT, 'User logged out successfully', {
+          userId: token.userId,
+        });
+      }
+      await this.refreshTokenService.revokeToken(refreshToken);
+    } catch (error) {
+      await this.loggingService.logError('Error during logout', error);
+      throw error;
     }
-
-    await this.refreshTokenService.revokeToken(refreshToken);
   }
 
   async logoutAll(userId: string): Promise<void> {
