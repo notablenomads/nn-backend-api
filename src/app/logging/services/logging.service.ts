@@ -5,31 +5,20 @@ import { LogEntry, LogLevel, LogActionType } from '../entities/log-entry.entity'
 
 export interface ILogOptions {
   userId?: string;
-  sessionId?: string;
   metadata?: Record<string, any>;
   stackTrace?: string;
   requestId?: string;
   correlationId?: string;
   ipAddress?: string;
-  userAgent?: string;
   environment?: string;
   component?: string;
   version?: string;
-  performanceMetrics?: {
-    duration?: number;
-    memoryUsage?: number;
-    cpuUsage?: number;
-  };
   request?: {
     method?: string;
     url?: string;
-    headers?: Record<string, string>;
-    body?: any;
   };
   response?: {
     statusCode?: number;
-    headers?: Record<string, string>;
-    body?: any;
   };
 }
 
@@ -45,22 +34,19 @@ export class LoggingService {
   }
 
   async log(level: LogLevel, message: string, actionType?: LogActionType, options?: ILogOptions): Promise<LogEntry> {
-    const logEntry = await this.logRepository.create({
+    const logEntry = this.logRepository.create({
       level,
       message,
       actionType,
       userId: options?.userId,
-      sessionId: options?.sessionId,
       requestId: options?.requestId,
       correlationId: options?.correlationId,
       ipAddress: options?.ipAddress,
-      userAgent: options?.userAgent,
       environment: options?.environment || this.environment,
       component: options?.component,
       version: options?.version,
       metadata: options?.metadata,
       stackTrace: options?.stackTrace,
-      performanceMetrics: options?.performanceMetrics,
       request: options?.request,
       response: options?.response,
     });

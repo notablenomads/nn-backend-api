@@ -15,7 +15,9 @@ export enum LogActionType {
   USER_LOGIN = 'user_login',
   USER_LOGIN_FAILED = 'user_login_failed',
   USER_LOGOUT = 'user_logout',
+  USER_LOGOUT_FAILED = 'user_logout_failed',
   USER_LOGOUT_ALL = 'user_logout_all',
+  USER_LOGOUT_ALL_FAILED = 'user_logout_all_failed',
   USER_CREATED = 'user_created',
   USER_UPDATED = 'user_updated',
   USER_DELETED = 'user_deleted',
@@ -23,7 +25,10 @@ export enum LogActionType {
   USER_EMAIL_VERIFIED = 'user_email_verified',
   USER_UPDATE = 'user_update',
   USER_DELETE = 'user_delete',
+
+  // Token Actions
   TOKEN_REFRESH = 'token_refresh',
+  TOKEN_REFRESH_FAILED = 'token_refresh_failed',
   TOKEN_CREATED = 'token_created',
   TOKEN_DELETED = 'token_deleted',
   TOKEN_INVALIDATED = 'token_invalidated',
@@ -105,10 +110,6 @@ export class LogEntry {
 
   @Column({ nullable: true })
   @Index()
-  sessionId?: string;
-
-  @Column({ nullable: true })
-  @Index()
   requestId?: string;
 
   @Column({ nullable: true })
@@ -119,9 +120,6 @@ export class LogEntry {
   ipAddress?: string;
 
   @Column({ nullable: true })
-  userAgent?: string;
-
-  @Column({ nullable: true })
   @Index()
   environment?: string;
 
@@ -130,25 +128,14 @@ export class LogEntry {
   component?: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  performanceMetrics?: {
-    duration?: number;
-    memoryUsage?: number;
-    cpuUsage?: number;
-  };
-
-  @Column({ type: 'jsonb', nullable: true })
   request?: {
     method?: string;
     url?: string;
-    headers?: Record<string, string>;
-    body?: any;
   };
 
   @Column({ type: 'jsonb', nullable: true })
   response?: {
     statusCode?: number;
-    headers?: Record<string, string>;
-    body?: any;
   };
 
   @Column({ nullable: true })

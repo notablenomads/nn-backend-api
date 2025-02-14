@@ -152,19 +152,18 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix, { exclude: ['/'] });
   app.enableVersioning({ type: VersioningType.URI });
 
-  // Global pipes and interceptors with enhanced security
+  // Global pipes
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip properties not in DTO
-      forbidNonWhitelisted: true, // Security: Prevent unknown properties
-      transform: true, // Transform payloads to DTO instances
+      transform: true,
       transformOptions: {
-        enableImplicitConversion: false, // Security: Prevent implicit type coercion
+        enableImplicitConversion: true,
+        exposeDefaultValues: true,
       },
-      validateCustomDecorators: true,
-      forbidUnknownValues: true, // Security: Prevent unknown values
-      stopAtFirstError: false, // Show all validation errors
-      disableErrorMessages: false, // Show detailed errors
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      enableDebugMessages: environment === 'development',
+      stopAtFirstError: false,
     }),
   );
 

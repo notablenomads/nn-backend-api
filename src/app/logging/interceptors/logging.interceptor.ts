@@ -1,10 +1,10 @@
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { Request } from 'express';
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { LogLevel, LogActionType } from '../entities/log-entry.entity';
 import { LoggingService } from '../services/logging.service';
+import { ILogOptions } from '../services/logging.service';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -12,115 +12,49 @@ export class LoggingInterceptor implements NestInterceptor {
 
   constructor(private readonly loggingService: LoggingService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+    const request = context.switchToHttp().getRequest<Request>();
     const startTime = Date.now();
-    const requestId = uuidv4();
-    const ctx = context.switchToHttp();
-    const request = ctx.getRequest<Request>();
-    const response = ctx.getResponse<Response>();
 
-    // Extract user ID if available
-    const userId = request.user?.['id'];
-
-    // Basic request information
-    const requestInfo = {
-      method: request.method,
-      url: request.url,
-      headers: this.sanitizeHeaders(request.headers),
-      body: this.sanitizeBody(request.body),
-    };
-
-    // Log the incoming request
-    this.loggingService.log(LogLevel.INFO, `Incoming ${request.method} ${request.url}`, LogActionType.API_REQUEST, {
-      userId,
-      requestId,
+    const logOptions: ILogOptions = {
       ipAddress: request.ip,
-      userAgent: request.get('user-agent'),
-      request: requestInfo,
-      component: 'api',
-      metadata: {
-        query: request.query,
-        params: request.params,
+      requestId: request['requestId'],
+      correlationId: request['correlationId'],
+      request: {
+        method: request.method,
+        url: request.url,
       },
-    });
+    };
 
     return next.handle().pipe(
       tap({
-        next: (data: unknown) => {
+        next: (responseData: any) => {
           const duration = Date.now() - startTime;
-
-          // Log the successful response
-          this.loggingService.log(
-            LogLevel.INFO,
-            `Completed ${request.method} ${request.url}`,
-            LogActionType.API_RESPONSE,
-            {
-              userId,
-              requestId,
-              ipAddress: request.ip,
-              userAgent: request.get('user-agent'),
-              request: requestInfo,
-              response: {
-                statusCode: response.statusCode,
-                headers: this.sanitizeHeaders(response.getHeaders()),
-                body: this.sanitizeBody(data),
-              },
-              component: 'api',
-              performanceMetrics: {
-                duration,
-              },
-            },
-          );
-        },
-        error: (error: Error) => {
-          const duration = Date.now() - startTime;
-
-          // Log the error response
-          this.loggingService.logError(`Error processing ${request.method} ${request.url}`, error, {
-            userId,
-            requestId,
-            ipAddress: request.ip,
-            userAgent: request.get('user-agent'),
-            request: requestInfo,
-            response: {
-              statusCode: response.statusCode,
-              headers: this.sanitizeHeaders(response.getHeaders()),
-            },
-            component: 'api',
-            performanceMetrics: {
+          const response = context.switchToHttp().getResponse();
+          this.loggingService.log(LogLevel.INFO, 'API Request completed', LogActionType.API_REQUEST, {
+            ...logOptions,
+            metadata: {
               duration,
+              statusCode: response.statusCode,
+              responseType: typeof responseData,
+            },
+          });
+        },
+        error: (error: any) => {
+          const duration = Date.now() - startTime;
+          this.loggingService.log(LogLevel.ERROR, 'API Request failed', LogActionType.API_ERROR, {
+            ...logOptions,
+            metadata: {
+              duration,
+              error: error.message,
+              stack: error.stack,
+            },
+            response: {
+              statusCode: error.status || 500,
             },
           });
         },
       }),
     );
-  }
-
-  private sanitizeHeaders(headers: any): Record<string, string> {
-    const sanitized = { ...headers };
-    const sensitiveHeaders = ['authorization', 'cookie', 'set-cookie'];
-
-    sensitiveHeaders.forEach((header) => {
-      if (sanitized[header]) {
-        sanitized[header] = '[REDACTED]';
-      }
-    });
-
-    return sanitized;
-  }
-
-  private sanitizeBody(body: any): any {
-    if (!body) return body;
-
-    const sanitized = { ...body };
-    const sensitiveFields = ['password', 'token', 'refreshToken', 'secret', 'key'];
-
-    Object.keys(sanitized).forEach((key) => {
-      if (sensitiveFields.includes(key.toLowerCase())) {
-        sanitized[key] = '[REDACTED]';
-      }
-    });
-
-    return sanitized;
   }
 }
