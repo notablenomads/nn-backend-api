@@ -10,8 +10,9 @@ import { AuthModule } from './auth/auth.module';
 import { SecurityMiddleware } from './core/middleware/security.middleware';
 import { RequestSizeMiddleware } from './core/middleware/request-size.middleware';
 import { CliModule } from './cli/cli.module';
+import { LoggingModule } from './logging/logging.module';
 
-const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, AuthModule];
+const modules = [AiChatModule, EmailModule, BlogModule, LeadModule, UserModule, AuthModule, LoggingModule];
 
 @Module({
   imports: [CoreModule, HealthModule, CliModule, ...modules],

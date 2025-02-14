@@ -9,6 +9,8 @@ import { ITokens } from './interfaces/tokens.interface';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { CryptoService } from '../core/services/crypto.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
+import { LoggingService } from '../logging/services/logging.service';
+import { LogActionType } from '../logging/entities/log-entry.entity';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -24,17 +26,42 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly cryptoService: CryptoService,
     private readonly tokenBlacklistService: TokenBlacklistService,
+    private readonly loggingService: LoggingService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<ITokens> {
-    const user = await this.userService.register(registerDto);
-    return this.generateTokens(user);
+    try {
+      const user = await this.userService.register(registerDto);
+      await this.loggingService.logUserAction(
+        LogActionType.USER_REGISTRATION,
+        `User registered successfully: ${registerDto.email}`,
+        { userId: user.id },
+      );
+      return this.generateTokens(user);
+    } catch (error) {
+      await this.loggingService.logError(`Failed to register user: ${registerDto.email}`, error, {
+        metadata: { email: registerDto.email },
+      });
+      throw error;
+    }
   }
 
   async login(loginDto: LoginDto): Promise<ITokens> {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    await this.resetFailedAttempts(loginDto.email);
-    return this.generateTokens(user);
+    try {
+      const user = await this.validateUser(loginDto.email, loginDto.password);
+      await this.resetFailedAttempts(loginDto.email);
+      await this.loggingService.logUserAction(
+        LogActionType.USER_LOGIN,
+        `User logged in successfully: ${loginDto.email}`,
+        { userId: user.id },
+      );
+      return this.generateTokens(user);
+    } catch (error) {
+      await this.loggingService.logError(`Failed login attempt for user: ${loginDto.email}`, error, {
+        metadata: { email: loginDto.email },
+      });
+      throw error;
+    }
   }
 
   async validateUser(email: string, password: string): Promise<User> {
@@ -49,7 +76,7 @@ export class AuthService {
       throw new UnauthorizedException(errorMessage);
     }
 
-    const isPasswordValid = await user.validatePassword(password);
+    const isPasswordValid = await this.cryptoService.comparePasswords(password, user.password);
     if (!isPasswordValid) {
       await this.handleFailedLogin(email);
       throw new UnauthorizedException(errorMessage);
@@ -59,49 +86,73 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string, accessTokenUserId: string): Promise<ITokens> {
-    if (!refreshToken || typeof refreshToken !== 'string') {
-      throw new UnauthorizedException('Missing or invalid refresh token format');
+    try {
+      if (!refreshToken || typeof refreshToken !== 'string') {
+        throw new UnauthorizedException('Missing or invalid refresh token format');
+      }
+
+      const validToken = await this.refreshTokenService.validateToken(refreshToken);
+      if (!validToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Verify that the user from the access token matches the refresh token's user
+      if (validToken.userId !== accessTokenUserId) {
+        throw new UnauthorizedException('Token mismatch - possible security breach detected');
+      }
+
+      const user = await this.userService.findById(validToken.userId);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      await this.loggingService.logUserAction(LogActionType.TOKEN_REFRESH, `Token refreshed for user: ${user.email}`, {
+        userId: user.id,
+      });
+
+      return this.generateTokens(user);
+    } catch (error) {
+      await this.loggingService.logError(`Failed to refresh tokens for user ID: ${accessTokenUserId}`, error, {
+        userId: accessTokenUserId,
+      });
+      throw error;
     }
-
-    const validToken = await this.refreshTokenService.validateToken(refreshToken);
-    if (!validToken) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    // Verify that the user from the access token matches the refresh token's user
-    if (validToken.userId !== accessTokenUserId) {
-      throw new UnauthorizedException('Token mismatch - possible security breach detected');
-    }
-
-    const user = await this.userService.findById(validToken.userId);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    const newTokens = await this.generateTokens(user);
-
-    // Revoke the old refresh token
-    await this.refreshTokenService.revokeToken(refreshToken);
-
-    return newTokens;
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const validToken = await this.refreshTokenService.validateToken(refreshToken);
-    if (!validToken) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+    try {
+      const validToken = await this.refreshTokenService.validateToken(refreshToken);
+      if (!validToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
 
-    await this.refreshTokenService.revokeToken(refreshToken);
+      await this.refreshTokenService.revokeToken(refreshToken);
+      await this.loggingService.logUserAction(LogActionType.USER_LOGOUT, `User logged out successfully`, {
+        userId: validToken.userId,
+      });
+    } catch (error) {
+      await this.loggingService.logError('Failed to logout user', error, { metadata: { refreshToken } });
+      throw error;
+    }
   }
 
   async logoutAll(userId: string): Promise<void> {
-    const user = await this.userService.findById(userId);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
+    try {
+      const user = await this.userService.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
 
-    await this.refreshTokenService.revokeAllUserTokens(userId);
+      await this.refreshTokenService.revokeAllUserTokens(userId);
+      await this.loggingService.logUserAction(
+        LogActionType.USER_LOGOUT_ALL,
+        `All sessions logged out for user: ${user.email}`,
+        { userId },
+      );
+    } catch (error) {
+      await this.loggingService.logError('Failed to logout all sessions', error, { userId });
+      throw error;
+    }
   }
 
   private async generateTokens(user: User): Promise<ITokens> {

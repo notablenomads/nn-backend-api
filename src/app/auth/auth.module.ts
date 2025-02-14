@@ -17,12 +17,14 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
 import { CryptoService } from '../core/services/crypto.service';
+import { LoggingModule } from '../logging/logging.module';
 
 @Module({
   imports: [
     ApiKeyModule,
     UserModule,
     PassportModule,
+    LoggingModule,
     TypeOrmModule.forFeature([RefreshToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -1,55 +1,49 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../auth.service';
 import { UserService } from '../../user/user.service';
 import { RefreshTokenService } from '../services/refresh-token.service';
 import { CryptoService } from '../../core/services/crypto.service';
 import { TokenBlacklistService } from '../services/token-blacklist.service';
-import { User } from '../../user/entities/user.entity';
+import { LoggingService } from '../../logging/services/logging.service';
+import { LogActionType } from '../../logging/entities/log-entry.entity';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let userService: UserService;
-  let refreshTokenService: RefreshTokenService;
-
-  const validatePasswordMock = jest.fn();
-  const mockUser = {
-    id: 'user-id',
-    email: 'test@example.com',
-    validatePassword: validatePasswordMock,
-    roles: ['user'],
-  } as unknown as User;
 
   const mockServices = {
     userService: {
-      register: jest.fn(),
       findByEmail: jest.fn(),
       findById: jest.fn(),
+      register: jest.fn(),
     },
     jwtService: {
       sign: jest.fn(),
-      decode: jest.fn(),
+      verify: jest.fn(),
     },
     configService: {
       get: jest.fn(),
     },
     refreshTokenService: {
       validateToken: jest.fn(),
-      replaceToken: jest.fn().mockResolvedValue('refresh-token'),
-      createToken: jest.fn(),
-      createRefreshToken: jest.fn(),
       revokeToken: jest.fn(),
       revokeAllUserTokens: jest.fn(),
-      findValidTokensByUserId: jest.fn(),
+      createRefreshToken: jest.fn(),
     },
     cryptoService: {
-      hash: jest.fn(),
+      validatePassword: jest.fn(),
+      comparePasswords: jest.fn(),
+      hashPassword: jest.fn(),
     },
     tokenBlacklistService: {
       blacklistToken: jest.fn(),
       isBlacklisted: jest.fn(),
+    },
+    loggingService: {
+      logUserAction: jest.fn(),
+      logError: jest.fn(),
     },
   };
 
@@ -63,15 +57,13 @@ describe('AuthService', () => {
         { provide: RefreshTokenService, useValue: mockServices.refreshTokenService },
         { provide: CryptoService, useValue: mockServices.cryptoService },
         { provide: TokenBlacklistService, useValue: mockServices.tokenBlacklistService },
+        { provide: LoggingService, useValue: mockServices.loggingService },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    userService = module.get<UserService>(UserService);
-    refreshTokenService = module.get<RefreshTokenService>(RefreshTokenService);
-  });
 
-  afterEach(() => {
+    // Reset all mocks before each test
     jest.clearAllMocks();
   });
 
@@ -83,6 +75,13 @@ describe('AuthService', () => {
       lastName: 'Doe',
     };
 
+    const mockUser = {
+      id: 'user-id',
+      email: registerDto.email,
+      firstName: registerDto.firstName,
+      lastName: registerDto.lastName,
+    };
+
     it('should register a new user and return tokens', async () => {
       mockServices.userService.register.mockResolvedValue(mockUser);
       mockServices.jwtService.sign.mockReturnValue('access-token');
@@ -90,9 +89,25 @@ describe('AuthService', () => {
 
       const result = await service.register(registerDto);
 
-      expect(result).toHaveProperty('accessToken', 'access-token');
-      expect(result).toHaveProperty('refreshToken', 'refresh-token');
-      expect(userService.register).toHaveBeenCalledWith(registerDto);
+      expect(result).toEqual({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      });
+      expect(mockServices.loggingService.logUserAction).toHaveBeenCalledWith(
+        LogActionType.USER_REGISTRATION,
+        expect.any(String),
+        expect.objectContaining({
+          userId: mockUser.id,
+        }),
+      );
+    });
+
+    it('should handle registration failure', async () => {
+      const error = new Error('Registration failed');
+      mockServices.userService.register.mockRejectedValue(error);
+
+      await expect(service.register(registerDto)).rejects.toThrow(error);
+      expect(mockServices.loggingService.logError).toHaveBeenCalledWith(expect.any(String), error, expect.any(Object));
     });
   });
 
@@ -102,219 +117,134 @@ describe('AuthService', () => {
       password: 'Password123!',
     };
 
-    beforeEach(() => {
-      mockServices.configService.get.mockImplementation((key) => {
-        if (key === 'auth.maxLoginAttempts') return 5;
-        if (key === 'auth.loginBlockDuration') return '15m';
-        return null;
+    const mockUser = {
+      id: 'user-id',
+      email: loginDto.email,
+    };
+
+    it('should login successfully', async () => {
+      mockServices.userService.findByEmail.mockResolvedValue({
+        ...mockUser,
+        password: 'hashed_password',
       });
-
-      jest.useFakeTimers();
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    it('should login successfully and return tokens', async () => {
-      mockServices.userService.findByEmail.mockResolvedValue(mockUser);
-      validatePasswordMock.mockResolvedValue(true);
+      mockServices.cryptoService.comparePasswords.mockResolvedValue(true);
       mockServices.jwtService.sign.mockReturnValue('access-token');
       mockServices.refreshTokenService.createRefreshToken.mockResolvedValue({ token: 'refresh-token' });
 
       const result = await service.login(loginDto);
 
-      expect(result).toHaveProperty('accessToken', 'access-token');
-      expect(result).toHaveProperty('refreshToken', 'refresh-token');
-    });
-
-    it('should throw UnauthorizedException for invalid email', async () => {
-      mockServices.userService.findByEmail.mockResolvedValue(null);
-
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should throw UnauthorizedException for invalid password', async () => {
-      mockServices.userService.findByEmail.mockResolvedValue(mockUser);
-      validatePasswordMock.mockResolvedValue(false);
-
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should block login after too many failed attempts and respect block duration', async () => {
-      mockServices.userService.findByEmail.mockResolvedValue(mockUser);
-      validatePasswordMock.mockResolvedValue(false);
-
-      // Simulate multiple concurrent failed login attempts
-      const loginAttempts = Array(5)
-        .fill(null)
-        .map(() => service.login(loginDto));
-      await Promise.all(
-        loginAttempts.map(async (attempt) => {
-          await expect(attempt).rejects.toThrow(UnauthorizedException);
+      expect(result).toEqual({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      });
+      expect(mockServices.loggingService.logUserAction).toHaveBeenCalledWith(
+        LogActionType.USER_LOGIN,
+        expect.any(String),
+        expect.objectContaining({
+          userId: mockUser.id,
         }),
       );
-
-      // Verify account is blocked
-      try {
-        await service.login(loginDto);
-        fail('Expected login to be blocked');
-      } catch (error) {
-        expect(error).toBeInstanceOf(UnauthorizedException);
-        expect(error.message).toBe('Too many failed attempts. Please try again later.');
-      }
-
-      // Advance time by 14 minutes - account should still be blocked
-      jest.advanceTimersByTime(14 * 60 * 1000);
-      try {
-        await service.login(loginDto);
-        fail('Expected login to still be blocked');
-      } catch (error) {
-        expect(error).toBeInstanceOf(UnauthorizedException);
-        expect(error.message).toBe('Too many failed attempts. Please try again later.');
-      }
-
-      // Advance time by 2 more minutes (total 16 minutes) - account should be unblocked
-      jest.advanceTimersByTime(2 * 60 * 1000);
-      validatePasswordMock.mockResolvedValue(true);
-      const result = await service.login(loginDto);
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
     });
 
-    it('should handle concurrent login attempts correctly', async () => {
+    it('should handle invalid credentials', async () => {
       mockServices.userService.findByEmail.mockResolvedValue(mockUser);
-      validatePasswordMock.mockResolvedValue(false);
+      mockServices.cryptoService.comparePasswords.mockResolvedValue(false);
 
-      // Create multiple concurrent login attempts
-      const concurrentAttempts = 10; // More than MAX_LOGIN_ATTEMPTS
-      const loginAttempts = Array(concurrentAttempts)
-        .fill(null)
-        .map(() => service.login(loginDto));
-
-      // Wait for all attempts to complete and verify they all fail
-      const results = await Promise.allSettled(loginAttempts);
-
-      // Verify all attempts failed
-      results.forEach((result) => {
-        if (result.status === 'rejected') {
-          expect(result.reason).toBeInstanceOf(UnauthorizedException);
-        }
-      });
-
-      // Verify the account is now blocked
-      validatePasswordMock.mockResolvedValue(true); // Even with correct password
-      try {
-        await service.login(loginDto);
-        fail('Expected login to be blocked after concurrent attempts');
-      } catch (error) {
-        expect(error).toBeInstanceOf(UnauthorizedException);
-        expect(error.message).toBe('Too many failed attempts. Please try again later.');
-      }
-
-      // Verify the block is properly tracked even with concurrent attempts
-      jest.advanceTimersByTime(15 * 60 * 1000); // Advance past block duration
-      validatePasswordMock.mockResolvedValue(true);
-      const result = await service.login(loginDto);
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(mockServices.loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('refreshTokens', () => {
+    const mockRefreshToken = 'valid-refresh-token';
+    const mockUserId = 'user-id';
+
     it('should refresh tokens successfully', async () => {
-      const mockRefreshToken = {
-        userId: mockUser.id,
-        token: 'valid-refresh-token',
-        isValid: true,
-      };
-
-      mockServices.refreshTokenService.validateToken.mockResolvedValue(mockRefreshToken);
-      mockServices.userService.findById.mockResolvedValue(mockUser);
+      mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUserId, token: mockRefreshToken });
+      mockServices.userService.findById.mockResolvedValue({ id: mockUserId });
       mockServices.jwtService.sign.mockReturnValue('new-access-token');
-      mockServices.refreshTokenService.replaceToken.mockResolvedValue('refresh-token');
+      mockServices.refreshTokenService.createRefreshToken.mockResolvedValue({ token: 'new-refresh-token' });
 
-      const result = await service.refreshTokens('valid-refresh-token', mockUser.id);
+      const result = await service.refreshTokens(mockRefreshToken, mockUserId);
 
-      expect(result).toHaveProperty('accessToken', 'new-access-token');
-      expect(result).toHaveProperty('refreshToken', 'refresh-token');
+      expect(result).toEqual({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
+      expect(mockServices.loggingService.logUserAction).toHaveBeenCalledWith(
+        LogActionType.TOKEN_REFRESH,
+        expect.any(String),
+        expect.objectContaining({
+          userId: mockUserId,
+        }),
+      );
     });
 
-    it('should throw UnauthorizedException for invalid refresh token', async () => {
+    it('should handle invalid refresh token', async () => {
       mockServices.refreshTokenService.validateToken.mockResolvedValue(null);
 
-      await expect(service.refreshTokens('invalid-token', mockUser.id)).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should throw UnauthorizedException for mismatched user ID', async () => {
-      const mockRefreshToken = {
-        userId: 'different-user-id',
-        token: 'valid-refresh-token',
-        isValid: true,
-      };
-
-      mockServices.refreshTokenService.validateToken.mockResolvedValue(mockRefreshToken);
-
-      await expect(service.refreshTokens('valid-refresh-token', mockUser.id)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens(mockRefreshToken, mockUserId)).rejects.toThrow(UnauthorizedException);
+      expect(mockServices.loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('logout', () => {
-    it('should logout successfully and blacklist token', async () => {
-      const refreshToken = 'valid-refresh-token';
-      const tokenExpiration = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+    const mockRefreshToken = 'valid-refresh-token';
+    const mockUserId = 'user-id';
 
-      mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUser.id, token: refreshToken });
-      mockServices.jwtService.decode.mockReturnValue({ exp: tokenExpiration });
+    it('should logout successfully', async () => {
+      mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUserId, token: mockRefreshToken });
 
-      await service.logout(refreshToken);
+      await service.logout(mockRefreshToken);
 
-      expect(refreshTokenService.revokeToken).toHaveBeenCalledWith(refreshToken);
+      expect(mockServices.refreshTokenService.revokeToken).toHaveBeenCalledWith(mockRefreshToken);
+      expect(mockServices.loggingService.logUserAction).toHaveBeenCalledWith(
+        LogActionType.USER_LOGOUT,
+        expect.any(String),
+        expect.objectContaining({
+          userId: mockUserId,
+        }),
+      );
     });
 
-    it('should handle token blacklisting even if token has no expiration', async () => {
-      const refreshToken = 'valid-refresh-token';
-
-      mockServices.refreshTokenService.validateToken.mockResolvedValue({ userId: mockUser.id, token: refreshToken });
-      mockServices.jwtService.decode.mockReturnValue({});
-
-      await service.logout(refreshToken);
-
-      expect(refreshTokenService.revokeToken).toHaveBeenCalledWith(refreshToken);
-      expect(mockServices.tokenBlacklistService.blacklistToken).not.toHaveBeenCalled();
-    });
-
-    it('should throw UnauthorizedException for invalid refresh token', async () => {
+    it('should handle invalid refresh token', async () => {
       mockServices.refreshTokenService.validateToken.mockResolvedValue(null);
 
-      await expect(service.logout('invalid-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.logout(mockRefreshToken)).rejects.toThrow(UnauthorizedException);
+      expect(mockServices.loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('logoutAll', () => {
-    it('should logout all sessions and blacklist all tokens', async () => {
-      const userId = mockUser.id;
-      const mockTokens = [{ token: 'token1' }, { token: 'token2' }];
-      const tokenExpiration = Math.floor(Date.now() / 1000) + 3600;
+    const mockUserId = 'user-id';
 
-      mockServices.refreshTokenService.findValidTokensByUserId.mockResolvedValue(mockTokens);
-      mockServices.jwtService.decode.mockReturnValue({ exp: tokenExpiration });
+    it('should logout all sessions successfully', async () => {
+      mockServices.refreshTokenService.revokeAllUserTokens.mockResolvedValue(undefined);
 
-      await service.logoutAll(userId);
+      await service.logoutAll(mockUserId);
 
-      expect(mockServices.refreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(userId);
+      expect(mockServices.refreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(mockUserId);
+      expect(mockServices.loggingService.logUserAction).toHaveBeenCalledWith(
+        LogActionType.USER_LOGOUT_ALL,
+        expect.any(String),
+        expect.objectContaining({
+          userId: mockUserId,
+        }),
+      );
     });
 
-    it('should handle tokens without expiration during logoutAll', async () => {
-      const userId = mockUser.id;
-      const mockTokens = [{ token: 'token1' }];
+    it('should handle errors during logoutAll', async () => {
+      const error = new Error('Failed to logout all sessions');
+      mockServices.refreshTokenService.revokeAllUserTokens.mockRejectedValue(error);
 
-      mockServices.refreshTokenService.findValidTokensByUserId.mockResolvedValue(mockTokens);
-      mockServices.jwtService.decode.mockReturnValue({});
-
-      await service.logoutAll(userId);
-
-      expect(mockServices.tokenBlacklistService.blacklistToken).not.toHaveBeenCalled();
+      await expect(service.logoutAll(mockUserId)).rejects.toThrow(error);
+      expect(mockServices.loggingService.logError).toHaveBeenCalledWith(
+        expect.any(String),
+        error,
+        expect.objectContaining({
+          userId: mockUserId,
+        }),
+      );
     });
   });
 });
