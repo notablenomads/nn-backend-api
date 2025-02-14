@@ -213,7 +213,16 @@ async function bootstrap() {
   // Production-specific startup checks
   if (environment === 'production') {
     // Verify essential environment variables
-    const requiredEnvVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'CORS_ENABLED_DOMAINS'];
+    const requiredEnvVars = [
+      'JWT_SECRET',
+      'JWT_REFRESH_SECRET',
+      'DATABASE_HOST',
+      'DATABASE_PORT',
+      'DATABASE_USERNAME',
+      'DATABASE_PASSWORD',
+      'DATABASE_NAME',
+      'CORS_ENABLED_DOMAINS',
+    ];
 
     for (const envVar of requiredEnvVars) {
       if (!config.get(envVar)) {
