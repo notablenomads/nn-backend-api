@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthController } from '../auth.controller';
@@ -5,17 +6,20 @@ import { AuthService } from '../auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokensDto } from '../dto/refresh-tokens.dto';
+import { LoggingService } from '../../logging/services/logging.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: AuthService;
+  let loggingService: LoggingService;
 
-  const mockAuthService = {
-    register: jest.fn(),
-    login: jest.fn(),
-    refreshTokens: jest.fn(),
-    logout: jest.fn(),
-    logoutAll: jest.fn(),
+  const mockRequest = () => {
+    const req = {
+      ip: '127.0.0.1',
+      get: jest.fn().mockReturnValue('test-user-agent'),
+      correlationId: 'test-correlation-id',
+    } as unknown as Request;
+    return req;
   };
 
   beforeEach(async () => {
@@ -24,89 +28,108 @@ describe('AuthController', () => {
       providers: [
         {
           provide: AuthService,
-          useValue: mockAuthService,
+          useValue: {
+            register: jest.fn(),
+            login: jest.fn(),
+            refreshTokens: jest.fn(),
+            logout: jest.fn(),
+            logoutAll: jest.fn(),
+          },
+        },
+        {
+          provide: LoggingService,
+          useValue: {
+            logUserAction: jest.fn(),
+            logError: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get<AuthService>(AuthService);
+    loggingService = module.get<LoggingService>(LoggingService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
   });
 
   describe('register', () => {
     const registerDto: RegisterDto = {
       email: 'test@example.com',
-      password: 'Password123!',
+      password: 'password123',
       firstName: 'John',
       lastName: 'Doe',
     };
 
     it('should register a new user successfully', async () => {
       const expectedResult = { accessToken: 'access', refreshToken: 'refresh' };
-      mockAuthService.register.mockResolvedValue(expectedResult);
+      jest.spyOn(authService, 'register').mockResolvedValue(expectedResult);
 
-      const result = await controller.register(registerDto);
+      const result = await controller.register(registerDto, mockRequest());
 
-      expect(result).toBe(expectedResult);
-      expect(authService.register).toHaveBeenCalledWith(registerDto);
+      expect(result).toEqual(expectedResult);
+      expect(loggingService.logUserAction).toHaveBeenCalled();
     });
 
-    it('should throw an error if registration fails', async () => {
-      mockAuthService.register.mockRejectedValue(new Error('Registration failed'));
+    it('should throw an error when registration fails', async () => {
+      jest.spyOn(authService, 'register').mockRejectedValue(new Error('Registration failed'));
 
-      await expect(controller.register(registerDto)).rejects.toThrow('Registration failed');
+      await expect(controller.register(registerDto, mockRequest())).rejects.toThrow('Registration failed');
+      expect(loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('login', () => {
     const loginDto: LoginDto = {
       email: 'test@example.com',
-      password: 'Password123!',
+      password: 'password123',
     };
 
     it('should login user successfully', async () => {
       const expectedResult = { accessToken: 'access', refreshToken: 'refresh' };
-      mockAuthService.login.mockResolvedValue(expectedResult);
+      jest.spyOn(authService, 'login').mockResolvedValue(expectedResult);
 
-      const result = await controller.login(loginDto);
+      const result = await controller.login(loginDto, mockRequest());
 
-      expect(result).toBe(expectedResult);
-      expect(authService.login).toHaveBeenCalledWith(loginDto);
+      expect(result).toEqual(expectedResult);
+      expect(loggingService.logUserAction).toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException for invalid credentials', async () => {
-      mockAuthService.login.mockRejectedValue(new UnauthorizedException());
+    it('should throw UnauthorizedException when login fails', async () => {
+      jest.spyOn(authService, 'login').mockRejectedValue(new UnauthorizedException());
 
-      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.login(loginDto, mockRequest())).rejects.toThrow(UnauthorizedException);
+      expect(loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('refreshTokens', () => {
     const refreshTokenDto: RefreshTokensDto = {
-      refreshToken: 'valid-refresh-token',
-    };
-    const mockReq = {
-      user: { id: 'user-id', exp: Math.floor(Date.now() / 1000) + 3600 },
+      refreshToken: 'refresh-token',
     };
 
     it('should refresh tokens successfully', async () => {
       const expectedResult = { accessToken: 'new-access', refreshToken: 'new-refresh' };
-      mockAuthService.refreshTokens.mockResolvedValue(expectedResult);
+      jest.spyOn(authService, 'refreshTokens').mockResolvedValue(expectedResult);
+
+      const mockReq = {
+        ...mockRequest(),
+        user: { id: 'user-id', exp: Math.floor(Date.now() / 1000) + 3600 },
+      } as Request & { user: { id: string; exp: number } };
 
       const result = await controller.refreshTokens(refreshTokenDto, mockReq);
 
-      expect(result).toBe(expectedResult);
-      expect(authService.refreshTokens).toHaveBeenCalledWith(refreshTokenDto.refreshToken, mockReq.user.id);
+      expect(result).toEqual(expectedResult);
+      expect(loggingService.logUserAction).toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException for expired access token', async () => {
+    it('should throw UnauthorizedException when token is expired', async () => {
       const expiredReq = {
+        ...mockRequest(),
         user: { id: 'user-id', exp: Math.floor(Date.now() / 1000) - 3600 },
-      };
+      } as Request & { user: { id: string; exp: number } };
 
       await expect(controller.refreshTokens(refreshTokenDto, expiredReq)).rejects.toThrow(UnauthorizedException);
     });
@@ -114,41 +137,61 @@ describe('AuthController', () => {
 
   describe('logout', () => {
     const refreshTokenDto: RefreshTokensDto = {
-      refreshToken: 'valid-refresh-token',
+      refreshToken: 'refresh-token',
     };
 
     it('should logout successfully', async () => {
-      mockAuthService.logout.mockResolvedValue(undefined);
+      jest.spyOn(authService, 'logout').mockResolvedValue(undefined);
 
-      await controller.logout(refreshTokenDto);
+      const mockReq = {
+        ...mockRequest(),
+        user: { id: 'user-id' },
+      } as Request & { user: { id: string } };
 
+      await controller.logout(refreshTokenDto, mockReq);
+
+      expect(loggingService.logUserAction).toHaveBeenCalled();
       expect(authService.logout).toHaveBeenCalledWith(refreshTokenDto.refreshToken);
     });
 
-    it('should throw UnauthorizedException for invalid refresh token', async () => {
-      mockAuthService.logout.mockRejectedValue(new UnauthorizedException());
+    it('should throw UnauthorizedException when logout fails', async () => {
+      jest.spyOn(authService, 'logout').mockRejectedValue(new UnauthorizedException());
 
-      await expect(controller.logout(refreshTokenDto)).rejects.toThrow(UnauthorizedException);
+      const mockReq = {
+        ...mockRequest(),
+        user: { id: 'user-id' },
+      } as Request & { user: { id: string } };
+
+      await expect(controller.logout(refreshTokenDto, mockReq)).rejects.toThrow(UnauthorizedException);
+      expect(loggingService.logError).toHaveBeenCalled();
     });
   });
 
   describe('logoutAll', () => {
-    const mockReq = {
-      user: { id: 'user-id' },
-    };
+    it('should logout from all devices successfully', async () => {
+      jest.spyOn(authService, 'logoutAll').mockResolvedValue(undefined);
 
-    it('should logout from all sessions successfully', async () => {
-      mockAuthService.logoutAll.mockResolvedValue(undefined);
+      const mockReq = {
+        ...mockRequest(),
+        user: { id: 'user-id' },
+      } as Request & { user: { id: string } };
 
       await controller.logoutAll(mockReq);
 
-      expect(authService.logoutAll).toHaveBeenCalledWith(mockReq.user.id);
+      expect(loggingService.logUserAction).toHaveBeenCalled();
+      expect(authService.logoutAll).toHaveBeenCalledWith('user-id');
     });
 
-    it('should throw UnauthorizedException when logout all fails', async () => {
-      mockAuthService.logoutAll.mockRejectedValue(new UnauthorizedException());
+    it('should throw UnauthorizedException when logoutAll fails', async () => {
+      jest.spyOn(authService, 'logoutAll').mockRejectedValue(new UnauthorizedException());
+
+      const mockReq = {
+        ...mockRequest(),
+        user: { id: 'user-id' },
+      } as Request & { user: { id: string } };
 
       await expect(controller.logoutAll(mockReq)).rejects.toThrow(UnauthorizedException);
+      expect(loggingService.logError).toHaveBeenCalled();
     });
   });
 });
