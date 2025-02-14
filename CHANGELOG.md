@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.49](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.48...v0.8.49) (2025-02-14)
+
+### Features
+
+- **auth:** Enhance token handling with improved error logging and user action tracking ([a9f1ac0](https://github.com/Notable-Nomads/nn-backend-api/commit/a9f1ac0a5c3b306d542ec9b866a1b2ffd64766ad))
+- **logging:** Add correlation ID middleware and logging interceptor with enhanced logging capabilities ([e011e34](https://github.com/Notable-Nomads/nn-backend-api/commit/e011e34c87a0c3409e0154593a46ebfa74b609ea))
+- **logging:** Add migration for log_entries table and associated enums ([fd15941](https://github.com/Notable-Nomads/nn-backend-api/commit/fd159417d241b6d6ea4ca4f392397a2308aaf7c1))
+- **logging:** Implement logging module and integrate with user and auth services ([775f335](https://github.com/Notable-Nomads/nn-backend-api/commit/775f335c517383796312ec7edfdc190aba4cb9cc))
+- **logging:** Refactor getLogs method to use GetLogsDto for improved query handling and add role-based access control ([c776379](https://github.com/Notable-Nomads/nn-backend-api/commit/c77637903365b77ff35be929e2ade44368a7c41d))
+
 ### [0.8.48](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.47...v0.8.48) (2025-02-14)
 
 ### Features
