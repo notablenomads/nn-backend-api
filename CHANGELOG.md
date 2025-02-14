@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.47](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.46...v0.8.47) (2025-02-14)
+
+### Bug Fixes
+
+- Databse required environment variables for production startup checks ([4cf993a](https://github.com/Notable-Nomads/nn-backend-api/commit/4cf993a6499db9fcb52686fff013be93814220bc))
+
 ### [0.8.46](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.45...v0.8.46) (2025-02-14)
 
 ### Features
