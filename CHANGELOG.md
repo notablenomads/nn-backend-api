@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.50](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.49...v0.8.50) (2025-02-14)
+
+### Features
+
+- **logging:** Simplify logging structure by removing unused fields and enhancing log action types ([a209503](https://github.com/Notable-Nomads/nn-backend-api/commit/a2095031681e5cb0ddbd5ad292d113dbf5ee6ac3))
+
 ### [0.8.49](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.48...v0.8.49) (2025-02-14)
 
 ### Features
