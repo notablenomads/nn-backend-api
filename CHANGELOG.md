@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.51](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.50...v0.8.51) (2025-02-14)
+
+### Features
+
+- **logging:** Enhance LoggingInterceptor to skip logging for health check requests and improve request logging logic ([0373340](https://github.com/Notable-Nomads/nn-backend-api/commit/0373340c7a79c2cc610cb1ed163685eedc8b8b2e))
+
 ### [0.8.50](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.49...v0.8.50) (2025-02-14)
 
 ### Features
