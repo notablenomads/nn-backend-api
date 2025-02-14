@@ -156,15 +156,15 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strip properties not in DTO
-      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+      forbidNonWhitelisted: true, // Security: Prevent unknown properties
       transform: true, // Transform payloads to DTO instances
       transformOptions: {
-        enableImplicitConversion: false, // Prevent implicit type coercion
+        enableImplicitConversion: false, // Security: Prevent implicit type coercion
       },
-      validateCustomDecorators: true, // Enable validation for custom decorators
-      forbidUnknownValues: true, // Reject payloads with unknown properties
-      stopAtFirstError: environment === 'production', // In production, fail fast
-      disableErrorMessages: environment === 'production', // Hide detailed errors in production
+      validateCustomDecorators: true,
+      forbidUnknownValues: true, // Security: Prevent unknown values
+      stopAtFirstError: false, // Show all validation errors
+      disableErrorMessages: false, // Show detailed errors
     }),
   );
 
