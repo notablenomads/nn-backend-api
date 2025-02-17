@@ -53,7 +53,8 @@ jest.mock('bcrypt', () => ({
 }));
 
 jest.mock('@nestjs/typeorm', () => ({
-  injectRepository: () => () => {},
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  InjectRepository: () => () => {},
   getRepositoryToken: jest.fn().mockReturnValue('MockRepositoryToken'),
 }));
 
