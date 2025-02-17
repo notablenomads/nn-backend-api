@@ -9,6 +9,8 @@ import {
   Timeline,
   Budget,
   ContactMethod,
+  MobileAppPlatform,
+  AIMLDatasetStatus,
 } from '../enums/lead.enum';
 import { ILead } from '../interfaces/lead.interface';
 import { User } from '../../user/entities/user.entity';
@@ -97,6 +99,20 @@ export class Lead implements ILead {
 
   @Column('text', { nullable: true })
   additionalNotes?: string;
+
+  @Column({
+    type: 'enum',
+    enum: MobileAppPlatform,
+    nullable: true,
+  })
+  mobileAppPlatform?: MobileAppPlatform;
+
+  @Column({
+    type: 'enum',
+    enum: AIMLDatasetStatus,
+    nullable: true,
+  })
+  aimlDatasetStatus?: AIMLDatasetStatus;
 
   @ManyToOne(() => User, (user) => user.leads)
   user: User;

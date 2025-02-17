@@ -63,3 +63,15 @@ export enum ContactMethod {
   PHONE = 'PHONE',
   WHATSAPP = 'WHATSAPP',
 }
+
+export enum MobileAppPlatform {
+  IOS = 'IOS',
+  ANDROID = 'ANDROID',
+  BOTH = 'BOTH',
+}
+
+export enum AIMLDatasetStatus {
+  YES = 'YES',
+  NO = 'NO',
+  NOT_SURE = 'NOT_SURE',
+}

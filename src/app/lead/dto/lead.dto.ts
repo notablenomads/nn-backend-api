@@ -23,6 +23,8 @@ import {
   Timeline,
   Budget,
   ContactMethod,
+  MobileAppPlatform,
+  AIMLDatasetStatus,
 } from '../enums/lead.enum';
 
 export class LeadDto {
@@ -137,6 +139,24 @@ export class LeadDto {
   @IsNotEmpty({ message: 'Budget is required' })
   @IsEnum(Budget, { message: 'Please select a valid budget range' })
   budget: Budget;
+
+  @ApiPropertyOptional({
+    description: 'Target platform for mobile app',
+    enum: MobileAppPlatform,
+  })
+  @ValidateIf((o) => o.services?.includes(ServiceType.MOBILE_APP))
+  @IsNotEmpty({ message: 'Please select a target platform for your mobile app' })
+  @IsEnum(MobileAppPlatform, { message: 'Please select a valid mobile app platform' })
+  mobileAppPlatform?: MobileAppPlatform;
+
+  @ApiPropertyOptional({
+    description: 'Status of AI/ML datasets/models',
+    enum: AIMLDatasetStatus,
+  })
+  @ValidateIf((o) => o.services?.includes(ServiceType.AI_ML))
+  @IsNotEmpty({ message: 'Please indicate if you have datasets/models for your AI/ML project' })
+  @IsEnum(AIMLDatasetStatus, { message: 'Please select a valid dataset status' })
+  aimlDatasetStatus?: AIMLDatasetStatus;
 
   @ApiProperty({
     description: 'Contact name',
