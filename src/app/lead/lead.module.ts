@@ -6,9 +6,10 @@ import { LeadService } from './lead.service';
 import { LeadController } from './lead.controller';
 import { LeadValidationService } from './services/lead-validation.service';
 import { Lead } from './entities/lead.entity';
+import { AwsModule } from '../aws/aws.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Lead]), EmailModule, ApiKeyModule],
+  imports: [TypeOrmModule.forFeature([Lead]), EmailModule, ApiKeyModule, AwsModule],
   providers: [LeadService, LeadValidationService],
   controllers: [LeadController],
   exports: [LeadService],
