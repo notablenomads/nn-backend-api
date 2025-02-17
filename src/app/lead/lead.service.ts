@@ -26,7 +26,6 @@ import {
 @Injectable()
 export class LeadService {
   private readonly logger = new Logger(LeadService.name);
-  private readonly sesClient: SESClient;
   private readonly fromEmail: string;
   private readonly toEmail: string;
   private readonly templateConfig: {
@@ -39,23 +38,8 @@ export class LeadService {
     @InjectRepository(Lead)
     private readonly leadRepository: Repository<Lead>,
     private readonly configService: ConfigService,
+    private readonly sesClient: SESClient,
   ) {
-    const region = this.configService.get<string>('aws.region');
-    const accessKeyId = this.configService.get<string>('aws.accessKeyId');
-    const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
-
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error(ERRORS.GENERIC.MISSING_CONFIG({ configName: 'AWS credentials' }).message);
-    }
-
-    this.sesClient = new SESClient({
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
-
     this.fromEmail = this.configService.get<string>('email.fromAddress') || 'no-reply@mail.notablenomads.com';
     this.toEmail = this.configService.get<string>('email.toAddress');
 
@@ -106,19 +90,22 @@ export class LeadService {
     }
   }
 
+  async create(leadDto: LeadDto): Promise<LeadResponseDto> {
+    const lead = this.leadRepository.create(leadDto);
+    const savedLead = await this.leadRepository.save(lead);
+    return this.mapToResponseDto(savedLead);
+  }
+
   async findAll(): Promise<LeadResponseDto[]> {
-    const leads = await this.leadRepository.find({
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+    const leads = await this.leadRepository.find();
     return leads.map(this.mapToResponseDto);
   }
 
   async findOne(id: string): Promise<LeadResponseDto> {
-    const lead = await this.leadRepository.findOneOrFail({
-      where: { id },
-    });
+    const lead = await this.leadRepository.findOne({ where: { id } });
+    if (!lead) {
+      throw new Error('Lead not found');
+    }
     return this.mapToResponseDto(lead);
   }
 
@@ -217,7 +204,9 @@ export class LeadService {
           ['Type', this.formatProjectType(leadData.projectType)],
           ['Services', this.formatServices(leadData.services)],
           ['Description', leadData.projectDescription],
-          ...(leadData.projectType === 'EXISTING' ? [['Main Challenge', leadData.existingProjectChallenge]] : []),
+          ...(leadData.projectType === 'EXISTING'
+            ? [['Main Challenges', leadData.existingProjectChallenges?.join(', ')]]
+            : []),
         ],
       },
       {

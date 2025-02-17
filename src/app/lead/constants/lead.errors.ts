@@ -4,14 +4,20 @@ const errorService = new ErrorService();
 
 export const LEAD_ERRORS = {
   VALIDATION: {
+    INVALID_INPUT: errorService.createError('LEAD_VALIDATION_INVALID_INPUT', 'Invalid input data', 'LEAD'),
     EXISTING_PROJECT_CHALLENGE: errorService.createError(
       'LEAD_VALIDATION_EXISTING_PROJECT_CHALLENGE',
-      'Challenge must be specified for existing projects',
+      'Please specify the main challenge for your existing project',
+      'LEAD',
+    ),
+    PROJECT_CHALLENGES: errorService.createError(
+      'LEAD_VALIDATION_PROJECT_CHALLENGES',
+      'Please specify at least one challenge for your existing project',
       'LEAD',
     ),
     COMPETITOR_URLS: errorService.createError(
       'LEAD_VALIDATION_COMPETITOR_URLS',
-      'Competitor URLs must be provided when hasCompetitors is true',
+      'Please provide at least one competitor URL',
       'LEAD',
     ),
   },

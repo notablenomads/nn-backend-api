@@ -30,9 +30,10 @@ export class Lead implements ILead {
   @Column({
     type: 'enum',
     enum: ExistingProjectChallenge,
+    array: true,
     nullable: true,
   })
-  existingProjectChallenge?: ExistingProjectChallenge;
+  existingProjectChallenges?: ExistingProjectChallenge[];
 
   @Column('text')
   projectDescription: string;
