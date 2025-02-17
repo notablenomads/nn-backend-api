@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.54](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.53...v0.8.54) (2025-02-17)
+
+### Bug Fixes
+
+- **tests:** Correct naming convention for InjectRepository mock in lead service tests ([69310a5](https://github.com/Notable-Nomads/nn-backend-api/commit/69310a517ed1ecd952f6b151afdf0a544f6332aa))
+
 ### [0.8.53](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.52...v0.8.53) (2025-02-17)
 
 ### Features
