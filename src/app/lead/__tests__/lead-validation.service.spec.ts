@@ -18,20 +18,22 @@ describe('LeadValidationService', () => {
   let service: LeadValidationService;
 
   const mockValidLead: LeadDto = {
+    projectType: ProjectType.EXISTING,
+    existingProjectChallenges: [ExistingProjectChallenge.PERFORMANCE],
+    projectDescription: 'Test project',
     services: [ServiceType.WEB_APP],
-    projectType: ProjectType.NEW,
-    projectDescription: 'Test project description',
-    targetAudience: TargetAudience.BUSINESSES,
-    industry: Industry.SAAS,
     hasCompetitors: false,
-    hasExistingBrand: false,
-    designStyle: DesignStyle.MODERN,
-    timeline: Timeline.LESS_THAN_3_MONTHS,
-    budget: Budget.LESS_THAN_10K,
+    competitorUrls: [],
     name: 'John Doe',
     email: 'john@example.com',
     preferredContactMethod: ContactMethod.EMAIL,
     wantsConsultation: true,
+    targetAudience: TargetAudience.BUSINESSES,
+    industry: Industry.SAAS,
+    hasExistingBrand: false,
+    designStyle: DesignStyle.MODERN,
+    timeline: Timeline.LESS_THAN_3_MONTHS,
+    budget: Budget.LESS_THAN_10K,
   };
 
   beforeEach(async () => {
@@ -52,6 +54,7 @@ describe('LeadValidationService', () => {
         const leadWithoutChallenge = {
           ...mockValidLead,
           projectType: ProjectType.EXISTING,
+          existingProjectChallenges: undefined,
         };
 
         expect(() => service.validateLeadData(leadWithoutChallenge)).toThrow(HttpException);
@@ -61,7 +64,7 @@ describe('LeadValidationService', () => {
         const validExistingProject = {
           ...mockValidLead,
           projectType: ProjectType.EXISTING,
-          existingProjectChallenge: ExistingProjectChallenge.PERFORMANCE,
+          existingProjectChallenges: [ExistingProjectChallenge.PERFORMANCE],
         };
 
         expect(() => service.validateLeadData(validExistingProject)).not.toThrow();
@@ -106,6 +109,69 @@ describe('LeadValidationService', () => {
         };
 
         expect(() => service.validateLeadData(leadWithoutCompetitors)).not.toThrow();
+      });
+    });
+
+    describe('existing project challenges validation', () => {
+      it('should validate existing project challenges', () => {
+        const invalidLead: LeadDto = {
+          ...mockValidLead,
+          projectType: ProjectType.EXISTING,
+          existingProjectChallenges: undefined,
+        };
+
+        expect(() => service.validateLeadData(invalidLead)).toThrow(HttpException);
+      });
+
+      it('should validate when project type is NEW', () => {
+        const validLead: LeadDto = {
+          ...mockValidLead,
+          projectType: ProjectType.NEW,
+          existingProjectChallenges: undefined,
+        };
+
+        expect(() => service.validateLeadData(validLead)).not.toThrow();
+      });
+
+      it('should validate maximum number of challenges', () => {
+        const invalidLead: LeadDto = {
+          ...mockValidLead,
+          projectType: ProjectType.EXISTING,
+          existingProjectChallenges: [
+            ExistingProjectChallenge.PERFORMANCE,
+            ExistingProjectChallenge.SCALABILITY,
+            ExistingProjectChallenge.BUGS,
+            ExistingProjectChallenge.UX,
+            ExistingProjectChallenge.OTHER,
+            ExistingProjectChallenge.OTHER, // One extra to trigger error
+          ],
+        };
+
+        expect(() => service.validateLeadData(invalidLead)).toThrow(HttpException);
+      });
+
+      it('should validate invalid challenge values', () => {
+        const invalidLead: LeadDto = {
+          ...mockValidLead,
+          projectType: ProjectType.EXISTING,
+          existingProjectChallenges: ['INVALID_CHALLENGE' as ExistingProjectChallenge],
+        };
+
+        expect(() => service.validateLeadData(invalidLead)).toThrow(HttpException);
+      });
+
+      it('should accept valid multiple challenges', () => {
+        const validLead: LeadDto = {
+          ...mockValidLead,
+          projectType: ProjectType.EXISTING,
+          existingProjectChallenges: [
+            ExistingProjectChallenge.PERFORMANCE,
+            ExistingProjectChallenge.SCALABILITY,
+            ExistingProjectChallenge.UX,
+          ],
+        };
+
+        expect(() => service.validateLeadData(validLead)).not.toThrow();
       });
     });
 

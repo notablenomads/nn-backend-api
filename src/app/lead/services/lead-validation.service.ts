@@ -1,6 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { LeadDto } from '../dto/lead.dto';
-import { ProjectType } from '../enums/lead.enum';
+import { ProjectType, ExistingProjectChallenge } from '../enums/lead.enum';
 import { LEAD_ERRORS, createLeadValidationError } from '../constants/lead.errors';
 
 @Injectable()
@@ -11,13 +11,47 @@ export class LeadValidationService {
   }
 
   private validateExistingProjectFields(leadData: LeadDto): void | never {
-    if (leadData.projectType === ProjectType.EXISTING && !leadData.existingProjectChallenge) {
-      throw new HttpException(
-        createLeadValidationError({
-          existingProjectChallenge: [LEAD_ERRORS.VALIDATION.EXISTING_PROJECT_CHALLENGE.message],
-        }),
-        HttpStatus.BAD_REQUEST,
+    // Validate project type and challenges
+    if (leadData.projectType === ProjectType.EXISTING) {
+      if (!leadData.existingProjectChallenges || leadData.existingProjectChallenges.length === 0) {
+        throw new HttpException(
+          {
+            message: LEAD_ERRORS.VALIDATION.INVALID_INPUT.message,
+            errors: {
+              existingProjectChallenges: [LEAD_ERRORS.VALIDATION.PROJECT_CHALLENGES.message],
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (leadData.existingProjectChallenges.length > 5) {
+        throw new HttpException(
+          {
+            message: LEAD_ERRORS.VALIDATION.INVALID_INPUT.message,
+            errors: {
+              existingProjectChallenges: ['Maximum of 5 challenges can be selected'],
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const invalidChallenges = leadData.existingProjectChallenges.some(
+        (challenge) => !Object.values(ExistingProjectChallenge).includes(challenge),
       );
+
+      if (invalidChallenges) {
+        throw new HttpException(
+          {
+            message: LEAD_ERRORS.VALIDATION.INVALID_INPUT.message,
+            errors: {
+              existingProjectChallenges: ['One or more invalid project challenges selected'],
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
   }
 

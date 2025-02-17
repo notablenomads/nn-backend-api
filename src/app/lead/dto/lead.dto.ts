@@ -46,14 +46,17 @@ export class LeadDto {
   projectType: ProjectType;
 
   @ApiProperty({
-    description: 'Main challenge with existing project',
+    description: 'Main challenges with existing project',
     enum: ExistingProjectChallenge,
+    isArray: true,
     required: false,
   })
   @ValidateIf((o) => o.projectType === ProjectType.EXISTING)
-  @IsNotEmpty({ message: 'Please specify the main challenge for your existing project' })
-  @IsEnum(ExistingProjectChallenge, { message: 'Please select a valid project challenge' })
-  existingProjectChallenge?: ExistingProjectChallenge;
+  @IsArray({ message: 'Project challenges must be provided as an array' })
+  @ArrayMinSize(1, { message: 'Please specify at least one challenge for your existing project' })
+  @ArrayMaxSize(5, { message: 'Maximum of 5 challenges can be selected' })
+  @IsEnum(ExistingProjectChallenge, { each: true, message: 'Please select valid project challenges' })
+  existingProjectChallenges?: ExistingProjectChallenge[];
 
   @ApiPropertyOptional({
     description: 'Project description',
