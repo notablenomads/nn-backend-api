@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.55](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.54...v0.8.55) (2025-02-17)
+
+### Features
+
+- **database:** Update existingProjectChallenges enum in leads migration ([09f24b2](https://github.com/Notable-Nomads/nn-backend-api/commit/09f24b2c1ecee0e33af29b22563c13cbe8e386bb))
+- **lead:** Enhance lead service with new project challenges and mobile app platform formatting ([a602138](https://github.com/Notable-Nomads/nn-backend-api/commit/a602138c8744913dd66d3de29138a1c1fd14f07b))
+
 ### [0.8.54](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.53...v0.8.54) (2025-02-17)
 
 ### Bug Fixes
