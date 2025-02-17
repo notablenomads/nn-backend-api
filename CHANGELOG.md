@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.53](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.52...v0.8.53) (2025-02-17)
+
+### Features
+
+- **aws:** Add AwsModule to configure SESClient with AWS credentials ([946e615](https://github.com/Notable-Nomads/nn-backend-api/commit/946e6155eeb18d569ed06577821018fe66fb670b))
+- **database:** Add mobile app platform and AI/ML dataset status fields to leads migration ([f2b2abb](https://github.com/Notable-Nomads/nn-backend-api/commit/f2b2abb82c4608cde54c99c4b490c4f23c7dd601))
+- **lead:** Add mobile app platform and AI/ML dataset status fields to lead DTO and entity ([6de84f4](https://github.com/Notable-Nomads/nn-backend-api/commit/6de84f48b1bf5361081b520224731c01ff6307cf))
+- **lead:** Update lead entity to support multiple existing project challenges and enhance validation logic ([a7844f5](https://github.com/Notable-Nomads/nn-backend-api/commit/a7844f55d1a4c8441b3fef92518e53fc2ec9f928))
+
 ### [0.8.52](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.51...v0.8.52) (2025-02-16)
 
 ### [0.8.51](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.50...v0.8.51) (2025-02-14)
