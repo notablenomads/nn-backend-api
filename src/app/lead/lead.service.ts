@@ -21,6 +21,8 @@ import {
   Timeline,
   Budget,
   ContactMethod,
+  MobileAppPlatform,
+  AIMLDatasetStatus,
 } from './enums/lead.enum';
 
 @Injectable()
@@ -204,8 +206,14 @@ export class LeadService {
           ['Type', this.formatProjectType(leadData.projectType)],
           ['Services', this.formatServices(leadData.services)],
           ['Description', leadData.projectDescription],
-          ...(leadData.projectType === 'EXISTING'
-            ? [['Main Challenges', leadData.existingProjectChallenges?.join(', ')]]
+          ...(leadData.projectType === 'EXISTING' && leadData.existingProjectChallenges
+            ? [['Main Challenges', this.formatExistingProjectChallenges(leadData.existingProjectChallenges)]]
+            : []),
+          ...(leadData.services.includes(ServiceType.MOBILE_APP) && leadData.mobileAppPlatform
+            ? [['Mobile App Platform', this.formatMobileAppPlatform(leadData.mobileAppPlatform)]]
+            : []),
+          ...(leadData.services.includes(ServiceType.AI_ML) && leadData.aimlDatasetStatus
+            ? [['AI/ML Dataset Status', this.formatAIMLDatasetStatus(leadData.aimlDatasetStatus)]]
             : []),
         ],
       },
@@ -427,6 +435,39 @@ export class LeadService {
       default:
         return method;
     }
+  }
+
+  private formatExistingProjectChallenges(challenges: ExistingProjectChallenge[]): string {
+    const challengeMap = {
+      [ExistingProjectChallenge.PERFORMANCE]: 'Performance Issues',
+      [ExistingProjectChallenge.SCALABILITY]: 'Scalability Challenges',
+      [ExistingProjectChallenge.BUGS]: 'Bug Fixes Needed',
+      [ExistingProjectChallenge.UX]: 'User Experience Issues',
+      [ExistingProjectChallenge.SECURITY]: 'Security Concerns',
+      [ExistingProjectChallenge.MAINTENANCE]: 'Maintenance Difficulties',
+      [ExistingProjectChallenge.TECHNICAL_DEBT]: 'Technical Debt',
+      [ExistingProjectChallenge.OUTDATED]: 'Outdated Technology',
+      [ExistingProjectChallenge.OTHER]: 'Other Challenges',
+    };
+    return challenges.map((challenge) => challengeMap[challenge] || challenge).join(', ');
+  }
+
+  private formatMobileAppPlatform(platform: MobileAppPlatform): string {
+    const platformMap = {
+      [MobileAppPlatform.IOS]: 'iOS',
+      [MobileAppPlatform.ANDROID]: 'Android',
+      [MobileAppPlatform.BOTH]: 'iOS & Android',
+    };
+    return platformMap[platform] || platform;
+  }
+
+  private formatAIMLDatasetStatus(status: AIMLDatasetStatus): string {
+    const statusMap = {
+      [AIMLDatasetStatus.YES]: 'Has Datasets/Models',
+      [AIMLDatasetStatus.NO]: 'No Datasets/Models',
+      [AIMLDatasetStatus.NOT_SURE]: 'Needs Dataset Consultation',
+    };
+    return statusMap[status] || status;
   }
 
   getFormOptions(): LeadOptionsDto {

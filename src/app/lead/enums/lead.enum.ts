@@ -17,6 +17,10 @@ export enum ExistingProjectChallenge {
   SCALABILITY = 'SCALABILITY',
   BUGS = 'BUGS',
   UX = 'UX',
+  SECURITY = 'SECURITY',
+  MAINTENANCE = 'MAINTENANCE',
+  TECHNICAL_DEBT = 'TECHNICAL_DEBT',
+  OUTDATED = 'OUTDATED',
   OTHER = 'OTHER',
 }
 
