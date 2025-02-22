@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.59](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.58...v0.8.59) (2025-02-22)
+
+### Features
+
+- **lead:** Increase maximum allowed challenges for existing projects from 5 to 8 ([eea825f](https://github.com/Notable-Nomads/nn-backend-api/commit/eea825f3139c5379c0f9db9872957151b5aa8d5d))
+
 ### [0.8.58](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.55...v0.8.58) (2025-02-22)
 
 ### Bug Fixes
