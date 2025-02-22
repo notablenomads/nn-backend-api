@@ -263,7 +263,7 @@ export class LeadService {
               : '🤝 Non-Technical User (Needs technical guidance)',
           ],
           ...(leadData.technicalExpertise === TechnicalExpertise.TECHNICAL && leadData.technicalFeatures
-            ? [['Required Features', this.formatTechnicalFeatures(leadData.technicalFeatures)]]
+            ? [['Required Features', '\n' + this.formatTechnicalFeatures(leadData.technicalFeatures)]]
             : []),
           ...(leadData.technicalExpertise === TechnicalExpertise.NON_TECHNICAL && leadData.nonTechnicalDescription
             ? [['Project Vision', leadData.nonTechnicalDescription]]
@@ -530,10 +530,8 @@ export class LeadService {
 
     const groupedFeatures = features.reduce(
       (acc, feature) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const group = Object.entries(featureGroups).find(([groupName, groupFeatures]) =>
-          groupFeatures.includes(feature),
-        )?.[0];
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        const group = Object.entries(featureGroups).find(([_, groupFeatures]) => groupFeatures.includes(feature))?.[0];
         if (group) {
           acc[group] = [...(acc[group] || []), this.getFeatureLabel(feature)];
         }
@@ -543,7 +541,9 @@ export class LeadService {
     );
 
     return Object.entries(groupedFeatures)
-      .map(([group, groupFeatures]) => `${group}:\n- ${groupFeatures.join('\n- ')}`)
+      .map(([group, groupFeatures]) => {
+        return `${group}:\n${groupFeatures.map((feature) => `  • ${feature}`).join('\n')}`;
+      })
       .join('\n\n');
   }
 
