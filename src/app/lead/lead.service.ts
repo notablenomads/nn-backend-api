@@ -23,6 +23,8 @@ import {
   ContactMethod,
   MobileAppPlatform,
   AIMLDatasetStatus,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from './enums/lead.enum';
 
 @Injectable()
@@ -251,6 +253,21 @@ export class LeadService {
           ['Wants Consultation', leadData.wantsConsultation ? 'Yes' : 'No'],
         ],
       },
+      {
+        title: '💻 Technical Requirements',
+        content: [
+          [
+            'Technical Expertise',
+            leadData.technicalExpertise === 'TECHNICAL' ? 'Technical User' : 'Non-Technical User',
+          ],
+          ...(leadData.technicalExpertise === 'TECHNICAL' && leadData.technicalFeatures
+            ? [['Required Features', this.formatTechnicalFeatures(leadData.technicalFeatures)]]
+            : []),
+          ...(leadData.technicalExpertise === 'NON_TECHNICAL' && leadData.nonTechnicalDescription
+            ? [['Project Description', leadData.nonTechnicalDescription]]
+            : []),
+        ],
+      },
     ];
 
     let content = '<h1>🚀 New Project Lead Submission</h1>';
@@ -470,6 +487,30 @@ export class LeadService {
     return statusMap[status] || status;
   }
 
+  private formatTechnicalFeatures(features: TechnicalFeature[]): string {
+    const featureMap = {
+      [TechnicalFeature.AUTHENTICATION]: 'Authentication & Security',
+      [TechnicalFeature.USER_MANAGEMENT]: 'User Management',
+      [TechnicalFeature.SOCIAL_LOGIN]: 'Social Login',
+      [TechnicalFeature.FILE_HANDLING]: 'File System',
+      [TechnicalFeature.SEARCH_FILTER]: 'Search & Filter',
+      [TechnicalFeature.NOTIFICATIONS]: 'Notification System',
+      [TechnicalFeature.PAYMENTS]: 'Payment Processing',
+      [TechnicalFeature.ANALYTICS]: 'Business Analytics',
+      [TechnicalFeature.MESSAGING]: 'Communication',
+      [TechnicalFeature.SEO_OPTIMIZATION]: 'SEO Features',
+      [TechnicalFeature.SOCIAL_SHARING]: 'Social Integration',
+      [TechnicalFeature.REFERRAL_SYSTEM]: 'Referral System',
+      [TechnicalFeature.SHOPPING_CART]: 'Shopping Cart',
+      [TechnicalFeature.INVENTORY]: 'Inventory System',
+      [TechnicalFeature.ORDER_MANAGEMENT]: 'Order Management',
+      [TechnicalFeature.API_INTEGRATION]: 'API Integration',
+      [TechnicalFeature.MOBILE_SYNC]: 'Mobile Integration',
+      [TechnicalFeature.ANALYTICS_TRACKING]: 'Analytics Tracking',
+    };
+    return features.map((feature) => featureMap[feature] || feature).join(', ');
+  }
+
   getFormOptions(): LeadOptionsDto {
     return {
       services: this.getServiceOptions(),
@@ -481,6 +522,8 @@ export class LeadService {
       timelines: this.getTimelineOptions(),
       budgets: this.getBudgetOptions(),
       contactMethods: this.getContactMethodOptions(),
+      technicalExpertise: this.getTechnicalExpertiseOptions(),
+      technicalFeatures: this.getTechnicalFeatureOptions(),
     };
   }
 
@@ -609,6 +652,153 @@ export class LeadService {
       { value: ContactMethod.EMAIL, label: 'Email', description: 'Communicate via email' },
       { value: ContactMethod.PHONE, label: 'Phone', description: 'Communicate via phone call' },
       { value: ContactMethod.WHATSAPP, label: 'WhatsApp', description: 'Communicate via WhatsApp' },
+    ];
+  }
+
+  private getTechnicalExpertiseOptions(): EnumOptionDto[] {
+    return [
+      {
+        value: TechnicalExpertise.TECHNICAL,
+        label: 'Technical User',
+        description: 'I have development experience',
+      },
+      {
+        value: TechnicalExpertise.NON_TECHNICAL,
+        label: 'Non-Technical',
+        description: 'I need guidance on technical decisions',
+      },
+    ];
+  }
+
+  private getTechnicalFeatureOptions(): EnumOptionDto[] {
+    return [
+      // User & Security
+      {
+        value: TechnicalFeature.AUTHENTICATION,
+        label: 'Authentication & Security',
+        description: 'User registration, login, and account security',
+      },
+      {
+        value: TechnicalFeature.USER_MANAGEMENT,
+        label: 'User Management',
+        description: 'User roles, profiles, and access control',
+      },
+      {
+        value: TechnicalFeature.SOCIAL_LOGIN,
+        label: 'Social Login',
+        description: 'Sign in with Google, Facebook, or other platforms',
+      },
+
+      // Core Features
+      {
+        value: TechnicalFeature.FILE_HANDLING,
+        label: 'File System',
+        description: 'Upload and manage files, images, and documents',
+      },
+      {
+        value: TechnicalFeature.SEARCH_FILTER,
+        label: 'Search & Filter',
+        description: 'Advanced search, filtering, and sorting functionality',
+      },
+      {
+        value: TechnicalFeature.NOTIFICATIONS,
+        label: 'Notification System',
+        description: 'Email, push, and in-app notifications',
+      },
+
+      // Business Features
+      {
+        value: TechnicalFeature.PAYMENTS,
+        label: 'Payment Processing',
+        description: 'Payment gateway and subscription management',
+      },
+      {
+        value: TechnicalFeature.ANALYTICS,
+        label: 'Business Analytics',
+        description: 'Business metrics and reporting dashboard',
+      },
+      {
+        value: TechnicalFeature.MESSAGING,
+        label: 'Communication',
+        description: 'Chat, messaging, and user communication',
+      },
+
+      // Growth Features
+      {
+        value: TechnicalFeature.SEO_OPTIMIZATION,
+        label: 'SEO Features',
+        description: 'Search engine optimization capabilities',
+      },
+      {
+        value: TechnicalFeature.SOCIAL_SHARING,
+        label: 'Social Integration',
+        description: 'Social media sharing and integration',
+      },
+      {
+        value: TechnicalFeature.REFERRAL_SYSTEM,
+        label: 'Referral System',
+        description: 'User referral and reward program',
+      },
+
+      // E-commerce
+      {
+        value: TechnicalFeature.SHOPPING_CART,
+        label: 'Shopping Cart',
+        description: 'Shopping cart and checkout process',
+      },
+      {
+        value: TechnicalFeature.INVENTORY,
+        label: 'Inventory System',
+        description: 'Product and inventory management',
+      },
+      {
+        value: TechnicalFeature.ORDER_MANAGEMENT,
+        label: 'Order Management',
+        description: 'Order processing and tracking system',
+      },
+
+      // Integration
+      {
+        value: TechnicalFeature.API_INTEGRATION,
+        label: 'API Integration',
+        description: 'Connect with third-party services',
+      },
+      {
+        value: TechnicalFeature.MOBILE_SYNC,
+        label: 'Mobile Integration',
+        description: 'Mobile app data synchronization',
+      },
+      {
+        value: TechnicalFeature.ANALYTICS_TRACKING,
+        label: 'Analytics Tracking',
+        description: 'Integration with analytics platforms',
+      },
+
+      {
+        value: TechnicalFeature.ADMIN_PANEL,
+        label: 'Admin Dashboard',
+        description: 'Complete administrative control panel',
+      },
+      {
+        value: TechnicalFeature.CALENDAR,
+        label: 'Calendar System',
+        description: 'Scheduling, bookings, and calendar management',
+      },
+      {
+        value: TechnicalFeature.MARKETING_TOOLS,
+        label: 'Marketing Tools',
+        description: 'Email campaigns, automation, and marketing features',
+      },
+      {
+        value: TechnicalFeature.PRODUCT_MANAGEMENT,
+        label: 'Product Management',
+        description: 'Product catalog, variants, and categories',
+      },
+      {
+        value: TechnicalFeature.OFFLINE_MODE,
+        label: 'Offline Support',
+        description: 'Work offline and sync when connected',
+      },
     ];
   }
 }

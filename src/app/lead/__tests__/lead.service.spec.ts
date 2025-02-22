@@ -16,6 +16,8 @@ import {
   Budget,
   Timeline,
   ContactMethod,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 
 jest.mock('../../core/errors/errors', () => ({
@@ -98,6 +100,8 @@ describe('LeadService', () => {
     timeline: Timeline.LESS_THAN_3_MONTHS,
     preferredContactMethod: ContactMethod.EMAIL,
     wantsConsultation: true,
+    technicalExpertise: TechnicalExpertise.TECHNICAL,
+    technicalFeatures: [TechnicalFeature.AUTHENTICATION, TechnicalFeature.USER_MANAGEMENT, TechnicalFeature.PAYMENTS],
   };
 
   beforeEach(async () => {

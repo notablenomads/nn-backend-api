@@ -11,6 +11,8 @@ import {
   ContactMethod,
   MobileAppPlatform,
   AIMLDatasetStatus,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 import { ILead } from '../interfaces/lead.interface';
 import { User } from '../../user/entities/user.entity';
@@ -113,6 +115,24 @@ export class Lead implements ILead {
     nullable: true,
   })
   aimlDatasetStatus?: AIMLDatasetStatus;
+
+  @Column({
+    type: 'enum',
+    enum: TechnicalExpertise,
+    nullable: true,
+  })
+  technicalExpertise?: TechnicalExpertise;
+
+  @Column({
+    type: 'enum',
+    enum: TechnicalFeature,
+    array: true,
+    nullable: true,
+  })
+  technicalFeatures?: TechnicalFeature[];
+
+  @Column('text', { nullable: true })
+  nonTechnicalDescription?: string;
 
   @ManyToOne(() => User, (user) => user.leads)
   user: User;

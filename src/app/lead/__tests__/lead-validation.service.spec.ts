@@ -12,6 +12,7 @@ import {
   Budget,
   ContactMethod,
   ExistingProjectChallenge,
+  TechnicalExpertise,
 } from '../enums/lead.enum';
 
 describe('LeadValidationService', () => {
@@ -34,6 +35,8 @@ describe('LeadValidationService', () => {
     designStyle: DesignStyle.MODERN,
     timeline: Timeline.LESS_THAN_3_MONTHS,
     budget: Budget.LESS_THAN_10K,
+    technicalExpertise: TechnicalExpertise.NON_TECHNICAL,
+    nonTechnicalDescription: 'I want to build a marketplace app',
   };
 
   beforeEach(async () => {

@@ -38,4 +38,10 @@ export class LeadOptionsDto {
 
   @ApiProperty({ type: [EnumOptionDto] })
   contactMethods: EnumOptionDto[];
+
+  @ApiProperty({ type: [EnumOptionDto] })
+  technicalExpertise: EnumOptionDto[];
+
+  @ApiProperty({ type: [EnumOptionDto] })
+  technicalFeatures: EnumOptionDto[];
 }

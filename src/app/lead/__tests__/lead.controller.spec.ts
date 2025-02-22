@@ -16,6 +16,8 @@ import {
   Budget,
   ContactMethod,
   ExistingProjectChallenge,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 import { createLeadProcessingError } from '../constants/lead.errors';
 import { ApiKeyGuard } from '../../auth/api-key/api-key.guard';
@@ -43,6 +45,8 @@ describe('LeadController', () => {
     preferredContactMethod: ContactMethod.EMAIL,
     wantsConsultation: true,
     additionalNotes: undefined,
+    technicalExpertise: TechnicalExpertise.TECHNICAL,
+    technicalFeatures: [TechnicalFeature.AUTHENTICATION, TechnicalFeature.PAYMENTS, TechnicalFeature.NOTIFICATIONS],
   };
 
   const mockLeadResponse = {

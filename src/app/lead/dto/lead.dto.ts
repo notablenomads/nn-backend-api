@@ -25,6 +25,8 @@ import {
   ContactMethod,
   MobileAppPlatform,
   AIMLDatasetStatus,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 
 export class LeadDto {
@@ -209,4 +211,37 @@ export class LeadDto {
   @IsString({ message: 'Additional notes must be text' })
   @MaxLength(1000, { message: 'Additional notes cannot exceed 1000 characters' })
   additionalNotes?: string;
+
+  @ApiProperty({
+    description: 'Technical expertise level',
+    enum: TechnicalExpertise,
+    required: true,
+  })
+  @IsNotEmpty({ message: 'Please specify your technical expertise' })
+  @IsEnum(TechnicalExpertise, { message: 'Invalid technical expertise value' })
+  technicalExpertise: TechnicalExpertise;
+
+  @ApiProperty({
+    description: 'Technical features needed',
+    enum: TechnicalFeature,
+    isArray: true,
+    required: false,
+  })
+  @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.TECHNICAL)
+  @IsArray({ message: 'Technical features must be provided as an array' })
+  @ArrayMinSize(1, { message: 'Please select at least one technical feature' })
+  @ArrayMaxSize(10, { message: 'Maximum of 10 features can be selected' })
+  @IsEnum(TechnicalFeature, { each: true, message: 'One or more invalid technical features selected' })
+  technicalFeatures?: TechnicalFeature[];
+
+  @ApiProperty({
+    description: 'Non-technical project description',
+    example: 'I want to build a mobile app that helps users track their daily expenses...',
+    required: false,
+  })
+  @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.NON_TECHNICAL)
+  @IsString({ message: 'Project description must be text' })
+  @MinLength(10, { message: 'Please provide a more detailed description (minimum 10 characters)' })
+  @MaxLength(1000, { message: 'Description cannot exceed 1000 characters' })
+  nonTechnicalDescription?: string;
 }
