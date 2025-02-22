@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.61](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.60...v0.8.61) (2025-02-22)
+
+### Features
+
+- **lead:** Enhance lead service with detailed technical features grouping and improved user descriptions ([cc82f45](https://github.com/Notable-Nomads/nn-backend-api/commit/cc82f45d593b8cdec5264455a575f26799569132))
+- **lead:** Improve formatting of technical features and streamline feature grouping logic ([7b30f5e](https://github.com/Notable-Nomads/nn-backend-api/commit/7b30f5efe5c02c81968cccb7e24ad2c4d3e5ed4e))
+- **lead:** Update lead entity to enforce technical expertise and add technical features validation ([7b37bd3](https://github.com/Notable-Nomads/nn-backend-api/commit/7b37bd3436620b20eadb887356fcc8cb403a0c77))
+- **lead:** Update lead migration to enforce non-null technical expertise and add new feature columns ([cd9bbf3](https://github.com/Notable-Nomads/nn-backend-api/commit/cd9bbf369577ce740c1ea1892d065fc4895aece8))
+
 ### [0.8.60](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.59...v0.8.60) (2025-02-22)
 
 ### Features
