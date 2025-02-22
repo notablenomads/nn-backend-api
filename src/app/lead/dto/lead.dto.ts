@@ -230,7 +230,7 @@ export class LeadDto {
   @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.TECHNICAL)
   @IsArray({ message: 'Technical features must be provided as an array' })
   @ArrayMinSize(1, { message: 'Please select at least one technical feature' })
-  @ArrayMaxSize(10, { message: 'Maximum of 10 features can be selected' })
+  @ArrayMaxSize(25, { message: 'Maximum of 25 features can be selected' })
   @IsEnum(TechnicalFeature, { each: true, message: 'One or more invalid technical features selected' })
   technicalFeatures?: TechnicalFeature[];
 
