@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.62](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.61...v0.8.62) (2025-02-22)
+
+### Features
+
+- **lead:** Make projectDescription nullable and update validation logic ([ac4bb30](https://github.com/Notable-Nomads/nn-backend-api/commit/ac4bb30c77f5c8a2e26fa3586dd730dacb4f6d71))
+
 ### [0.8.61](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.60...v0.8.61) (2025-02-22)
 
 ### Features
