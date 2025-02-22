@@ -8,6 +8,8 @@ import {
   Timeline,
   Budget,
   ContactMethod,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 
 export interface ILead {
@@ -32,4 +34,7 @@ export interface ILead {
   additionalNotes?: string;
   createdAt: Date;
   updatedAt: Date;
+  technicalExpertise: TechnicalExpertise;
+  technicalFeatures?: TechnicalFeature[];
+  nonTechnicalDescription?: string;
 }

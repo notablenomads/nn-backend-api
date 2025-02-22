@@ -119,9 +119,8 @@ export class Lead implements ILead {
   @Column({
     type: 'enum',
     enum: TechnicalExpertise,
-    nullable: true,
   })
-  technicalExpertise?: TechnicalExpertise;
+  technicalExpertise: TechnicalExpertise;
 
   @Column({
     type: 'enum',

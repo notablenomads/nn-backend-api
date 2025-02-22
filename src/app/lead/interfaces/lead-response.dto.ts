@@ -10,6 +10,8 @@ import {
   Timeline,
   Budget,
   ContactMethod,
+  TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 
 export class LeadResponseDto implements ILead {
@@ -75,4 +77,13 @@ export class LeadResponseDto implements ILead {
 
   @ApiProperty()
   updatedAt: Date;
+
+  @ApiProperty({ enum: TechnicalExpertise })
+  technicalExpertise: TechnicalExpertise;
+
+  @ApiProperty({ enum: TechnicalFeature, isArray: true, required: false })
+  technicalFeatures?: TechnicalFeature[];
+
+  @ApiProperty({ required: false })
+  nonTechnicalDescription?: string;
 }

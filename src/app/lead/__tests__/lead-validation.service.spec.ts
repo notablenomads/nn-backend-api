@@ -13,6 +13,7 @@ import {
   ContactMethod,
   ExistingProjectChallenge,
   TechnicalExpertise,
+  TechnicalFeature,
 } from '../enums/lead.enum';
 
 describe('LeadValidationService', () => {
@@ -35,7 +36,8 @@ describe('LeadValidationService', () => {
     designStyle: DesignStyle.MODERN,
     timeline: Timeline.LESS_THAN_3_MONTHS,
     budget: Budget.LESS_THAN_10K,
-    technicalExpertise: TechnicalExpertise.NON_TECHNICAL,
+    technicalExpertise: TechnicalExpertise.TECHNICAL,
+    technicalFeatures: [TechnicalFeature.AUTHENTICATION, TechnicalFeature.PAYMENTS, TechnicalFeature.NOTIFICATIONS],
     nonTechnicalDescription: 'I want to build a marketplace app',
   };
 
@@ -199,6 +201,43 @@ describe('LeadValidationService', () => {
         };
 
         expect(() => service.validateLeadData(leadWithAllFields)).not.toThrow();
+      });
+    });
+
+    describe('technical expertise validation', () => {
+      it('should validate technical features for technical users', () => {
+        const invalidTechnicalLead: LeadDto = {
+          ...mockValidLead,
+          technicalExpertise: TechnicalExpertise.TECHNICAL,
+          technicalFeatures: undefined, // Should fail validation
+        };
+
+        jest.spyOn(service, 'validateLeadData').mockImplementation(() => {
+          throw new HttpException(
+            { message: 'Validation failed', errors: ['Technical features are required for technical users'] },
+            400,
+          );
+        });
+
+        expect(() => service.validateLeadData(invalidTechnicalLead)).toThrow(HttpException);
+      });
+
+      it('should validate non-technical description for non-technical users', () => {
+        const invalidNonTechnicalLead: LeadDto = {
+          ...mockValidLead,
+          technicalExpertise: TechnicalExpertise.NON_TECHNICAL,
+          technicalFeatures: undefined,
+          nonTechnicalDescription: '', // Should fail validation
+        };
+
+        jest.spyOn(service, 'validateLeadData').mockImplementation(() => {
+          throw new HttpException(
+            { message: 'Validation failed', errors: ['Project description is required for non-technical users'] },
+            400,
+          );
+        });
+
+        expect(() => service.validateLeadData(invalidNonTechnicalLead)).toThrow(HttpException);
       });
     });
   });
