@@ -258,13 +258,15 @@ export class LeadService {
         content: [
           [
             'Technical Expertise',
-            leadData.technicalExpertise === 'TECHNICAL' ? 'Technical User' : 'Non-Technical User',
+            leadData.technicalExpertise === TechnicalExpertise.TECHNICAL
+              ? '👨‍💻 Technical User (Has development experience)'
+              : '🤝 Non-Technical User (Needs technical guidance)',
           ],
-          ...(leadData.technicalExpertise === 'TECHNICAL' && leadData.technicalFeatures
+          ...(leadData.technicalExpertise === TechnicalExpertise.TECHNICAL && leadData.technicalFeatures
             ? [['Required Features', this.formatTechnicalFeatures(leadData.technicalFeatures)]]
             : []),
-          ...(leadData.technicalExpertise === 'NON_TECHNICAL' && leadData.nonTechnicalDescription
-            ? [['Project Description', leadData.nonTechnicalDescription]]
+          ...(leadData.technicalExpertise === TechnicalExpertise.NON_TECHNICAL && leadData.nonTechnicalDescription
+            ? [['Project Vision', leadData.nonTechnicalDescription]]
             : []),
         ],
       },
@@ -488,27 +490,90 @@ export class LeadService {
   }
 
   private formatTechnicalFeatures(features: TechnicalFeature[]): string {
-    const featureMap = {
-      [TechnicalFeature.AUTHENTICATION]: 'Authentication & Security',
+    const featureGroups = {
+      'User & Security': [
+        TechnicalFeature.AUTHENTICATION,
+        TechnicalFeature.USER_MANAGEMENT,
+        TechnicalFeature.SOCIAL_LOGIN,
+      ],
+      'Core Features': [
+        TechnicalFeature.FILE_HANDLING,
+        TechnicalFeature.SEARCH_FILTER,
+        TechnicalFeature.NOTIFICATIONS,
+        TechnicalFeature.ADMIN_PANEL,
+      ],
+      'Business Features': [
+        TechnicalFeature.PAYMENTS,
+        TechnicalFeature.ANALYTICS,
+        TechnicalFeature.MESSAGING,
+        TechnicalFeature.CALENDAR,
+      ],
+      'Growth Features': [
+        TechnicalFeature.SEO_OPTIMIZATION,
+        TechnicalFeature.SOCIAL_SHARING,
+        TechnicalFeature.REFERRAL_SYSTEM,
+        TechnicalFeature.MARKETING_TOOLS,
+      ],
+      'E-commerce': [
+        TechnicalFeature.SHOPPING_CART,
+        TechnicalFeature.INVENTORY,
+        TechnicalFeature.ORDER_MANAGEMENT,
+        TechnicalFeature.PRODUCT_MANAGEMENT,
+      ],
+      'Integration & Performance': [
+        TechnicalFeature.API_INTEGRATION,
+        TechnicalFeature.MOBILE_SYNC,
+        TechnicalFeature.ANALYTICS_TRACKING,
+        TechnicalFeature.OFFLINE_MODE,
+      ],
+    };
+
+    const groupedFeatures = features.reduce(
+      (acc, feature) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const group = Object.entries(featureGroups).find(([groupName, groupFeatures]) =>
+          groupFeatures.includes(feature),
+        )?.[0];
+        if (group) {
+          acc[group] = [...(acc[group] || []), this.getFeatureLabel(feature)];
+        }
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
+
+    return Object.entries(groupedFeatures)
+      .map(([group, groupFeatures]) => `${group}:\n- ${groupFeatures.join('\n- ')}`)
+      .join('\n\n');
+  }
+
+  private getFeatureLabel(feature: TechnicalFeature): string {
+    const labels = {
+      [TechnicalFeature.AUTHENTICATION]: 'Authentication System',
       [TechnicalFeature.USER_MANAGEMENT]: 'User Management',
       [TechnicalFeature.SOCIAL_LOGIN]: 'Social Login',
       [TechnicalFeature.FILE_HANDLING]: 'File System',
       [TechnicalFeature.SEARCH_FILTER]: 'Search & Filter',
       [TechnicalFeature.NOTIFICATIONS]: 'Notification System',
+      [TechnicalFeature.ADMIN_PANEL]: 'Admin Dashboard',
       [TechnicalFeature.PAYMENTS]: 'Payment Processing',
       [TechnicalFeature.ANALYTICS]: 'Business Analytics',
       [TechnicalFeature.MESSAGING]: 'Communication',
+      [TechnicalFeature.CALENDAR]: 'Calendar System',
       [TechnicalFeature.SEO_OPTIMIZATION]: 'SEO Features',
       [TechnicalFeature.SOCIAL_SHARING]: 'Social Integration',
       [TechnicalFeature.REFERRAL_SYSTEM]: 'Referral System',
+      [TechnicalFeature.MARKETING_TOOLS]: 'Marketing Tools',
       [TechnicalFeature.SHOPPING_CART]: 'Shopping Cart',
       [TechnicalFeature.INVENTORY]: 'Inventory System',
       [TechnicalFeature.ORDER_MANAGEMENT]: 'Order Management',
+      [TechnicalFeature.PRODUCT_MANAGEMENT]: 'Product Management',
       [TechnicalFeature.API_INTEGRATION]: 'API Integration',
       [TechnicalFeature.MOBILE_SYNC]: 'Mobile Integration',
       [TechnicalFeature.ANALYTICS_TRACKING]: 'Analytics Tracking',
+      [TechnicalFeature.OFFLINE_MODE]: 'Offline Support',
     };
-    return features.map((feature) => featureMap[feature] || feature).join(', ');
+    return labels[feature] || feature;
   }
 
   getFormOptions(): LeadOptionsDto {
