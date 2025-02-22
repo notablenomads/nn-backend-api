@@ -4082,15 +4082,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stylistic/eslint-plugin-js@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "@stylistic/eslint-plugin-js@npm:3.1.0"
+"@stylistic/eslint-plugin-js@npm:^4.0.1":
+  version: 4.0.1
+  resolution: "@stylistic/eslint-plugin-js@npm:4.0.1"
   dependencies:
     eslint-visitor-keys: "npm:^4.2.0"
     espree: "npm:^10.3.0"
   peerDependencies:
-    eslint: ">=8.40.0"
-  checksum: 10/68f0a5ea7b9cafd2e6281a25a59848d89ab7a066562698991ab4bafc8bd4006f39ca0a4a86416294603ae47a639d7fe8427a26ce61a6e3c9c83c43416415bf1c
+    eslint: ">=9.0.0"
+  checksum: 10/62a9cb7cce8fc1734d65a9f059c977392c89ffa5b406c96686a4a7ee07633e0bb01f65d27daef3a97a77419bdcd943febe74fa00745c6da6b69b6024628e7d80
   languageName: node
   linkType: hard
 
@@ -10951,7 +10951,7 @@ __metadata:
     "@nestjs/websockets": "npm:^11.0.10"
     "@sentry/node": "npm:^9.1.0"
     "@sentry/tracing": "npm:^7.120.3"
-    "@stylistic/eslint-plugin-js": "npm:^3.1.0"
+    "@stylistic/eslint-plugin-js": "npm:^4.0.1"
     "@swc/cli": "npm:^0.6.0"
     "@swc/core": "npm:^1.10.18"
     "@types/bcrypt": "npm:^5.0.2"
