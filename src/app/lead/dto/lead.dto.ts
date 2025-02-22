@@ -66,7 +66,7 @@ export class LeadDto {
     description: 'Project description',
     example: 'Building a marketplace app for local artisans',
   })
-  @IsOptional()
+  @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.NON_TECHNICAL)
   @IsString({ message: 'Project description must be text' })
   @MinLength(5, { message: 'Project description must be at least 5 characters' })
   @MaxLength(2000, { message: 'Project description cannot exceed 2000 characters' })

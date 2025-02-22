@@ -39,8 +39,8 @@ export class Lead implements ILead {
   })
   existingProjectChallenges?: ExistingProjectChallenge[];
 
-  @Column('text')
-  projectDescription: string;
+  @Column('text', { nullable: true })
+  projectDescription?: string;
 
   @Column({
     type: 'enum',

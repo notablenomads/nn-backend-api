@@ -17,7 +17,7 @@ export interface ILead {
   services: ServiceType[];
   projectType: ProjectType;
   existingProjectChallenge?: ExistingProjectChallenge;
-  projectDescription: string;
+  projectDescription?: string;
   targetAudience: TargetAudience;
   industry: Industry;
   hasCompetitors: boolean;
