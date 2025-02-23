@@ -293,9 +293,27 @@ export class LeadService {
       {
         title: '🎯 Project Overview',
         content: [
-          ['Type', this.formatProjectType(leadData.projectType)],
+          ['Project Type', this.formatProjectType(leadData.projectType)],
           ['Services', this.formatServices(leadData.services)],
+          ...(leadData.services.includes(ServiceType.MOBILE_APP) && leadData.mobileAppPlatform
+            ? [['Mobile Platform', this.formatMobileAppPlatform(leadData.mobileAppPlatform)]]
+            : []),
+          ['Industry', this.formatIndustry(leadData.industry)],
           ['Timeline', this.formatTimeline(leadData.timeline)],
+        ],
+      },
+      {
+        title: '💻 Technical Details',
+        content: [
+          [
+            'Technical Level',
+            leadData.technicalExpertise === TechnicalExpertise.TECHNICAL
+              ? 'Technical User (Development Experience)'
+              : 'Non-Technical User',
+          ],
+          ...(leadData.technicalExpertise === TechnicalExpertise.TECHNICAL && leadData.technicalFeatures
+            ? [['Required Features', this.formatTechnicalFeaturesSimple(leadData.technicalFeatures)]]
+            : []),
         ],
       },
       {
@@ -320,8 +338,8 @@ export class LeadService {
     let content = `
       <h1>Thank You for Your Project Inquiry!</h1>
       <p>Dear ${leadData.name},</p>
-      <p>Thank you for your interest in working with Notable Nomads! We're excited to learn more about your project and help bring your vision to life.</p>
-      <p>Here's a summary of what you shared with us:</p>
+      <p>Thank you for choosing Notable Nomads! We're excited to learn more about your project and help bring your vision to life.</p>
+      <p>Here's a summary of your project requirements:</p>
     `;
 
     sections.forEach((section) => {
@@ -332,11 +350,25 @@ export class LeadService {
     });
 
     content += `
-      <p>If you have any immediate questions, feel free to reply to this email.</p>
+      <p>If you have any questions before we contact you, feel free to reply to this email.</p>
       <p>Best regards,<br>The Notable Nomads Team</p>
     `;
 
     return content;
+  }
+
+  private formatTechnicalFeaturesSimple(features: TechnicalFeature[]): string {
+    return features
+      .map((feature) => this.getFeatureLabel(feature))
+      .sort()
+      .join(', ');
+  }
+
+  private formatTechnicalFeatures(features: TechnicalFeature[]): string {
+    return features
+      .map((feature) => this.getFeatureLabel(feature))
+      .sort()
+      .join(', ');
   }
 
   private formatProjectType(type: string): string {
@@ -487,64 +519,6 @@ export class LeadService {
       [AIMLDatasetStatus.NOT_SURE]: 'Needs Dataset Consultation',
     };
     return statusMap[status] || status;
-  }
-
-  private formatTechnicalFeatures(features: TechnicalFeature[]): string {
-    const featureGroups = {
-      'User & Security': [
-        TechnicalFeature.AUTHENTICATION,
-        TechnicalFeature.USER_MANAGEMENT,
-        TechnicalFeature.SOCIAL_LOGIN,
-      ],
-      'Core Features': [
-        TechnicalFeature.FILE_HANDLING,
-        TechnicalFeature.SEARCH_FILTER,
-        TechnicalFeature.NOTIFICATIONS,
-        TechnicalFeature.ADMIN_PANEL,
-      ],
-      'Business Features': [
-        TechnicalFeature.PAYMENTS,
-        TechnicalFeature.ANALYTICS,
-        TechnicalFeature.MESSAGING,
-        TechnicalFeature.CALENDAR,
-      ],
-      'Growth Features': [
-        TechnicalFeature.SEO_OPTIMIZATION,
-        TechnicalFeature.SOCIAL_SHARING,
-        TechnicalFeature.REFERRAL_SYSTEM,
-        TechnicalFeature.MARKETING_TOOLS,
-      ],
-      'E-commerce': [
-        TechnicalFeature.SHOPPING_CART,
-        TechnicalFeature.INVENTORY,
-        TechnicalFeature.ORDER_MANAGEMENT,
-        TechnicalFeature.PRODUCT_MANAGEMENT,
-      ],
-      'Integration & Performance': [
-        TechnicalFeature.API_INTEGRATION,
-        TechnicalFeature.MOBILE_SYNC,
-        TechnicalFeature.ANALYTICS_TRACKING,
-        TechnicalFeature.OFFLINE_MODE,
-      ],
-    };
-
-    const groupedFeatures = features.reduce(
-      (acc, feature) => {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
-        const group = Object.entries(featureGroups).find(([_, groupFeatures]) => groupFeatures.includes(feature))?.[0];
-        if (group) {
-          acc[group] = [...(acc[group] || []), this.getFeatureLabel(feature)];
-        }
-        return acc;
-      },
-      {} as Record<string, string[]>,
-    );
-
-    return Object.entries(groupedFeatures)
-      .map(([group, groupFeatures]) => {
-        return `${group}:\n${groupFeatures.map((feature) => `  • ${feature}`).join('\n')}`;
-      })
-      .join('\n\n');
   }
 
   private getFeatureLabel(feature: TechnicalFeature): string {
