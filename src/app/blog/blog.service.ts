@@ -3,6 +3,7 @@ import * as xml2js from 'xml2js';
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../cache/cache.service';
 import { IBlogPost, IBlogAuthor, IMediumRssFeed } from './interfaces/blog.interface';
 import { ERRORS } from '../core/errors/errors';
 
@@ -10,13 +11,13 @@ import { ERRORS } from '../core/errors/errors';
 export class BlogService {
   private readonly logger = new Logger(BlogService.name);
   private readonly authors: IBlogAuthor[];
-  private readonly cacheTimeout = 1000 * 60 * 15; // 15 minutes
-  private cachedPosts: IBlogPost[] = [];
-  private lastFetchTime: number = 0;
+  private readonly CACHE_TTL = 15 * 60; // 15 minutes in seconds
+  private readonly CACHE_KEY = 'blog_posts';
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
   ) {
     this.authors = [
       {
@@ -34,15 +35,19 @@ export class BlogService {
 
   async getBlogPosts(page: number = 1, limit: number = 10): Promise<{ posts: IBlogPost[]; total: number }> {
     try {
-      await this.updateCacheIfNeeded();
+      const posts = await this.cacheService.getOrSet<IBlogPost[]>(
+        this.CACHE_KEY,
+        () => this.fetchAllBlogPosts(),
+        this.CACHE_TTL,
+      );
 
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
-      const paginatedPosts = this.cachedPosts.slice(startIndex, endIndex);
+      const paginatedPosts = posts.slice(startIndex, endIndex);
 
       return {
         posts: paginatedPosts,
-        total: this.cachedPosts.length,
+        total: posts.length,
       };
     } catch (error) {
       this.logger.error(ERRORS.BLOG.FETCH.FAILED({ reason: error.message }).message, error.stack);
@@ -50,12 +55,7 @@ export class BlogService {
     }
   }
 
-  private async updateCacheIfNeeded(): Promise<void> {
-    const now = Date.now();
-    if (now - this.lastFetchTime < this.cacheTimeout && this.cachedPosts.length > 0) {
-      return;
-    }
-
+  private async fetchAllBlogPosts(): Promise<IBlogPost[]> {
     try {
       const allPosts: IBlogPost[] = [];
 
@@ -67,21 +67,16 @@ export class BlogService {
       }
 
       if (allPosts.length > 0) {
-        this.cachedPosts = allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
-        this.lastFetchTime = now;
+        return allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
       } else {
         this.logger.warn('No blog posts were fetched from any author');
+        return [];
       }
     } catch (error) {
       this.logger.error(
-        ERRORS.BLOG.FETCH.FAILED({ reason: 'Failed to update blog posts cache: ' + error.message }).message,
+        ERRORS.BLOG.FETCH.FAILED({ reason: 'Failed to fetch blog posts: ' + error.message }).message,
         error.stack,
       );
-      // If we have cached posts, return them instead of throwing
-      if (this.cachedPosts.length > 0) {
-        this.logger.log('Returning cached posts due to fetch error');
-        return;
-      }
       throw error;
     }
   }
@@ -156,5 +151,10 @@ export class BlogService {
     if (!html) return undefined;
     const imgMatch = html.match(/<img[^>]+src="([^">]+)"/);
     return imgMatch ? imgMatch[1] : undefined;
+  }
+
+  public invalidateCache(): void {
+    this.cacheService.delete(this.CACHE_KEY);
+    this.logger.log('Blog posts cache invalidated');
   }
 }

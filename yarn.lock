@@ -6423,6 +6423,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"clone@npm:2.x":
+  version: 2.1.2
+  resolution: "clone@npm:2.1.2"
+  checksum: 10/d9c79efba655f0bf601ab299c57eb54cbaa9860fb011aee9d89ed5ac0d12df1660ab7642fddaabb9a26b7eff0e117d4520512cb70798319ff5d30a111b5310c2
+  languageName: node
+  linkType: hard
+
 "clone@npm:^1.0.2":
   version: 1.0.4
   resolution: "clone@npm:1.0.4"
@@ -11005,6 +11012,7 @@ __metadata:
     joi: "npm:^17.13.3"
     lint-staged: "npm:^15.4.3"
     nest-commander: "npm:^3.16.0"
+    node-cache: "npm:^5.1.2"
     passport: "npm:^0.7.0"
     passport-jwt: "npm:^4.0.1"
     pg: "npm:^8.13.3"
@@ -11036,6 +11044,15 @@ __metadata:
   dependencies:
     node-gyp: "npm:latest"
   checksum: 10/595f59ffb4630564f587c502119cbd980d302e482781021f3b479f5fc7e41cf8f2f7280fdc2795f32d148e4f3259bd15043c52d4a3442796aa6f1ae97b959636
+  languageName: node
+  linkType: hard
+
+"node-cache@npm:^5.1.2":
+  version: 5.1.2
+  resolution: "node-cache@npm:5.1.2"
+  dependencies:
+    clone: "npm:2.x"
+  checksum: 10/6ac71a9e65fdd8940883c3c188de4888ff592f5bf52e4d42436c49e2a575d635e7327acea490c49fa7c01d5fa81f7b6e060fd35cf6f6ec401fbd5f77a3ebeecf
   languageName: node
   linkType: hard
 
