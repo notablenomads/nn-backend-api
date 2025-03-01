@@ -37,7 +37,9 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // Enable compression
-  app.use(compression());
+  if (environment === 'production') {
+    app.use(compression());
+  }
 
   // Configure Helmet with strict CSP
   app.use(
@@ -111,9 +113,6 @@ async function bootstrap() {
 
     // Certificate Transparency
     res.setHeader('Expect-CT', 'enforce, max-age=86400');
-
-    // Cross-Origin-Resource-Policy
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
     // Enhanced Clear-Site-Data for complete cleanup during logout
     if (req.path === '/auth/logout' || req.path === '/auth/logout-all') {
