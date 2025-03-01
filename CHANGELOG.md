@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.65](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.64...v0.8.65) (2025-03-01)
+
+### Features
+
+- **dependencies:** Update @types/node to 22.13.8 and add @types/inquirer ([3d80598](https://github.com/Notable-Nomads/nn-backend-api/commit/3d80598fddaca6705877abe3d6e211cd55730e87))
+
 ### [0.8.64](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.63...v0.8.64) (2025-02-23)
 
 ### Features
