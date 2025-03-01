@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.66](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.65...v0.8.66) (2025-03-01)
+
+### Features
+
+- **cache:** Implement caching mechanism with node-cache for blog posts ([d090de2](https://github.com/Notable-Nomads/nn-backend-api/commit/d090de25e2e97abf031a9b4b19f3506619723027))
+
+### Bug Fixes
+
+- **cache:** Update import statement for NodeCache to default import ([222c232](https://github.com/Notable-Nomads/nn-backend-api/commit/222c2320d2b7b8e61b5de70eb6a88d9c69399397))
+
 ### [0.8.65](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.64...v0.8.65) (2025-03-01)
 
 ### Features
