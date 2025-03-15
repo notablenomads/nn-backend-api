@@ -5,7 +5,6 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../cache/cache.service';
 import { IBlogPost, IBlogAuthor, IMediumRssFeed } from './interfaces/blog.interface';
-import { ERRORS } from '../core/errors/errors';
 
 @Injectable()
 export class BlogService {
@@ -23,23 +22,29 @@ export class BlogService {
       {
         username: 'mrdevx',
         name: 'Mahdi Rashidi',
-        mediumUrl: 'https://mrdevx.medium.com',
+        mediumUrl: 'https://medium.com/@mrdevx',
       },
       {
         username: 'miladghamati',
         name: 'Milad Ghamati',
-        mediumUrl: 'https://miladghamati.medium.com',
+        mediumUrl: 'https://medium.com/@miladghamati',
       },
     ];
   }
 
   async getBlogPosts(page: number = 1, limit: number = 10): Promise<{ posts: IBlogPost[]; total: number }> {
     try {
+      // First, let's check if we have cached data
+      const cachedPosts = await this.cacheService.get<IBlogPost[]>(this.CACHE_KEY);
+      this.logger.debug(`Cache status for ${this.CACHE_KEY}: ${cachedPosts ? 'HIT' : 'MISS'}`);
+
       const posts = await this.cacheService.getOrSet<IBlogPost[]>(
         this.CACHE_KEY,
         () => this.fetchAllBlogPosts(),
         this.CACHE_TTL,
       );
+
+      this.logger.debug(`Total posts fetched: ${posts?.length || 0}`);
 
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
@@ -50,7 +55,7 @@ export class BlogService {
         total: posts.length,
       };
     } catch (error) {
-      this.logger.error(ERRORS.BLOG.FETCH.FAILED({ reason: error.message }).message, error.stack);
+      this.logger.error(`Error in getBlogPosts: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -58,13 +63,19 @@ export class BlogService {
   private async fetchAllBlogPosts(): Promise<IBlogPost[]> {
     try {
       const allPosts: IBlogPost[] = [];
+      this.logger.debug(`Starting to fetch posts for ${this.authors.length} authors`);
 
       for (const author of this.authors) {
+        this.logger.debug(`Fetching posts for author: ${author.username} from ${author.mediumUrl}`);
         const posts = await this.fetchMediumPosts(author);
+        this.logger.debug(`Fetched ${posts?.length || 0} posts for ${author.username}`);
+
         if (posts && posts.length > 0) {
           allPosts.push(...posts);
         }
       }
+
+      this.logger.debug(`Total posts fetched from all authors: ${allPosts.length}`);
 
       if (allPosts.length > 0) {
         return allPosts.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
@@ -73,10 +84,7 @@ export class BlogService {
         return [];
       }
     } catch (error) {
-      this.logger.error(
-        ERRORS.BLOG.FETCH.FAILED({ reason: 'Failed to fetch blog posts: ' + error.message }).message,
-        error.stack,
-      );
+      this.logger.error(`Failed to fetch blog posts: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -84,7 +92,20 @@ export class BlogService {
   private async fetchMediumPosts(author: IBlogAuthor): Promise<IBlogPost[]> {
     try {
       const feedUrl = `${author.mediumUrl}/feed`;
-      const response = await firstValueFrom(this.httpService.get(feedUrl));
+      this.logger.debug(`Fetching RSS feed from: ${feedUrl}`);
+
+      const response = await firstValueFrom(
+        this.httpService.get(feedUrl, {
+          timeout: 10000,
+          headers: {
+            Accept: 'application/rss+xml, application/xml, text/xml, */*',
+            'User-Agent': 'NotableNomads/1.0',
+          },
+        }),
+      );
+
+      this.logger.debug(`RSS feed fetched successfully for ${author.username}, status: ${response.status}`);
+
       const feed = await this.parseMediumFeed(response.data);
 
       if (!feed?.rss?.channel?.item) {
@@ -109,11 +130,9 @@ export class BlogService {
         },
       }));
     } catch (error) {
-      this.logger.error(
-        ERRORS.BLOG.FETCH.FAILED({ reason: `Failed to fetch posts for ${author.username}: ${error.message}` }).message,
-        error.stack,
-      );
-      return [];
+      this.logger.error(`Failed to fetch posts for ${author.username}: ${error.message}`, error.stack);
+      // Instead of silently returning empty array, let's throw to trigger cache invalidation
+      throw error;
     }
   }
 
@@ -121,14 +140,14 @@ export class BlogService {
     return new Promise((resolve, reject) => {
       xml2js.parseString(xmlData, { explicitArray: false }, (error, result) => {
         if (error) {
-          this.logger.error(ERRORS.BLOG.PROCESSING.PARSE_ERROR({ reason: error.message }).message, error.stack);
+          this.logger.error(`Failed to parse XML: ${error.message}`, error.stack);
           reject(error);
           return;
         }
 
         if (!result?.rss?.channel) {
           const error = new Error('Invalid RSS feed structure');
-          this.logger.error(ERRORS.BLOG.PROCESSING.PARSE_ERROR({ reason: error.message }).message);
+          this.logger.error(`RSS feed parsing error: ${error.message}`);
           reject(error);
           return;
         }
@@ -153,8 +172,8 @@ export class BlogService {
     return imgMatch ? imgMatch[1] : undefined;
   }
 
-  public invalidateCache(): void {
-    this.cacheService.delete(this.CACHE_KEY);
+  public async invalidateCache(): Promise<void> {
+    await this.cacheService.delete(this.CACHE_KEY);
     this.logger.log('Blog posts cache invalidated');
   }
 }
