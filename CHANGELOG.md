@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.68](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.67...v0.8.68) (2025-03-15)
+
+### Features
+
+- **blog:** Integrate caching in BlogService and enhance error logging ([a7e9206](https://github.com/Notable-Nomads/nn-backend-api/commit/a7e92069c2fe354e1e5728b848d5d0bce0a1237d))
+
 ### [0.8.67](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.66...v0.8.67) (2025-03-15)
 
 ### [0.8.66](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.65...v0.8.66) (2025-03-01)
