@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.8.69](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.68...v0.8.69) (2025-04-05)
+
+### Features
+
+- **lead:** Add phone number validation and update Lead entity to include phone field ([5c98d61](https://github.com/Notable-Nomads/nn-backend-api/commit/5c98d6129abf762c3e5be341a1e3da7679469efd))
+
 ### [0.8.68](https://github.com/Notable-Nomads/nn-backend-api/compare/v0.8.67...v0.8.68) (2025-03-15)
 
 ### Features
