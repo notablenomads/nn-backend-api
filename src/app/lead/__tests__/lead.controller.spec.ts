@@ -41,6 +41,7 @@ describe('LeadController', () => {
     budget: Budget.LESS_THAN_10K,
     name: 'John Doe',
     email: 'john@example.com',
+    phone: '+1234567890',
     company: undefined,
     preferredContactMethod: ContactMethod.EMAIL,
     wantsConsultation: true,

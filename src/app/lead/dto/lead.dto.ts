@@ -11,6 +11,7 @@ import {
   ArrayMaxSize,
   IsNotEmpty,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -68,8 +69,8 @@ export class LeadDto {
   })
   @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.NON_TECHNICAL)
   @IsString({ message: 'Project description must be text' })
-  @MinLength(5, { message: 'Project description must be at least 5 characters' })
-  @MaxLength(2000, { message: 'Project description cannot exceed 2000 characters' })
+  @MinLength(10, { message: 'Please provide a more detailed description (minimum 10 characters)' })
+  @MaxLength(1000, { message: 'Description cannot exceed 1000 characters' })
   projectDescription?: string;
 
   @ApiProperty({
@@ -188,7 +189,12 @@ export class LeadDto {
   )
   @IsString({ message: 'Phone number must be text' })
   @IsNotEmpty({ message: 'Phone number is required when contact method is Phone or WhatsApp' })
-  phone?: string;
+  @MinLength(10, { message: 'Phone number must be at least 10 characters' })
+  @MaxLength(20, { message: 'Phone number cannot exceed 20 characters' })
+  @Matches(/^\+?[0-9\s-()]+$/, {
+    message: 'Phone number can only contain numbers, spaces, hyphens, parentheses, and optionally start with +',
+  })
+  phone: string;
 
   @ApiProperty({
     description: 'Company name',
@@ -245,15 +251,4 @@ export class LeadDto {
   @ArrayMaxSize(25, { message: 'Maximum of 25 features can be selected' })
   @IsEnum(TechnicalFeature, { each: true, message: 'One or more invalid technical features selected' })
   technicalFeatures?: TechnicalFeature[];
-
-  @ApiProperty({
-    description: 'Non-technical project description',
-    example: 'I want to build a mobile app that helps users track their daily expenses...',
-    required: false,
-  })
-  @ValidateIf((o) => o.technicalExpertise === TechnicalExpertise.NON_TECHNICAL)
-  @IsString({ message: 'Project description must be text' })
-  @MinLength(10, { message: 'Please provide a more detailed description (minimum 10 characters)' })
-  @MaxLength(1000, { message: 'Description cannot exceed 1000 characters' })
-  nonTechnicalDescription?: string;
 }

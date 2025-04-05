@@ -28,6 +28,7 @@ describe('LeadValidationService', () => {
     competitorUrls: [],
     name: 'John Doe',
     email: 'john@example.com',
+    phone: '+1234567890',
     preferredContactMethod: ContactMethod.EMAIL,
     wantsConsultation: true,
     targetAudience: TargetAudience.BUSINESSES,
@@ -38,7 +39,6 @@ describe('LeadValidationService', () => {
     budget: Budget.LESS_THAN_10K,
     technicalExpertise: TechnicalExpertise.TECHNICAL,
     technicalFeatures: [TechnicalFeature.AUTHENTICATION, TechnicalFeature.PAYMENTS, TechnicalFeature.NOTIFICATIONS],
-    nonTechnicalDescription: 'I want to build a marketplace app',
   };
 
   beforeEach(async () => {
@@ -222,12 +222,12 @@ describe('LeadValidationService', () => {
         expect(() => service.validateLeadData(invalidTechnicalLead)).toThrow(HttpException);
       });
 
-      it('should validate non-technical description for non-technical users', () => {
+      it('should validate project description for non-technical users', () => {
         const invalidNonTechnicalLead: LeadDto = {
           ...mockValidLead,
           technicalExpertise: TechnicalExpertise.NON_TECHNICAL,
           technicalFeatures: undefined,
-          nonTechnicalDescription: '', // Should fail validation
+          projectDescription: '', // Should fail validation
         };
 
         jest.spyOn(service, 'validateLeadData').mockImplementation(() => {

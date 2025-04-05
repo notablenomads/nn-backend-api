@@ -133,9 +133,6 @@ export class Lead implements ILead {
   })
   technicalFeatures?: TechnicalFeature[];
 
-  @Column('text', { nullable: true })
-  nonTechnicalDescription?: string;
-
   @ManyToOne(() => User, (user) => user.leads)
   user: User;
 

@@ -95,6 +95,7 @@ describe('LeadService', () => {
     designStyle: DesignStyle.MODERN,
     name: 'John Doe',
     email: 'john@example.com',
+    phone: '+1234567890',
     company: 'Test Company',
     budget: Budget.LESS_THAN_10K,
     timeline: Timeline.LESS_THAN_3_MONTHS,

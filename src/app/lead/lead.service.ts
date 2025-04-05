@@ -265,8 +265,8 @@ export class LeadService {
           ...(leadData.technicalExpertise === TechnicalExpertise.TECHNICAL && leadData.technicalFeatures
             ? [['Required Features', '\n' + this.formatTechnicalFeatures(leadData.technicalFeatures)]]
             : []),
-          ...(leadData.technicalExpertise === TechnicalExpertise.NON_TECHNICAL && leadData.nonTechnicalDescription
-            ? [['Project Vision', leadData.nonTechnicalDescription]]
+          ...(leadData.technicalExpertise === TechnicalExpertise.NON_TECHNICAL && leadData.projectDescription
+            ? [['Project Vision', leadData.projectDescription]]
             : []),
         ],
       },
@@ -889,10 +889,8 @@ export class LeadService {
         throw new BadRequestException('Please select at least one technical feature');
       }
     } else if (leadDto.technicalExpertise === TechnicalExpertise.NON_TECHNICAL) {
-      if (!leadDto.nonTechnicalDescription || leadDto.nonTechnicalDescription.trim().length < 10) {
-        throw new BadRequestException(
-          'Please provide a more detailed non-technical description (minimum 10 characters)',
-        );
+      if (!leadDto.projectDescription || leadDto.projectDescription.trim().length < 10) {
+        throw new BadRequestException('Please provide a more detailed project description (minimum 10 characters)');
       }
     }
   }

@@ -36,5 +36,4 @@ export interface ILead {
   updatedAt: Date;
   technicalExpertise: TechnicalExpertise;
   technicalFeatures?: TechnicalFeature[];
-  nonTechnicalDescription?: string;
 }
