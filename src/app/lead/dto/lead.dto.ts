@@ -183,7 +183,6 @@ export class LeadDto {
     required: false,
     example: '+1234567890',
   })
-  @IsOptional()
   @ValidateIf(
     (o) => o.preferredContactMethod === ContactMethod.PHONE || o.preferredContactMethod === ContactMethod.WHATSAPP,
   )
