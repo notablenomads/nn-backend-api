@@ -2,7 +2,7 @@ import { join } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { Repository } from 'typeorm';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LeadDto } from './dto/lead.dto';
@@ -839,5 +839,61 @@ export class LeadService {
         description: 'Work offline and sync when connected',
       },
     ];
+  }
+
+  async validateLeadData(leadDto: LeadDto) {
+    // Phone validation for specific contact methods
+    if (
+      (leadDto.preferredContactMethod === ContactMethod.PHONE ||
+        leadDto.preferredContactMethod === ContactMethod.WHATSAPP) &&
+      !leadDto.phone
+    ) {
+      throw new BadRequestException('Phone number is required when contact method is Phone or WhatsApp');
+    }
+
+    // Validate phone format if provided
+    if (leadDto.phone) {
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(leadDto.phone)) {
+        throw new BadRequestException(
+          'Invalid phone number format. Please use international format (e.g., +1234567890)',
+        );
+      }
+    }
+
+    // Project type specific validation
+    if (
+      leadDto.projectType === ProjectType.EXISTING &&
+      (!leadDto.existingProjectChallenges || leadDto.existingProjectChallenges.length === 0)
+    ) {
+      throw new BadRequestException('Please specify at least one challenge for your existing project');
+    }
+
+    // Service specific validations
+    if (leadDto.services.includes(ServiceType.MOBILE_APP) && !leadDto.mobileAppPlatform) {
+      throw new BadRequestException('Please select a target platform for your mobile app');
+    }
+
+    if (leadDto.services.includes(ServiceType.AI_ML) && !leadDto.aimlDatasetStatus) {
+      throw new BadRequestException('Please indicate if you have datasets/models for your AI/ML project');
+    }
+
+    // Competitor validation
+    if (leadDto.hasCompetitors && (!leadDto.competitorUrls || leadDto.competitorUrls.length === 0)) {
+      throw new BadRequestException('Please provide at least one competitor when hasCompetitors is true');
+    }
+
+    // Technical expertise validation
+    if (leadDto.technicalExpertise === TechnicalExpertise.TECHNICAL) {
+      if (!leadDto.technicalFeatures || leadDto.technicalFeatures.length === 0) {
+        throw new BadRequestException('Please select at least one technical feature');
+      }
+    } else if (leadDto.technicalExpertise === TechnicalExpertise.NON_TECHNICAL) {
+      if (!leadDto.nonTechnicalDescription || leadDto.nonTechnicalDescription.trim().length < 10) {
+        throw new BadRequestException(
+          'Please provide a more detailed non-technical description (minimum 10 characters)',
+        );
+      }
+    }
   }
 }

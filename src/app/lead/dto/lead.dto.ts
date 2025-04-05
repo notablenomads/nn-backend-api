@@ -179,6 +179,19 @@ export class LeadDto {
   email: string;
 
   @ApiProperty({
+    description: 'Contact phone number',
+    required: false,
+    example: '+1234567890',
+  })
+  @IsOptional()
+  @ValidateIf(
+    (o) => o.preferredContactMethod === ContactMethod.PHONE || o.preferredContactMethod === ContactMethod.WHATSAPP,
+  )
+  @IsString({ message: 'Phone number must be text' })
+  @IsNotEmpty({ message: 'Phone number is required when contact method is Phone or WhatsApp' })
+  phone?: string;
+
+  @ApiProperty({
     description: 'Company name',
     required: false,
   })

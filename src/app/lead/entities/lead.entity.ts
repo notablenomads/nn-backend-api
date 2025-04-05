@@ -87,6 +87,9 @@ export class Lead implements ILead {
   @Column('text')
   email: string;
 
+  @Column('text', { nullable: true })
+  phone?: string;
+
   @Column({ nullable: true })
   company?: string;
 
