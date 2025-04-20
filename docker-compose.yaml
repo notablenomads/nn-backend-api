@@ -7,15 +7,42 @@ services:
         - NODE_ENV=${NODE_ENV}
         - JWT_SECRET=${JWT_SECRET}
     ports:
-      - '3000:3000'
+      - '${PORT}:${PORT}'
     environment:
       - NODE_ENV=${NODE_ENV}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_DATABASE=${DB_DATABASE}
+      - PORT=${PORT}
+      - HOST=${HOST}
+      - API_PREFIX=${API_PREFIX}
+      - ENABLE_SWAGGER=${ENABLE_SWAGGER}
+      - CORS_ENABLED_DOMAINS=${CORS_ENABLED_DOMAINS}
+      - CORS_RESTRICT=${CORS_RESTRICT}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES}
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}
+      - JWT_CLOCK_TOLERANCE=${JWT_CLOCK_TOLERANCE}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
+      - SECURITY_HELMET_ENABLED=${SECURITY_HELMET_ENABLED}
+      - COOKIE_SECURE=${COOKIE_SECURE}
+      - MAX_PAYLOAD_SIZE=${MAX_PAYLOAD_SIZE}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - EMAIL_FROM_ADDRESS=${EMAIL_FROM_ADDRESS}
+      - EMAIL_TO_ADDRESS=${EMAIL_TO_ADDRESS}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - MONITORING_MEMORY_THRESHOLD_MS=${MONITORING_MEMORY_THRESHOLD_MS}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - DOCKER=true
     networks:
       - app-network
@@ -26,17 +53,17 @@ services:
   postgres:
     image: postgres:16-alpine
     ports:
-      - '5432:5432'
+      - '${DATABASE_PORT}:5432'
     environment:
-      - POSTGRES_USER=${DB_USERNAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}']
       interval: 5s
       timeout: 5s
       retries: 5

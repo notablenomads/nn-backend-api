@@ -1,6 +1,16 @@
 # Stage 1: Build
 FROM node:lts-alpine AS build
 
+# Add build arguments for sensitive values needed during build
+ARG NODE_ENV
+ARG JWT_SECRET
+ARG JWT_REFRESH_SECRET
+ARG ENCRYPTION_KEY
+
+# Set only necessary environment variables for build
+ENV NODE_ENV=${NODE_ENV}
+ENV DOCKER=true
+
 # Set the working directory inside the container
 WORKDIR /app
 
@@ -33,6 +43,16 @@ RUN ls -la dist && \
 
 # Stage 2: Run
 FROM node:lts-alpine AS production
+
+# Add build arguments for sensitive values needed during build
+ARG NODE_ENV
+ARG JWT_SECRET
+ARG JWT_REFRESH_SECRET
+ARG ENCRYPTION_KEY
+
+# Set only necessary environment variables for runtime
+ENV NODE_ENV=${NODE_ENV}
+ENV DOCKER=true
 
 # Install wget and curl for health checks
 RUN apk add --no-cache wget curl
