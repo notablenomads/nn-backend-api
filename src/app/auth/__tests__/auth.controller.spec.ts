@@ -3,11 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
-import { LoggingService } from '../../logging/services/logging.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokensDto } from '../dto/refresh-tokens.dto';
-import { LogLevel, LogActionType } from '../../logging/entities/log-entry.entity';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -20,21 +18,47 @@ describe('AuthController', () => {
     logoutAll: jest.fn(),
   };
 
-  const mockLoggingService = {
-    log: jest.fn(),
-  };
-
-  type RequestWithUser = Request & { user?: { id: string; exp?: number } };
-
   const mockRequest = (ip = '127.0.0.1', userId?: string, exp?: number) => {
-    const req = { ip } as RequestWithUser;
-    if (userId) {
-      req.user = { id: userId };
-      if (exp !== undefined) {
-        req.user.exp = exp;
-      }
-    }
-    return req as Request & { user: { id: string; exp?: number } };
+    return {
+      ip,
+      user: userId ? { id: userId, exp } : undefined,
+      get: jest.fn(),
+      header: jest.fn(),
+      accepts: jest.fn(),
+      acceptsCharsets: jest.fn(),
+      acceptsEncodings: jest.fn(),
+      acceptsLanguages: jest.fn(),
+      param: jest.fn(),
+      is: jest.fn(),
+      protocol: 'http',
+      secure: false,
+      ips: [],
+      subdomains: [],
+      path: '',
+      hostname: '',
+      host: '',
+      fresh: false,
+      stale: true,
+      xhr: false,
+      cookies: {},
+      signedCookies: {},
+      secret: undefined,
+      app: {},
+      baseUrl: '',
+      originalUrl: '',
+      url: '',
+      method: 'GET',
+      params: {},
+      query: {},
+      route: {},
+      originalMethod: '',
+      body: {},
+      headers: {},
+      rawHeaders: [],
+      httpVersion: '1.1',
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+    } as unknown as Request;
   };
 
   beforeEach(async () => {
@@ -44,10 +68,6 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
-        },
-        {
-          provide: LoggingService,
-          useValue: mockLoggingService,
         },
       ],
     }).compile();
@@ -77,28 +97,16 @@ describe('AuthController', () => {
     it('should register user successfully', async () => {
       mockAuthService.register.mockResolvedValue(mockResponse);
 
-      const result = await controller.register(registerDto, mockRequest());
+      const result = await controller.register(registerDto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User registered successfully',
-        LogActionType.USER_REGISTRATION,
-        expect.any(Object),
-      );
     });
 
     it('should handle registration errors', async () => {
       const error = new BadRequestException('Registration failed');
       mockAuthService.register.mockRejectedValue(error);
 
-      await expect(controller.register(registerDto, mockRequest())).rejects.toThrow(error);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Registration failed',
-        LogActionType.USER_REGISTRATION_FAILED,
-        expect.any(Object),
-      );
+      await expect(controller.register(registerDto)).rejects.toThrow(error);
     });
   });
 
@@ -118,28 +126,16 @@ describe('AuthController', () => {
     it('should login user successfully', async () => {
       mockAuthService.login.mockResolvedValue(mockResponse);
 
-      const result = await controller.login(loginDto, mockRequest());
+      const result = await controller.login(loginDto);
 
       expect(result).toEqual(mockResponse);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User logged in successfully',
-        LogActionType.USER_LOGIN,
-        expect.any(Object),
-      );
     });
 
     it('should handle login errors', async () => {
       const error = new UnauthorizedException('Invalid credentials');
       mockAuthService.login.mockRejectedValue(error);
 
-      await expect(controller.login(loginDto, mockRequest())).rejects.toThrow(error);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Login failed',
-        LogActionType.USER_LOGIN_FAILED,
-        expect.any(Object),
-      );
+      await expect(controller.login(loginDto)).rejects.toThrow(error);
     });
   });
 
@@ -159,12 +155,6 @@ describe('AuthController', () => {
 
       expect(result).toEqual(mockTokens);
       expect(mockAuthService.refreshTokens).toHaveBeenCalledWith(refreshTokenDto.refreshToken, req.user.id);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'Token refresh successful',
-        LogActionType.TOKEN_REFRESH,
-        expect.any(Object),
-      );
     });
 
     it('should handle refresh token errors', async () => {
@@ -175,12 +165,6 @@ describe('AuthController', () => {
       };
 
       await expect(controller.refreshTokens(refreshTokenDto, req)).rejects.toThrow(error);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Token refresh failed',
-        LogActionType.TOKEN_REFRESH_FAILED,
-        expect.any(Object),
-      );
     });
   });
 
@@ -191,31 +175,17 @@ describe('AuthController', () => {
 
     it('should logout successfully', async () => {
       mockAuthService.logout.mockResolvedValue(undefined);
-      const req = mockRequest('127.0.0.1', '123') as Request & { user: { id: string } };
 
-      await controller.logout(refreshTokenDto, req);
+      await controller.logout(refreshTokenDto);
 
       expect(mockAuthService.logout).toHaveBeenCalledWith(refreshTokenDto.refreshToken);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User logged out successfully',
-        LogActionType.USER_LOGOUT,
-        expect.any(Object),
-      );
     });
 
     it('should handle logout errors', async () => {
       const error = new UnauthorizedException('Invalid refresh token');
       mockAuthService.logout.mockRejectedValue(error);
-      const req = mockRequest('127.0.0.1', '123') as Request & { user: { id: string } };
 
-      await expect(controller.logout(refreshTokenDto, req)).rejects.toThrow(error);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'User logout failed',
-        LogActionType.USER_LOGOUT_FAILED,
-        expect.any(Object),
-      );
+      await expect(controller.logout(refreshTokenDto)).rejects.toThrow(error);
     });
   });
 
@@ -229,12 +199,6 @@ describe('AuthController', () => {
       await controller.logoutAll(req);
 
       expect(mockAuthService.logoutAll).toHaveBeenCalledWith(mockUserId);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User logged out from all devices',
-        LogActionType.USER_LOGOUT_ALL,
-        expect.any(Object),
-      );
     });
 
     it('should handle logoutAll errors', async () => {
@@ -243,12 +207,6 @@ describe('AuthController', () => {
       const req = mockRequest('127.0.0.1', mockUserId) as Request & { user: { id: string } };
 
       await expect(controller.logoutAll(req)).rejects.toThrow(error);
-      expect(mockLoggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Failed to logout from all devices',
-        LogActionType.USER_LOGOUT_ALL_FAILED,
-        expect.any(Object),
-      );
     });
   });
 });

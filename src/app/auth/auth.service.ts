@@ -9,8 +9,6 @@ import { IAuthResponse } from './interfaces/auth-response.interface';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { CryptoService } from '../core/services/crypto.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
-import { LoggingService } from '../logging/services/logging.service';
-import { LogActionType, LogLevel } from '../logging/entities/log-entry.entity';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -26,7 +24,6 @@ export class AuthService {
     private readonly refreshTokenService: RefreshTokenService,
     private readonly cryptoService: CryptoService,
     private readonly tokenBlacklistService: TokenBlacklistService,
-    private readonly loggingService: LoggingService,
   ) {}
 
   private async generateTokens(user: User): Promise<IAuthResponse> {
@@ -47,17 +44,8 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<IAuthResponse> {
     try {
       const user = await this.userService.register(registerDto);
-      await this.loggingService.log(LogLevel.INFO, 'User registered successfully', LogActionType.USER_REGISTRATION, {
-        userId: user.id,
-      });
       return this.generateTokens(user);
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Registration failed', LogActionType.USER_REGISTRATION_FAILED, {
-        metadata: {
-          email: registerDto.email,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -66,17 +54,8 @@ export class AuthService {
     try {
       const user = await this.validateUser(loginDto.email, loginDto.password);
       await this.resetFailedAttempts(loginDto.email);
-      await this.loggingService.log(LogLevel.INFO, 'User logged in successfully', LogActionType.USER_LOGIN, {
-        userId: user.id,
-      });
       return this.generateTokens(user);
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Login failed', LogActionType.USER_LOGIN_FAILED, {
-        metadata: {
-          email: loginDto.email,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -123,18 +102,8 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
-      await this.loggingService.log(LogLevel.INFO, 'Token refreshed successfully', LogActionType.TOKEN_REFRESH, {
-        userId: user.id,
-      });
-
       return this.generateTokens(user);
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Token refresh failed', LogActionType.TOKEN_REFRESH_FAILED, {
-        metadata: {
-          userId: accessTokenUserId,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -147,16 +116,7 @@ export class AuthService {
       }
 
       await this.refreshTokenService.revokeToken(refreshToken);
-      await this.loggingService.log(LogLevel.INFO, 'User logged out successfully', LogActionType.USER_LOGOUT, {
-        userId: validToken.userId,
-      });
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Logout failed', LogActionType.USER_LOGOUT_FAILED, {
-        metadata: {
-          refreshToken,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -169,24 +129,7 @@ export class AuthService {
       }
 
       await this.refreshTokenService.revokeAllUserTokens(userId);
-      await this.loggingService.log(
-        LogLevel.INFO,
-        'All sessions logged out successfully',
-        LogActionType.USER_LOGOUT_ALL,
-        { userId },
-      );
     } catch (error) {
-      await this.loggingService.log(
-        LogLevel.ERROR,
-        'Logout all sessions failed',
-        LogActionType.USER_LOGOUT_ALL_FAILED,
-        {
-          metadata: {
-            userId,
-            error: error.message,
-          },
-        },
-      );
       throw error;
     }
   }

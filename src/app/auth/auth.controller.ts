@@ -7,42 +7,23 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokensDto } from './dto/refresh-tokens.dto';
-import { LoggingService } from '../logging/services/logging.service';
-import { LogLevel, LogActionType } from '../logging/entities/log-entry.entity';
 import { IAuthResponse } from './interfaces/auth-response.interface';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly loggingService: LoggingService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register new user' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'User registered successfully' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User with this email already exists' })
-  async register(@Body() registerDto: RegisterDto, @Req() req: Request): Promise<IAuthResponse> {
+  async register(@Body() registerDto: RegisterDto): Promise<IAuthResponse> {
     try {
       const result = await this.authService.register(registerDto);
-      await this.loggingService.log(LogLevel.INFO, 'User registered successfully', LogActionType.USER_REGISTRATION, {
-        userId: result.userId,
-        ipAddress: req.ip,
-        metadata: {
-          email: registerDto.email,
-        },
-      });
       return result;
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Registration failed', LogActionType.USER_REGISTRATION_FAILED, {
-        ipAddress: req.ip,
-        metadata: {
-          email: registerDto.email,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -52,25 +33,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ status: HttpStatus.OK, description: 'User logged in successfully' })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto, @Req() req: Request): Promise<IAuthResponse> {
+  async login(@Body() loginDto: LoginDto): Promise<IAuthResponse> {
     try {
       const result = await this.authService.login(loginDto);
-      await this.loggingService.log(LogLevel.INFO, 'User logged in successfully', LogActionType.USER_LOGIN, {
-        userId: result.userId,
-        ipAddress: req.ip,
-        metadata: {
-          email: loginDto.email,
-        },
-      });
       return result;
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Login failed', LogActionType.USER_LOGIN_FAILED, {
-        ipAddress: req.ip,
-        metadata: {
-          email: loginDto.email,
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -92,18 +59,8 @@ export class AuthController {
       }
 
       const result = await this.authService.refreshTokens(refreshTokenDto.refreshToken, req.user.id);
-      await this.loggingService.log(LogLevel.INFO, 'Token refresh successful', LogActionType.TOKEN_REFRESH, {
-        userId: req.user.id,
-        ipAddress: req.ip,
-      });
       return result;
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'Token refresh failed', LogActionType.TOKEN_REFRESH_FAILED, {
-        ipAddress: req.ip,
-        metadata: {
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -115,23 +72,10 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async logout(
-    @Body() refreshTokenDto: RefreshTokensDto,
-    @Req() req: Request & { user: { id: string } },
-  ): Promise<void> {
+  async logout(@Body() refreshTokenDto: RefreshTokensDto): Promise<void> {
     try {
       await this.authService.logout(refreshTokenDto.refreshToken);
-      await this.loggingService.log(LogLevel.INFO, 'User logged out successfully', LogActionType.USER_LOGOUT, {
-        userId: req.user.id,
-        ipAddress: req.ip,
-      });
     } catch (error) {
-      await this.loggingService.log(LogLevel.ERROR, 'User logout failed', LogActionType.USER_LOGOUT_FAILED, {
-        ipAddress: req.ip,
-        metadata: {
-          error: error.message,
-        },
-      });
       throw error;
     }
   }
@@ -146,22 +90,7 @@ export class AuthController {
   async logoutAll(@Req() req: Request & { user: { id: string } }): Promise<void> {
     try {
       await this.authService.logoutAll(req.user.id);
-      await this.loggingService.log(LogLevel.INFO, 'User logged out from all devices', LogActionType.USER_LOGOUT_ALL, {
-        userId: req.user.id,
-        ipAddress: req.ip,
-      });
     } catch (error) {
-      await this.loggingService.log(
-        LogLevel.ERROR,
-        'Failed to logout from all devices',
-        LogActionType.USER_LOGOUT_ALL_FAILED,
-        {
-          ipAddress: req.ip,
-          metadata: {
-            error: error.message,
-          },
-        },
-      );
       throw error;
     }
   }

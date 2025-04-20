@@ -8,7 +8,6 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { ApiKeyModule } from './api-key/api-key.module';
 import { AuthGuard } from '../core/guards/auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
 import { UserModule } from '../user/user.module';
@@ -17,25 +16,22 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
 import { CryptoService } from '../core/services/crypto.service';
-import { LoggingModule } from '../logging/logging.module';
 
 @Module({
   imports: [
-    ApiKeyModule,
     UserModule,
     PassportModule,
-    LoggingModule,
-    TypeOrmModule.forFeature([RefreshToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION') || '1d',
+          expiresIn: configService.get<string>('JWT_EXPIRATION'),
         },
       }),
       inject: [ConfigService],
     }),
+    TypeOrmModule.forFeature([RefreshToken]),
     ScheduleModule.forRoot(),
   ],
   controllers: [AuthController],
@@ -43,13 +39,13 @@ import { LoggingModule } from '../logging/logging.module';
     AuthService,
     JwtStrategy,
     JwtRefreshStrategy,
+    AuthGuard,
+    RolesGuard,
     RefreshTokenService,
     TokenCleanupService,
     TokenBlacklistService,
     CryptoService,
-    AuthGuard,
-    RolesGuard,
   ],
-  exports: [AuthService, JwtModule, AuthGuard, RolesGuard, RefreshTokenService, TokenBlacklistService, CryptoService],
+  exports: [AuthService, JwtStrategy, JwtRefreshStrategy, AuthGuard, RolesGuard],
 })
 export class AuthModule {}
