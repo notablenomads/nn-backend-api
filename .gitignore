@@ -31,7 +31,7 @@ Thumbs.db
 
 # Yarn Berry
 .yarn/*
-.yarnrc.yml
+!.yarnrc.yml
 !.yarn/cache
 !.yarn/patches
 !.yarn/plugins
