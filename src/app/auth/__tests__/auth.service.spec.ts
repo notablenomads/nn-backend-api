@@ -5,10 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
 import { UserService } from '../../user/user.service';
 import { RefreshTokenService } from '../services/refresh-token.service';
-import { LoggingService } from '../../logging/services/logging.service';
 import { CryptoService } from '../../core/services/crypto.service';
 import { TokenBlacklistService } from '../services/token-blacklist.service';
-import { LogLevel, LogActionType } from '../../logging/entities/log-entry.entity';
 
 jest.mock('bcrypt');
 
@@ -32,9 +30,6 @@ describe('AuthService', () => {
     jwtService: {
       signAsync: jest.fn(),
       verifyAsync: jest.fn(),
-    },
-    loggingService: {
-      log: jest.fn(),
     },
     configService: {
       get: jest.fn(),
@@ -65,10 +60,6 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockServices.jwtService,
-        },
-        {
-          provide: LoggingService,
-          useValue: mockServices.loggingService,
         },
         {
           provide: ConfigService,
@@ -121,12 +112,6 @@ describe('AuthService', () => {
         userId: mockUser.id,
         email: mockUser.email,
       });
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User registered successfully',
-        LogActionType.USER_REGISTRATION,
-        expect.any(Object),
-      );
     });
 
     it('should handle registration errors', async () => {
@@ -134,12 +119,6 @@ describe('AuthService', () => {
       mockServices.userService.register.mockRejectedValue(error);
 
       await expect(service.register(mockRegisterDto)).rejects.toThrow(error);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Registration failed',
-        LogActionType.USER_REGISTRATION_FAILED,
-        expect.any(Object),
-      );
     });
   });
 
@@ -172,24 +151,12 @@ describe('AuthService', () => {
         userId: mockUser.id,
         email: mockUser.email,
       });
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User logged in successfully',
-        LogActionType.USER_LOGIN,
-        expect.any(Object),
-      );
     });
 
     it('should handle login errors', async () => {
       mockServices.userService.findByEmail.mockResolvedValue(null);
 
       await expect(service.login(mockLoginDto)).rejects.toThrow(UnauthorizedException);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Login failed',
-        LogActionType.USER_LOGIN_FAILED,
-        expect.any(Object),
-      );
     });
   });
 
@@ -217,24 +184,12 @@ describe('AuthService', () => {
         userId: mockUser.id,
         email: mockUser.email,
       });
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'Token refreshed successfully',
-        LogActionType.TOKEN_REFRESH,
-        expect.any(Object),
-      );
     });
 
     it('should handle refresh token errors', async () => {
       mockServices.refreshTokenService.validateToken.mockResolvedValue(null);
 
       await expect(service.refreshTokens(mockAccessToken, mockRefreshToken)).rejects.toThrow(UnauthorizedException);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Token refresh failed',
-        LogActionType.TOKEN_REFRESH_FAILED,
-        expect.any(Object),
-      );
     });
   });
 
@@ -248,24 +203,12 @@ describe('AuthService', () => {
       await service.logout(mockRefreshToken);
 
       expect(mockServices.refreshTokenService.revokeToken).toHaveBeenCalledWith(mockRefreshToken);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'User logged out successfully',
-        LogActionType.USER_LOGOUT,
-        expect.any(Object),
-      );
     });
 
     it('should handle invalid refresh token', async () => {
       mockServices.refreshTokenService.validateToken.mockResolvedValue(null);
 
       await expect(service.logout(mockRefreshToken)).rejects.toThrow(UnauthorizedException);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Logout failed',
-        LogActionType.USER_LOGOUT_FAILED,
-        expect.any(Object),
-      );
     });
   });
 
@@ -281,12 +224,6 @@ describe('AuthService', () => {
       await service.logoutAll(mockUserId);
 
       expect(mockServices.refreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(mockUserId);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.INFO,
-        'All sessions logged out successfully',
-        LogActionType.USER_LOGOUT_ALL,
-        expect.any(Object),
-      );
     });
 
     it('should handle errors during logoutAll', async () => {
@@ -295,12 +232,6 @@ describe('AuthService', () => {
       mockServices.refreshTokenService.revokeAllUserTokens.mockRejectedValue(error);
 
       await expect(service.logoutAll(mockUserId)).rejects.toThrow(error);
-      expect(mockServices.loggingService.log).toHaveBeenCalledWith(
-        LogLevel.ERROR,
-        'Logout all sessions failed',
-        LogActionType.USER_LOGOUT_ALL_FAILED,
-        expect.any(Object),
-      );
     });
   });
 });
