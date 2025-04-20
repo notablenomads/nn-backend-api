@@ -67,7 +67,7 @@ export class MonitoringService implements OnModuleInit {
             if (event.request) {
               // Remove sensitive headers
               const sanitizedHeaders = { ...event.request.headers };
-              ['authorization', 'cookie', 'x-api-key'].forEach((header) => delete sanitizedHeaders[header]);
+              ['authorization', 'cookie'].forEach((header) => delete sanitizedHeaders[header]);
               event.request.headers = sanitizedHeaders;
 
               // Remove query strings from URLs that might contain tokens

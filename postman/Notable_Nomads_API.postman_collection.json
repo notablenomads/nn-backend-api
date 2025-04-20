@@ -138,80 +138,6 @@
       ]
     },
     {
-      "name": "API Keys",
-      "description": "API key management endpoints",
-      "item": [
-        {
-          "name": "Generate API Key",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/api-key",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "api-key"]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"description\": \"API Key for development\"\n}"
-            },
-            "description": "Generate a new API key"
-          }
-        },
-        {
-          "name": "Rotate API Key",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "ApiKey {{apiKey}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/api-key/rotate",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "api-key", "rotate"]
-            },
-            "description": "Rotate an existing API key"
-          }
-        },
-        {
-          "name": "Deactivate API Key",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "ApiKey {{apiKey}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/api-key",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "api-key"]
-            },
-            "description": "Deactivate an API key"
-          }
-        }
-      ]
-    },
-    {
       "name": "Leads",
       "description": "Project leads management endpoints",
       "item": [
@@ -251,12 +177,13 @@
               ]
             },
             "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{base_url}}/leads",
               "host": ["{{base_url}}"],
               "path": ["leads"]
             },
-            "description": "Get all project leads (requires authentication)"
+            "description": "Get all project leads"
           }
         },
         {

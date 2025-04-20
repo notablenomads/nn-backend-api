@@ -2,7 +2,6 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logge
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { AuthType, AUTH_TYPE_KEY } from '../decorators/auth.decorator';
-import { ApiKeyService } from '../../auth/api-key/api-key.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -11,7 +10,6 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly jwtService: JwtService,
-    private readonly apiKeyService: ApiKeyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -24,7 +22,6 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
-    const apiKey = request.headers['x-api-key'];
 
     try {
       switch (authType) {
@@ -35,16 +32,6 @@ export class AuthGuard implements CanActivate {
           const token = authHeader.split(' ')[1];
           const payload = await this.jwtService.verifyAsync(token);
           request.user = payload;
-          return true;
-
-        case AuthType.API_KEY:
-          if (!apiKey) {
-            throw new UnauthorizedException('API key is required');
-          }
-          const isValidApiKey = await this.apiKeyService.validateApiKey(apiKey);
-          if (!isValidApiKey) {
-            throw new UnauthorizedException('Invalid API key');
-          }
           return true;
 
         default:

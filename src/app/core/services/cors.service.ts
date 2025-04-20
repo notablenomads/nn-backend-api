@@ -95,7 +95,7 @@ export class CorsService {
     return {
       origin: this.createOriginValidator(),
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-API-Key'],
+      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
       exposedHeaders: ['Content-Disposition'],
       credentials: true,
       maxAge: this.maxAgeInSeconds,

@@ -8,7 +8,6 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { ApiKeyModule } from './api-key/api-key.module';
 import { AuthGuard } from '../core/guards/auth.guard';
 import { RolesGuard } from '../core/guards/roles.guard';
 import { UserModule } from '../user/user.module';
@@ -21,7 +20,6 @@ import { LoggingModule } from '../logging/logging.module';
 
 @Module({
   imports: [
-    ApiKeyModule,
     UserModule,
     PassportModule,
     LoggingModule,

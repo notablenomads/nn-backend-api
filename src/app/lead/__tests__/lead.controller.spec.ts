@@ -5,7 +5,6 @@ import { LeadService } from '../lead.service';
 import { LeadValidationService } from '../services/lead-validation.service';
 import { LeadDto } from '../dto/lead.dto';
 import { LeadResponseDto } from '../interfaces/lead-response.dto';
-import { ApiKeyService } from '../../auth/api-key/api-key.service';
 import {
   ProjectType,
   ServiceType,
@@ -20,7 +19,6 @@ import {
   TechnicalFeature,
 } from '../enums/lead.enum';
 import { createLeadProcessingError } from '../constants/lead.errors';
-import { ApiKeyGuard } from '../../auth/api-key/api-key.guard';
 
 describe('LeadController', () => {
   let controller: LeadController;
@@ -57,10 +55,6 @@ describe('LeadController', () => {
     updatedAt: new Date(),
   };
 
-  const mockApiKeyService = {
-    validateApiKey: jest.fn().mockResolvedValue(true),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LeadController],
@@ -77,16 +71,6 @@ describe('LeadController', () => {
           provide: LeadValidationService,
           useValue: {
             validateLeadData: jest.fn(),
-          },
-        },
-        {
-          provide: ApiKeyService,
-          useValue: mockApiKeyService,
-        },
-        {
-          provide: ApiKeyGuard,
-          useValue: {
-            canActivate: jest.fn().mockReturnValue(true),
           },
         },
       ],
