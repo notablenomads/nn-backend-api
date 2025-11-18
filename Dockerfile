@@ -24,7 +24,7 @@ COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn ./.yarn
 
 # Install dependencies
-RUN yarn install --immutable
+RUN yarn install 
 
 # Copy the entire application code
 COPY . .
