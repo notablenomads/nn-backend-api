@@ -1,49 +1,61 @@
-import { GoogleGenerativeAI, GenerativeModel, GenerationConfig, Content } from '@google/generative-ai';
 import { Observable } from 'rxjs';
-import { Injectable, Logger } from '@nestjs/common';
+import OpenAI from 'openai';
 import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 import { IChatMessage } from './interfaces/chat.interface';
 import { IConfig } from '../config/config.interface';
 import { ERRORS } from '../core/errors/errors';
+import { getExampleShots } from './ai-chat.example-shots';
 
 @Injectable()
 export class AiChatService {
   private readonly logger = new Logger(AiChatService.name);
-  private model: GenerativeModel;
-  private readonly generationConfig: GenerationConfig = {
-    temperature: 0.7,
-    topK: 40,
-    topP: 0.95,
-    maxOutputTokens: 1024,
+  private client: OpenAI;
+  private modelConfig: {
+    temperature: number;
+    maxOutputTokens: number;
+    modelName: string;
+    apiKey: string;
+    apiBaseUrl: string;
   };
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<IConfig['ai']['geminiApiKey']>('ai.geminiApiKey');
-
+    const apiKey = this.configService.get<IConfig['ai']['modelApiKey']>('ai.modelApiKey');
+    const apiBaseUrl = this.configService.get<IConfig['ai']['modelApiBaseUrl']>('ai.modelApiBaseUrl');
+    const temperature = this.configService.get<number>('ai.modelTemprature');
+    const maxOutputTokens = this.configService.get<number>('ai.modelMaxOutputTokens');
+    const modelName = this.configService.get<string>('ai.modelName');
     if (!apiKey) {
-      this.logger.error('GEMINI_API_KEY is not configured');
-      throw new Error('GEMINI_API_KEY is required');
+      this.logger.error(`LLM API key is not configured (ai.modelApiKey)`);
+      throw new Error(`LLM MODEL API KEY is required`);
+    }
+    if (!modelName) {
+      this.logger.error(`LLM model name is not configured (ai.modelName)`);
+      throw new Error(`LLM MODEL NAME is required`);
     }
 
-    this.logger.log('Initializing Gemini AI with API key');
-    const genAI = new GoogleGenerativeAI(apiKey);
+    this.modelConfig = {
+      temperature,
+      maxOutputTokens,
+      modelName,
+      apiKey,
+      apiBaseUrl,
+    };
 
-    try {
-      this.model = genAI.getGenerativeModel({
-        model: 'tunedModels/notablenomadv11-kdwedlxam0zp',
-      });
-      this.logger.log('Gemini AI model initialized successfully');
-    } catch (error) {
-      this.logger.error(`Failed to initialize Gemini AI model: ${error.message}`, error.stack);
-      throw error;
-    }
+    this.logger.log(`Initializing client model: ${this.modelConfig.modelName}`);
+
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: apiBaseUrl,
+    });
   }
 
-  private convertToGeminiHistory(chatHistory: IChatMessage[] = []): Content[] {
+  private convertToAIHistory(chatHistory: IChatMessage[] = []): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     this.logger.debug(`Converting chat history: ${JSON.stringify(chatHistory)}`);
+
     return chatHistory.map((msg) => ({
-      role: msg.role,
-      parts: [{ text: msg.content }],
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content,
     }));
   }
 
@@ -52,21 +64,25 @@ export class AiChatService {
     this.logger.debug(`Chat history length: ${chatHistory.length}`);
 
     try {
-      const chat = this.model.startChat({
-        history: this.convertToGeminiHistory(chatHistory),
-        generationConfig: this.generationConfig,
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        ...this.convertToAIHistory(chatHistory),
+        ...this.promptBuilder(prompt),
+      ];
+
+      const completion = await this.client.chat.completions.create({
+        model: this.modelConfig.modelName,
+        messages,
+        temperature: this.modelConfig.temperature,
+        max_tokens: this.modelConfig.maxOutputTokens,
       });
 
-      this.logger.debug('Chat started, sending message...');
-      const result = await chat.sendMessage([{ text: prompt }]);
-      const response = await result.response;
-      const text = response.text();
+      const text = completion.choices[0]?.message?.content ?? '';
 
       this.logger.log(`Generated response length: ${text.length}`);
       this.logger.debug(`Response preview: ${text.substring(0, 100)}...`);
 
       return text;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to generate response: ${error.message}`, error.stack);
       throw ERRORS.CHAT.PROCESSING.MESSAGE_FAILED({ reason: error.message });
     }
@@ -82,16 +98,22 @@ export class AiChatService {
 
       (async () => {
         try {
-          const chat = this.model.startChat({
-            history: this.convertToGeminiHistory(chatHistory),
-            generationConfig: this.generationConfig,
-          });
+          const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            ...this.convertToAIHistory(chatHistory),
+            ...this.promptBuilder(prompt),
+          ];
 
           this.logger.debug('Chat started, sending message stream...');
-          const result = await chat.sendMessageStream([{ text: prompt }]);
+          const stream = await this.client.chat.completions.create({
+            model: this.modelConfig.modelName,
+            messages,
+            temperature: this.modelConfig.temperature,
+            max_tokens: this.modelConfig.maxOutputTokens,
+            stream: true,
+          });
 
-          for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
+          for await (const chunk of stream) {
+            const chunkText = chunk.choices[0]?.delta?.content ?? '';
 
             if (chunkText) {
               accumulatedText += chunkText;
@@ -120,7 +142,7 @@ export class AiChatService {
 
           this.logger.log('Stream completed successfully');
           subscriber.complete();
-        } catch (error) {
+        } catch (error: any) {
           this.logger.error(`Stream error: ${error.message}`, error.stack);
           const errorMessage = ERRORS.CHAT.PROCESSING.STREAM_ERROR({ reason: error.message });
           subscriber.error(errorMessage);
@@ -131,6 +153,28 @@ export class AiChatService {
         this.logger.log('Stream cancelled by client');
       };
     });
+  }
+
+  private promptBuilder(question: string): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    const prompt = [] as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
+    const exampleShots = getExampleShots();
+    for (const example of exampleShots) {
+      prompt.push(
+        {
+          role: 'user',
+          content: example.question,
+        },
+        {
+          role: 'assistant',
+          content: example.answer,
+        },
+      );
+    }
+    prompt.push({
+      role: 'user',
+      content: question,
+    });
+    return prompt;
   }
 
   private isCompleteSentence(text: string): boolean {

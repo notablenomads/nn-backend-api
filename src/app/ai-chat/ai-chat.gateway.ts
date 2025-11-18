@@ -53,7 +53,6 @@ export class AiChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const statusMessage = corsStatus.isRestricted ? '(CORS restricted)' : '(CORS unrestricted)';
     this.logger.log(`Client connected: ${client.id} from ${origin || 'unknown origin'} ${statusMessage}`);
 
-    // Send connection status to client
     this.server.to(client.id).emit('connectionStatus', {
       connected: true,
       clientId: client.id,

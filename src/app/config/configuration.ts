@@ -21,7 +21,11 @@ export default (): IConfig => ({
     issuer: process.env.JWT_ISSUER || 'notablenomads',
   },
   ai: {
-    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    modelApiKey: process.env.LLM_MODEL_API_KEY || '',
+    modelApiBaseUrl: process.env.LLM_MODEL_API_BASE_URL || 'https://api.openai.com/v1',
+    modelName: process.env.LLM_MODEL_NAME || 'gpt-4o-mini',
+    modelTemprature: parseFloat(process.env.LLM_MODEL_TEMPRATURE || '0.2'),
+    modelMaxOutputTokens: parseInt(process.env.LLM_MODEL_MAX_OUTPUT_TOKENS || '1024', 10),
   },
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',

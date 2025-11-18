@@ -19,7 +19,11 @@ export interface IJwtConfig {
 }
 
 export interface IAiConfig {
-  geminiApiKey: string;
+  modelApiKey: string;
+  modelApiBaseUrl: string;
+  modelName: string;
+  modelTemprature: number;
+  modelMaxOutputTokens: number;
 }
 
 export interface IAwsConfig {
